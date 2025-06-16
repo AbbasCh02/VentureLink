@@ -2,7 +2,7 @@ name: venturelink
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
@@ -30,14 +30,25 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  supabase_flutter: ^2.9.1
+  flutter_dotenv: ^5.2.1
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  file_picker: ^10.1.2
+  logger: ^2.5.0
+  image_picker: ^1.1.2
+  pdfx: ^2.9.1
+  video_thumbnail: ^0.5.6
+  path: ^1.9.1
+  provider: ^6.1.5
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_native_splash: ^2.4.6
+  flutter_launcher_icons: ^0.14.3
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -46,21 +57,41 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
 
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/VentureLink Exterior App Logo.png"
+  min_sdk_android: 21
+  background_color: "#000000"
+  adaptive_icon_background: "#000000" # For Android 8.0+
+  adaptive_icon_foreground: "assets/VentureLink Exterior App Logo.png"
+
+flutter_native_splash:
+  color: "#000000" # Black background
+  image: assets/VentureLink LogoAlone 2.0.png # Replace with your logo path
+  android: true
+  ios: true
+  fullscreen: true
+
+  android_12:
+    image: assets/VentureLink LogoAlone 2.0.png
+    icon_background_color: "#000000"
+    color: "#000000"
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
 flutter:
-
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/
+    - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

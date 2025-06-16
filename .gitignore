@@ -43,3 +43,12 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Supabase
+.env
+.env.local
+.env.production
+
+# Environment variables and sensitive data
+config/secrets.dart
+**/config/secrets.dart
