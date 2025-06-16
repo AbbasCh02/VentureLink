@@ -1,4 +1,3 @@
-// lib/Startup_Dashboard/Business_Model_Canvas/value_propositions_page.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../Providers/business_model_canvas_provider.dart';
@@ -20,31 +19,25 @@ class _KeyResourcesPageState extends State<KeyResourcesPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        final provider = context.read<BusinessModelCanvasProvider>();
-        _controller.text = provider.valuePropositions;
-        _controller.addListener(_onTextChanged);
+      final provider = context.read<BusinessModelCanvasProvider>();
+      _controller.text = provider.keyResources;
+      _controller.addListener(_onTextChanged);
 
-        // Listen to focus changes
-        _focusNode.addListener(() {
-          if (mounted) {
-            setState(() {
-              _isFocused = _focusNode.hasFocus;
-            });
-          }
+      // Listen to focus changes
+      _focusNode.addListener(() {
+        setState(() {
+          _isFocused = _focusNode.hasFocus;
         });
-      }
+      });
     });
   }
 
   void _onTextChanged() {
-    if (mounted) {
-      final provider = context.read<BusinessModelCanvasProvider>();
-      // Update the provider value without saving to persistence yet
-      provider.updateValuePropositions(_controller.text);
-      // Trigger rebuild to update hint text display
-      setState(() {});
-    }
+    final provider = context.read<BusinessModelCanvasProvider>();
+    // Update the provider value without saving to persistence yet
+    provider.updateKeyResources(_controller.text);
+    // Trigger rebuild to update hint text display
+    setState(() {});
   }
 
   @override
@@ -56,8 +49,6 @@ class _KeyResourcesPageState extends State<KeyResourcesPage> {
   }
 
   Future<void> _saveData() async {
-    if (!mounted) return;
-
     final provider = context.read<BusinessModelCanvasProvider>();
     final success = await provider.saveField(_fieldName);
 
@@ -84,149 +75,209 @@ class _KeyResourcesPageState extends State<KeyResourcesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0a0a0a),
-      appBar: AppBar(
-        backgroundColor: Colors.grey[900],
-        elevation: 0,
-        title: const Text(
-          'Key Resources',
-          style: TextStyle(color: Colors.white),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Color(0xFFffa500)),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: Consumer<BusinessModelCanvasProvider>(
-        builder: (context, provider, child) {
-          return Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Consumer<BusinessModelCanvasProvider>(
+      builder: (context, provider, child) {
+        final hasUnsavedChanges = provider.hasUnsavedChanges(_fieldName);
+        final showHints = _controller.text.isEmpty && !_isFocused;
+
+        return Scaffold(
+          backgroundColor: const Color(0xFF0d0d0d),
+          appBar: AppBar(
+            title: Row(
               children: [
-                // Header Section
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFFffa500).withValues(alpha: 0.1),
-                        const Color(0xFFff8c00).withValues(alpha: 0.05),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                const Expanded(
+                  child: Text(
+                    'Key Resources',
+                    style: TextStyle(
+                      color: Color(0xFFffa500),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
                     ),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: const Color(0xFFffa500).withValues(alpha: 0.3),
-                      width: 1,
-                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
-                  child: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF1a1a1a),
+            elevation: 2,
+          ),
+          body: Column(
+            children: [
+              // Error banner
+              if (provider.error != null)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  color: Colors.red.withValues(alpha: 0.1),
+                  child: Row(
                     children: [
-                      Text(
-                        'Key Resources',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFFffa500),
+                      const Icon(Icons.error_outline, color: Colors.red),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          provider.error!,
+                          style: const TextStyle(color: Colors.red),
                         ),
                       ),
-                      SizedBox(height: 12),
-                      Text(
-                        'What key resources does your value proposition require? The most important assets required to make your business model work.',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey,
-                          height: 1.5,
-                        ),
+                      IconButton(
+                        onPressed: () {
+                          provider.clearError();
+                        },
+                        icon: const Icon(Icons.close, color: Colors.red),
                       ),
                     ],
                   ),
                 ),
 
-                const SizedBox(height: 32),
-
-                // Text Field Section
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[900],
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color:
-                            _isFocused
-                                ? const Color(0xFFffa500)
-                                : Colors.grey[700]!,
-                        width: 1,
+              // Header with description
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF2a2a2a),
+                  border: Border(
+                    bottom: BorderSide(color: Color(0xFFffa500), width: 2),
+                  ),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Key Resources',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFffa500),
                       ),
                     ),
-                    child: TextField(
-                      controller: _controller,
-                      focusNode: _focusNode,
-                      maxLines: null,
-                      expands: true,
-                      textAlignVertical: TextAlignVertical.top,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        height: 1.5,
+                    SizedBox(height: 8),
+                    Text(
+                      'What key resources does your value proposition require? The most important assets required to make your business model work.',
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Text input area
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1a1a1a),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color:
+                          hasUnsavedChanges
+                              ? Colors.orange.withValues(alpha: 0.5)
+                              : const Color(0xFFffa500).withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _controller,
+                    focusNode: _focusNode,
+                    enabled: !provider.isSaving,
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      contentPadding: const EdgeInsets.all(20),
+                      // Show label when focused or has content
+                      labelText:
+                          (_isFocused || _controller.text.isNotEmpty)
+                              ? 'Enter Key Resources Information'
+                              : null,
+                      labelStyle: TextStyle(
+                        color:
+                            provider.isSaving ? Colors.grey[600] : Colors.grey,
                       ),
-                      decoration: InputDecoration(
-                        hintText:
-                            provider.valuePropositions.isEmpty
-                                ? 'Examples:\n• Physical resources (facilities, equipment, inventory)\n• Intellectual property (patents, trademarks, copyrights)\n• Human resources (skilled employees, expertise)\n• Financial resources (cash, credit lines, investments)\n• Technology and software systems\n• Brand and reputation\n• Customer databases and relationships\n• Distribution networks\n• Manufacturing capabilities\n• Research and development capabilities\n• Regulatory licenses and permits\n• Strategic partnerships and alliances'
-                                : null,
-                        hintStyle: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 16,
-                          height: 1.5,
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.zero,
+                      floatingLabelStyle: const TextStyle(
+                        color: Color(0xFFffa500),
                       ),
+                      // Show hints when empty and not focused
+                      hintText:
+                          showHints
+                              ? 'Examples:\n• Physical resources (facilities, equipment, inventory)\n• Intellectual property (patents, trademarks, copyrights)\n• Human resources (skilled employees, expertise)\n• Financial resources (cash, credit lines, investments)\n• Technology and software systems\n• Brand and reputation\n• Customer databases and relationships\n• Distribution networks\n• Manufacturing capabilities\n• Research and development capabilities\n• Regulatory licenses and permits\n• Strategic partnerships and alliances'
+                              : null,
+                      hintStyle: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
+                      ),
+                    ),
+                    maxLines: null,
+                    minLines: 12,
+                    style: TextStyle(
+                      color:
+                          provider.isSaving ? Colors.grey[600] : Colors.white,
+                      fontSize: 16,
+                      height: 1.5,
                     ),
                   ),
                 ),
+              ),
 
-                const SizedBox(height: 24),
-
-                // Save Button
-                SizedBox(
+              // Bottom action bar - Only save button
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(color: Colors.black),
+                child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed:
-                        provider.hasUnsavedChanges(_fieldName)
+                        hasUnsavedChanges && !provider.isSaving
                             ? _saveData
                             : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFffa500),
-                      disabledBackgroundColor: Colors.grey[700],
+                      backgroundColor:
+                          hasUnsavedChanges && !provider.isSaving
+                              ? const Color(0xFFffa500)
+                              : Colors.grey[600],
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: Text(
-                      provider.hasUnsavedChanges(_fieldName)
-                          ? 'Save Changes'
-                          : 'No Changes to Save',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
+                    child:
+                        provider.isSaving
+                            ? const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Text('Saving...'),
+                              ],
+                            )
+                            : Text(
+                              hasUnsavedChanges
+                                  ? 'Save Changes'
+                                  : 'No Changes to Save',
+                              style: TextStyle(
+                                color:
+                                    hasUnsavedChanges && !provider.isSaving
+                                        ? Colors.black
+                                        : Colors.grey[400],
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
                   ),
                 ),
-              ],
-            ),
-          );
-        },
-      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

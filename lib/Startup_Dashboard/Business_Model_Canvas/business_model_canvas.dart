@@ -1,4 +1,3 @@
-// lib/Startup_Dashboard/Business_Model_Canvas/business_model_canvas.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../Providers/business_model_canvas_provider.dart';
@@ -54,9 +53,7 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
 
     // Initialize the provider
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        context.read<BusinessModelCanvasProvider>().initialize();
-      }
+      context.read<BusinessModelCanvasProvider>().initialize();
     });
   }
 
@@ -94,6 +91,11 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
 
                     const SizedBox(height: 40),
 
+                    // Progress Section
+                    _buildProgressSection(provider),
+
+                    const SizedBox(height: 40),
+
                     // Canvas Sections
                     _buildCanvasSections(context, provider),
 
@@ -114,94 +116,121 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
       elevation: 0,
       toolbarHeight: 80,
       leading: Container(
-        margin: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
         decoration: BoxDecoration(
-          color: const Color(0xFFffa500).withValues(alpha: 0.1),
+          color: Color(0xFFffa500),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: const Color(0xFFffa500).withValues(alpha: 0.3),
-            width: 1,
-          ),
+          border: Border.all(color: Colors.black, width: 1),
         ),
         child: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFFffa500)),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.black,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFffa500).withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.dashboard_outlined,
-              color: Color(0xFFffa500),
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Business Model Canvas',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+      title: Flexible(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFFffa500), Color(0xFFffa500)],
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.dashboard_customize,
+                    color: Colors.black,
+                    size: 20,
+                  ),
                 ),
-              ),
-              Text(
-                'Design your business strategy',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                  fontWeight: FontWeight.normal,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Business Model Canvas',
+                    style: TextStyle(
+                      fontSize: 18, // Reduced from 20
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFffa500),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 2), // Reduced from 4
+            Text(
+              'Strategic planning made simple',
+              style: TextStyle(
+                fontSize: 12, // Reduced from 14
+                color: Colors.white,
+                fontWeight: FontWeight.normal,
               ),
-            ],
-          ),
-        ],
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ],
+        ),
       ),
       actions: [
-        Consumer<BusinessModelCanvasProvider>(
-          builder: (context, provider, child) {
-            return Container(
-              margin: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.red.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.clear_all, color: Colors.red),
-                onPressed:
-                    provider.hasAnyUnsavedChanges
-                        ? () => _showClearDialog(context, provider)
-                        : null,
-                tooltip: 'Clear all data',
-              ),
-            );
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert, color: Color(0xFFffa500)),
+          onSelected: (value) async {
+            final provider = context.read<BusinessModelCanvasProvider>();
+            if (value == 'clear') {
+              _showClearDialog(context, provider);
+            }
           },
+          itemBuilder:
+              (context) => [
+                const PopupMenuItem(
+                  value: 'clear',
+                  child: Row(
+                    children: [
+                      Icon(Icons.clear_all, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Clear All Data'),
+                    ],
+                  ),
+                ),
+              ],
         ),
       ],
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Container(
+          height: 1,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.transparent,
+                Colors.black.withValues(alpha: 0.3),
+                Colors.transparent,
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildHeroSection(BusinessModelCanvasProvider provider) {
     return Container(
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const Color(0xFFffa500).withValues(alpha: 0.1),
-            const Color(0xFFff8c00).withValues(alpha: 0.05),
+            Colors.grey[900]!.withValues(alpha: 0.8),
+            Colors.grey[850]!.withValues(alpha: 0.9),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -211,22 +240,143 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
           color: const Color(0xFFffa500).withValues(alpha: 0.3),
           width: 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFffa500).withValues(alpha: 0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Business Model Canvas',
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFFffa500),
-            ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFFffa500).withValues(alpha: 0.2),
+                      const Color(0xFFff8c00).withValues(alpha: 0.1),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.lightbulb_outline,
+                  color: Color(0xFFffa500),
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Strategic Planning Made Simple',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Build your complete business model',
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: 16),
-          Text(
-            'The Business Model Canvas is a strategic management template for developing new business models and documenting existing ones. Complete each section to build a comprehensive view of your business.',
+          const SizedBox(height: 20),
+          const Text(
+            'The Business Model Canvas is a strategic management template used for developing new business models and documenting existing ones. Complete each section to build a comprehensive view of your business.',
             style: TextStyle(fontSize: 16, color: Colors.grey, height: 1.6),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressSection(BusinessModelCanvasProvider provider) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.grey[900]!, Colors.grey[850]!],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFFffa500).withValues(alpha: 0.3),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFffa500).withValues(alpha: 0.1),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFffa500).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.analytics_outlined,
+                  color: Color(0xFFffa500),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Progress Overview',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFffa500),
+                    ),
+                  ),
+                  Text(
+                    '${provider.completedSectionsCount} of 9 sections completed',
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          LinearProgressIndicator(
+            value: provider.completionPercentage,
+            backgroundColor: Colors.grey[800],
+            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFffa500)),
+            minHeight: 8,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${(provider.completionPercentage * 100).toInt()}% Complete',
+            style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFFffa500),
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -241,63 +391,63 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
       {
         'title': 'Key Partners',
         'description':
-            'Who are your key partners & suppliers? What key resources are you acquiring from partners?',
+            'Who are your key partners & suppliers? Identify the network of suppliers and partners that make the business model work.',
         'icon': Icons.handshake_outlined,
-        'page': const KeyPartnersPage(),
+        'page': KeyPartnersPage(),
         'color': const Color(0xFFffa500),
         'isComplete': provider.isKeyPartnersComplete,
       },
       {
         'title': 'Key Activities',
         'description':
-            'What key activities does your value proposition require? Your distribution channels, customer relationships, revenue stream?',
+            'What key activities does your value proposition require? The most important things your company must do to operate successfully.',
         'icon': Icons.settings_outlined,
-        'page': const KeyActivitiesPage(),
+        'page': KeyActivitiesPage(),
         'color': const Color(0xFFffa500),
         'isComplete': provider.isKeyActivitiesComplete,
       },
       {
         'title': 'Key Resources',
         'description':
-            'What key resources does your value proposition require? Your distribution channels, customer relationships, revenue streams?',
+            'What key resources does your value proposition require? The most important assets required to make your business model work.',
         'icon': Icons.inventory_2_outlined,
-        'page': const KeyResourcesPage(),
+        'page': KeyResourcesPage(),
         'color': const Color(0xFFffa500),
         'isComplete': provider.isKeyResourcesComplete,
       },
       {
         'title': 'Value Propositions',
         'description':
-            'What value do you deliver to customers? Which customer problems are you solving? What bundles of products/services are you offering?',
+            'What value do you deliver to customers? The bundle of products and services that create value for your customer segments.',
         'icon': Icons.diamond_outlined,
-        'page': const ValuePropositionsPage(),
+        'page': ValuePropositionsPage(),
         'color': const Color(0xFFffa500),
         'isComplete': provider.isValuePropositionsComplete,
       },
       {
         'title': 'Customer Relationships',
         'description':
-            'What type of relationship does each customer segment expect you to establish? How do you get, keep & grow customers?',
-        'icon': Icons.people_outline,
-        'page': const CustomerRelationshipsPage(),
+            'What type of relationship do you establish with each customer segment? Describe the types of relationships you establish.',
+        'icon': Icons.favorite_outline,
+        'page': CustomerRelationshipsPage(),
         'color': const Color(0xFFffa500),
         'isComplete': provider.isCustomerRelationshipsComplete,
       },
       {
         'title': 'Customer Segments',
         'description':
-            'For whom are you creating value? Who are your most important customers?',
+            'For whom are you creating value? Define the different groups of people or organizations you aim to reach and serve.',
         'icon': Icons.group_outlined,
-        'page': const CustomerSegmentsPage(),
+        'page': CustomerSegmentsPage(),
         'color': const Color(0xFFffa500),
         'isComplete': provider.isCustomerSegmentsComplete,
       },
       {
         'title': 'Channels',
         'description':
-            'Through which channels do your customer segments want to be reached? How your company communicates and reaches its customer segments.',
+            'Through which channels do you reach customers? How your company communicates and reaches its customer segments.',
         'icon': Icons.alt_route_outlined,
-        'page': const ChannelsPage(),
+        'page': ChannelsPage(),
         'color': const Color(0xFFffa500),
         'isComplete': provider.isChannelsComplete,
       },
@@ -306,7 +456,7 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
         'description':
             'What are the most important costs? All costs incurred to operate your business model and create value.',
         'icon': Icons.trending_down_outlined,
-        'page': const CostStructurePage(),
+        'page': CostStructurePage(),
         'color': const Color(0xFFffa500),
         'isComplete': provider.isCostStructureComplete,
       },
@@ -315,7 +465,7 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
         'description':
             'For what value are customers willing to pay? The cash your company generates from each customer segment.',
         'icon': Icons.trending_up_outlined,
-        'page': const RevenueStreamsPage(),
+        'page': RevenueStreamsPage(),
         'color': const Color(0xFFffa500),
         'isComplete': provider.isRevenueStreamsComplete,
       },
@@ -380,9 +530,10 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: (isComplete ? Colors.green : color).withValues(
-                      alpha: 0.1,
-                    ),
+                    color:
+                        isComplete
+                            ? Colors.green.withValues(alpha: 0.1)
+                            : color.withValues(alpha: 0.1),
                     blurRadius: 15,
                     offset: const Offset(0, 8),
                   ),
@@ -391,117 +542,116 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
+                  onTap:
+                      () => Navigator.push(
+                        context,
+                        PageRouteBuilder(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) => page,
+                          transitionsBuilder: (
+                            context,
+                            animation,
+                            secondaryAnimation,
+                            child,
+                          ) {
+                            const begin = Offset(1.0, 0.0);
+                            const end = Offset.zero;
+                            const curve = Curves.easeInOutCubic;
+                            var tween = Tween(
+                              begin: begin,
+                              end: end,
+                            ).chain(CurveTween(curve: curve));
+                            return SlideTransition(
+                              position: animation.drive(tween),
+                              child: child,
+                            );
+                          },
+                        ),
+                      ),
                   borderRadius: BorderRadius.circular(20),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => page),
-                    );
-                  },
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: (isComplete ? Colors.green : color)
-                                  .withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Icon(
-                              icon,
-                              color: isComplete ? Colors.green : color,
-                              size: 32,
-                            ),
-                          ),
-                          const SizedBox(width: 20),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color:
+                              isComplete
+                                  ? Colors.green.withValues(alpha: 0.2)
+                                  : color.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          icon,
+                          color: isComplete ? Colors.green : color,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        title,
-                                        style: TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                          color:
-                                              isComplete ? Colors.green : color,
-                                        ),
-                                      ),
+                                Expanded(
+                                  child: Text(
+                                    title,
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: isComplete ? Colors.green : color,
                                     ),
-                                    if (isComplete)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.green.withValues(
-                                            alpha: 0.2,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          border: Border.all(
-                                            color: Colors.green.withValues(
-                                              alpha: 0.3,
-                                            ),
-                                          ),
-                                        ),
-                                        child: const Text(
-                                          'Complete',
-                                          style: TextStyle(
-                                            color: Colors.green,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  description,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey,
-                                    height: 1.4,
                                   ),
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
+                                if (isComplete)
+                                  Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: const Icon(
+                                      Icons.check,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                  ),
                               ],
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color:
-                                  isComplete
-                                      ? Colors.green.withValues(alpha: 0.1)
-                                      : color.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color:
-                                    isComplete
-                                        ? Colors.green.withValues(alpha: 0.3)
-                                        : color.withValues(alpha: 0.3),
-                                width: 1,
+                            const SizedBox(height: 8),
+                            Text(
+                              description,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[400],
+                                height: 1.4,
                               ),
                             ),
-                            child: Icon(
-                              Icons.arrow_forward_ios,
-                              color: isComplete ? Colors.green : color,
-                              size: 16,
-                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color:
+                              isComplete
+                                  ? Colors.green.withValues(alpha: 0.1)
+                                  : color.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color:
+                                isComplete
+                                    ? Colors.green.withValues(alpha: 0.3)
+                                    : color.withValues(alpha: 0.3),
+                            width: 1,
                           ),
-                        ],
+                        ),
+                        child: Icon(
+                          Icons.arrow_forward_ios,
+                          color: isComplete ? Colors.green : color,
+                          size: 16,
+                        ),
                       ),
                     ],
                   ),
@@ -521,7 +671,7 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
     showDialog(
       context: context,
       builder:
-          (dialogContext) => AlertDialog(
+          (context) => AlertDialog(
             backgroundColor: Colors.grey[900],
             title: const Text(
               'Clear All Data',
@@ -533,27 +683,22 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
+                onPressed: () => Navigator.pop(context),
                 child: const Text(
                   'Cancel',
                   style: TextStyle(color: Colors.grey),
                 ),
               ),
               TextButton(
-                onPressed: () {
-                  // Clear all data synchronously
-                  provider.clearAllData();
-                  Navigator.pop(dialogContext);
-
-                  // Show success message if the original context is still mounted
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('All data cleared successfully'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
+                onPressed: () async {
+                  await provider.clearAllData();
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('All data cleared successfully'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
                 },
                 child: const Text('Clear', style: TextStyle(color: Colors.red)),
               ),

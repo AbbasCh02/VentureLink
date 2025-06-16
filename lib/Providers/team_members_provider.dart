@@ -1,5 +1,7 @@
-// lib/Providers/team_members_provider.dart
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'dart:async';
 
 class TeamMember {
   final String id;
@@ -65,6 +67,9 @@ class TeamMember {
 }
 
 class TeamMembersProvider with ChangeNotifier {
+  // Keys for SharedPreferences
+  static const String _teamMembersKey = 'team_members';
+
   // Controllers for the form
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _roleController = TextEditingController();
@@ -73,8 +78,12 @@ class TeamMembersProvider with ChangeNotifier {
   // Team members list
   List<TeamMember> _teamMembers = [];
 
+  // Auto-save timer
+  Timer? _saveTimer;
+
   // Loading and error states
   bool _isLoading = false;
+  bool _isSaving = false;
   String? _error;
 
   // Dirty tracking for unsaved changes
@@ -106,10 +115,19 @@ class TeamMembersProvider with ChangeNotifier {
 
     _dirtyFields.add(fieldName);
     notifyListeners();
+
+    // For form fields, we use debounced auto-save but don't actually save
+    // since form fields get cleared after adding a team member
+    _saveTimer?.cancel();
+    _saveTimer = Timer(Duration(seconds: 1), () {
+      // Form fields don't auto-save - they're just for UI state consistency
+      // The actual saving happens when team members are added/updated/removed
+    });
   }
 
   // Getters for states
   bool get isLoading => _isLoading;
+  bool get isSaving => _isSaving;
   String? get error => _error;
 
   // Check if specific field has unsaved changes
@@ -122,7 +140,7 @@ class TeamMembersProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Initialize and setup listeners
+  // Initialize and load data from SharedPreferences
   Future<void> initialize() async {
     _isLoading = true;
     _isInitializing = true;
@@ -130,13 +148,33 @@ class TeamMembersProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Load team members data
+      final teamMembersData = prefs.getString(_teamMembersKey);
+      if (teamMembersData != null) {
+        try {
+          final List<dynamic> teamMembersList = json.decode(teamMembersData);
+          _teamMembers =
+              teamMembersList
+                  .map(
+                    (memberMap) =>
+                        TeamMember.fromMap(memberMap as Map<String, dynamic>),
+                  )
+                  .toList();
+        } catch (e) {
+          debugPrint('Error parsing team members data: $e');
+          _teamMembers = [];
+        }
+      }
+
       // Add listeners after initialization
       _addListeners();
 
       _dirtyFields.clear(); // Clear dirty state after loading
     } catch (e) {
-      _error = 'Failed to initialize team members data: $e';
-      debugPrint('Error initializing team members data: $e');
+      _error = 'Failed to load team members data: $e';
+      debugPrint('Error loading team members data: $e');
     } finally {
       _isInitializing = false;
       _isLoading = false;
@@ -144,17 +182,37 @@ class TeamMembersProvider with ChangeNotifier {
     }
   }
 
-  // Mock save methods (kept for API compatibility)
+  // Save team members to preferences
   Future<bool> saveTeamMembers() async {
-    _dirtyFields.remove('teamMembers');
+    _isSaving = true;
+    _error = null;
     notifyListeners();
-    return true;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final teamMembersData = json.encode(
+        _teamMembers.map((member) => member.toMap()).toList(),
+      );
+      await prefs.setString(_teamMembersKey, teamMembersData);
+
+      _dirtyFields.remove('teamMembers');
+      return true;
+    } catch (e) {
+      _error = 'Failed to save team members: $e';
+      debugPrint('Error saving team members: $e');
+      return false;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
   }
 
-  // Mark team members as dirty (but no actual save)
+  // Mark team members as dirty and auto-save
   void _markTeamMembersDirtyAndSave() {
     _dirtyFields.add('teamMembers');
     notifyListeners();
+    // Auto-save team members immediately when they change
+    saveTeamMembers();
   }
 
   // Getters for controllers
@@ -196,7 +254,7 @@ class TeamMembersProvider with ChangeNotifier {
         .toList();
   }
 
-  // Add a new team member with immediate state update
+  // Add a new team member with automatic save
   Future<bool> addTeamMember({
     String? customName,
     String? customRole,
@@ -206,43 +264,30 @@ class TeamMembersProvider with ChangeNotifier {
     final name = customName ?? _nameController.text.trim();
     final role = customRole ?? _roleController.text.trim();
     final linkedin = customLinkedin ?? _linkedinController.text.trim();
-    final avatar = customAvatar ?? 'https://via.placeholder.com/150';
 
-    if (name.isEmpty || role.isEmpty) {
-      _error = 'Name and role are required';
-      notifyListeners();
-      return false;
+    if (name.isNotEmpty && role.isNotEmpty) {
+      final newMember = TeamMember(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        name: name,
+        role: role,
+        linkedin: linkedin,
+        avatar: customAvatar ?? 'https://via.placeholder.com/150',
+        dateAdded: DateTime.now(),
+      );
+
+      _teamMembers.add(newMember);
+
+      // Clear form controllers
+      clearForm();
+
+      // Auto-save immediately when adding team member
+      _markTeamMembersDirtyAndSave();
+      return true;
     }
-
-    // Check for duplicate names
-    if (_teamMembers.any(
-      (member) => member.name.toLowerCase() == name.toLowerCase(),
-    )) {
-      _error = 'A team member with this name already exists';
-      notifyListeners();
-      return false;
-    }
-
-    final newMember = TeamMember(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: name,
-      role: role,
-      linkedin: linkedin,
-      avatar: avatar,
-      dateAdded: DateTime.now(),
-    );
-
-    _teamMembers.add(newMember);
-
-    // Clear form after successful addition
-    clearForm();
-
-    // Mark as changed
-    _markTeamMembersDirtyAndSave();
-    return true;
+    return false;
   }
 
-  // Remove a team member
+  // Remove a team member with automatic save
   Future<bool> removeTeamMember(String id) async {
     final initialLength = _teamMembers.length;
     _teamMembers.removeWhere((member) => member.id == id);
@@ -255,7 +300,19 @@ class TeamMembersProvider with ChangeNotifier {
     return false;
   }
 
-  // Update an existing team member
+  // Remove team member by index with automatic save
+  Future<bool> removeTeamMemberAt(int index) async {
+    if (index >= 0 && index < _teamMembers.length) {
+      _teamMembers.removeAt(index);
+
+      // Auto-save immediately when removing team member
+      _markTeamMembersDirtyAndSave();
+      return true;
+    }
+    return false;
+  }
+
+  // Update a team member with automatic save
   Future<bool> updateTeamMember(
     String id, {
     String? name,
@@ -283,7 +340,16 @@ class TeamMembersProvider with ChangeNotifier {
   Future<void> clearAllTeamMembers() async {
     _teamMembers.clear();
     _dirtyFields.clear();
+
     notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_teamMembersKey);
+    } catch (e) {
+      _error = 'Failed to clear team members data: $e';
+      debugPrint('Error clearing team members preferences: $e');
+    }
   }
 
   // Clear form controllers
@@ -334,65 +400,98 @@ class TeamMembersProvider with ChangeNotifier {
 
     final linkedinPattern = RegExp(
       r'^https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9\-]+\/?$',
+      caseSensitive: false,
     );
 
     if (!linkedinPattern.hasMatch(value.trim())) {
-      return 'Please enter a valid LinkedIn profile URL';
+      return 'Please enter a valid LinkedIn URL';
     }
-
     return null;
   }
 
-  // Get team members data as list of maps
-  List<Map<String, dynamic>> getTeamMembersData() {
-    return _teamMembers.map((member) => member.toMap()).toList();
-  }
-
-  // Import team members from data
-  void importTeamMembers(List<Map<String, dynamic>> data) {
-    try {
-      _teamMembers =
-          data.map((memberMap) => TeamMember.fromMap(memberMap)).toList();
-      _dirtyFields.clear();
-      notifyListeners();
-    } catch (e) {
-      _error = 'Failed to import team members: $e';
-      notifyListeners();
-    }
-  }
-
-  // Check if team member with name exists
-  bool teamMemberExists(String name) {
+  // Check if team member already exists
+  bool isTeamMemberExists(String name, String role) {
     return _teamMembers.any(
-      (member) => member.name.toLowerCase() == name.toLowerCase(),
+      (member) =>
+          member.name.toLowerCase() == name.toLowerCase() &&
+          member.role.toLowerCase() == role.toLowerCase(),
     );
   }
 
-  // Get team member by ID
-  TeamMember? getTeamMemberById(String id) {
+  // Get team summary for dashboard
+  Map<String, dynamic> getTeamSummary() {
+    return {
+      'totalMembers': _teamMembers.length,
+      'leadershipCount': leadershipTeam.length,
+      'recentlyAdded':
+          _teamMembers
+              .where(
+                (member) =>
+                    DateTime.now().difference(member.dateAdded).inDays <= 7,
+              )
+              .length,
+      'roles': _teamMembers.map((member) => member.role).toSet().toList(),
+    };
+  }
+
+  // Export team data
+  List<Map<String, dynamic>> exportTeamData() {
+    return _teamMembers.map((member) => member.toMap()).toList();
+  }
+
+  // Import team data with automatic save
+  Future<bool> importTeamData(List<Map<String, dynamic>> data) async {
     try {
-      return _teamMembers.firstWhere((member) => member.id == id);
+      _teamMembers = data.map((item) => TeamMember.fromMap(item)).toList();
+
+      // Auto-save immediately when importing data
+      _markTeamMembersDirtyAndSave();
+      return true;
     } catch (e) {
-      return null;
+      _error = 'Error importing team data: $e';
+      debugPrint('Error importing team data: $e');
+      return false;
     }
   }
 
-  // Search team members by name or role
+  // Search team members
   List<TeamMember> searchTeamMembers(String query) {
-    if (query.isEmpty) return teamMembers;
+    if (query.trim().isEmpty) return _teamMembers;
 
-    final lowerQuery = query.toLowerCase();
+    final searchQuery = query.toLowerCase().trim();
     return _teamMembers
         .where(
           (member) =>
-              member.name.toLowerCase().contains(lowerQuery) ||
-              member.role.toLowerCase().contains(lowerQuery),
+              member.name.toLowerCase().contains(searchQuery) ||
+              member.role.toLowerCase().contains(searchQuery),
         )
         .toList();
   }
 
+  // Sort team members with automatic save
+  void sortTeamMembers(String sortBy) {
+    switch (sortBy.toLowerCase()) {
+      case 'name':
+        _teamMembers.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case 'role':
+        _teamMembers.sort((a, b) => a.role.compareTo(b.role));
+        break;
+      case 'date_added':
+        _teamMembers.sort((a, b) => b.dateAdded.compareTo(a.dateAdded));
+        break;
+      default:
+        // Default to name sorting
+        _teamMembers.sort((a, b) => a.name.compareTo(b.name));
+    }
+
+    // Auto-save immediately when sorting
+    _markTeamMembersDirtyAndSave();
+  }
+
   @override
   void dispose() {
+    _saveTimer?.cancel(); // Clean up auto-save timer
     _removeListeners();
     _nameController.dispose();
     _roleController.dispose();

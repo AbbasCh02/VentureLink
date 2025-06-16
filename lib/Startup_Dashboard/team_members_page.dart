@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../Providers/team_members_provider.dart';
+import '../Providers/team_members_provider.dart'; // Add this import
 
 class TeamMembersPage extends StatefulWidget {
   const TeamMembersPage({super.key});
@@ -56,28 +56,23 @@ class _TeamMembersPageState extends State<TeamMembersPage>
     final provider = Provider.of<TeamMembersProvider>(context, listen: false);
 
     if (_formKey.currentState!.validate() && provider.isFormValid) {
-      // Check if team member already exists using the correct method name
-      if (provider.teamMemberExists(provider.nameController.text.trim())) {
+      // Check if team member already exists
+      if (provider.isTeamMemberExists(
+        provider.nameController.text.trim(),
+        provider.roleController.text.trim(),
+      )) {
         _showMessage(
-          'A team member with this name already exists!',
+          'A team member with this name and role already exists!',
           isError: true,
         );
         return;
       }
 
-      // Add team member with async handling
-      provider.addTeamMember().then((success) {
-        if (success) {
-          _showMessage('Team member added successfully!');
-          // Clear focus from form fields
-          FocusScope.of(context).unfocus();
-        } else {
-          _showMessage(
-            'Failed to add team member. Please try again.',
-            isError: true,
-          );
-        }
-      });
+      provider.addTeamMember();
+      _showMessage('Team member added successfully!');
+
+      // Clear focus from form fields
+      FocusScope.of(context).unfocus();
     } else {
       _showMessage(
         'Please fill in all required fields correctly!',
@@ -96,21 +91,6 @@ class _TeamMembersPageState extends State<TeamMembersPage>
         margin: const EdgeInsets.all(16),
       ),
     );
-  }
-
-  // Create team summary locally since the method doesn't exist in provider
-  Map<String, dynamic> _getTeamSummary(TeamMembersProvider provider) {
-    final teamMembers = provider.teamMembers;
-    final leadershipTeam = provider.leadershipTeam;
-
-    // Get unique roles
-    final roles = teamMembers.map((member) => member.role).toSet().toList();
-
-    return {
-      'totalMembers': teamMembers.length,
-      'leadershipCount': leadershipTeam.length,
-      'roles': roles,
-    };
   }
 
   @override
@@ -812,7 +792,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
   }
 
   Widget _buildTeamSummary(TeamMembersProvider provider) {
-    final summary = _getTeamSummary(provider);
+    final summary = provider.getTeamSummary();
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -931,8 +911,8 @@ class _TeamMembersPageState extends State<TeamMembersPage>
         onPressed:
             provider.canSave
                 ? () {
-                  // Save team data using the correct method name
-                  final teamData = provider.getTeamMembersData();
+                  // Save team data
+                  final teamData = provider.exportTeamData();
                   _showMessage(
                     '${provider.teamMemberCount} team members saved successfully!',
                   );

@@ -1,7 +1,14 @@
-// lib/Providers/startup_profile_overview_provider.dart
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 
 class StartupProfileOverviewProvider with ChangeNotifier {
+  // Keys for SharedPreferences
+  static const String _companyNameKey = 'startup_company_name';
+  static const String _taglineKey = 'startup_tagline';
+  static const String _industryKey = 'startup_industry';
+  static const String _regionKey = 'startup_region';
+
   // Controllers for profile data
   final TextEditingController _companyNameController = TextEditingController();
   final TextEditingController _taglineController = TextEditingController();
@@ -10,12 +17,14 @@ class StartupProfileOverviewProvider with ChangeNotifier {
 
   // Loading and error states
   bool _isLoading = false;
+  bool _isSaving = false;
   String? _error;
+  Timer? _saveTimer;
 
   // Dirty tracking for unsaved changes
   final Set<String> _dirtyFields = <String>{};
 
-  // Initialization flag
+  // Flag to prevent infinite loops during initialization
   bool _isInitializing = false;
 
   StartupProfileOverviewProvider() {
@@ -40,13 +49,24 @@ class StartupProfileOverviewProvider with ChangeNotifier {
   void _onFieldChanged(String fieldName) {
     // Don't mark as dirty during initialization
     if (_isInitializing) return;
-
+    
     _dirtyFields.add(fieldName);
     notifyListeners();
+
+    // Cancel previous timer
+    _saveTimer?.cancel();
+
+    // Set new timer - saves 1 second after user stops typing
+    _saveTimer = Timer(Duration(seconds: 1), () {
+      if (_dirtyFields.contains(fieldName)) {
+        saveField(fieldName);
+      }
+    });
   }
 
   // Getters for states
   bool get isLoading => _isLoading;
+  bool get isSaving => _isSaving;
   String? get error => _error;
 
   // Check if specific field has unsaved changes
@@ -59,7 +79,7 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Initialize and setup listeners
+  // Initialize and load data from SharedPreferences
   Future<void> initialize() async {
     _isLoading = true;
     _isInitializing = true;
@@ -67,16 +87,38 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+
       // Remove listeners temporarily to prevent triggering dirty state
       _removeListeners();
 
-      // Add listeners after initialization
+      // Load data and sync with controllers
+      final companyName = prefs.getString(_companyNameKey) ?? '';
+      final tagline = prefs.getString(_taglineKey) ?? '';
+      final industry = prefs.getString(_industryKey) ?? '';
+      final region = prefs.getString(_regionKey) ?? '';
+
+      // Sync controllers with loaded data
+      if (_companyNameController.text != companyName) {
+        _companyNameController.text = companyName;
+      }
+      if (_taglineController.text != tagline) {
+        _taglineController.text = tagline;
+      }
+      if (_industryController.text != industry) {
+        _industryController.text = industry;
+      }
+      if (_regionController.text != region) {
+        _regionController.text = region;
+      }
+
+      // Re-add listeners
       _addListeners();
 
       _dirtyFields.clear(); // Clear dirty state after loading
     } catch (e) {
-      _error = 'Failed to initialize profile data: $e';
-      debugPrint('Error initializing startup profile data: $e');
+      _error = 'Failed to load profile data: $e';
+      debugPrint('Error loading startup profile data: $e');
     } finally {
       _isInitializing = false;
       _isLoading = false;
@@ -84,18 +126,91 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     }
   }
 
-  // Mock save methods (kept for API compatibility)
+  // Save specific field to preferences
   Future<bool> saveField(String fieldName) async {
-    _dirtyFields.remove(fieldName);
+    if (!_dirtyFields.contains(fieldName)) return true;
+
+    _isSaving = true;
+    _error = null;
     notifyListeners();
-    return true;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String prefKey = _getPrefKeyForField(fieldName);
+      String value = _getValueForField(fieldName);
+
+      await prefs.setString(prefKey, value);
+      _dirtyFields.remove(fieldName);
+
+      return true;
+    } catch (e) {
+      _error = 'Failed to save $fieldName: $e';
+      debugPrint('Error saving $fieldName: $e');
+      return false;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
   }
 
-  // Save all changes (now just clears dirty fields)
+  // Save all dirty fields
   Future<bool> saveAllChanges() async {
-    _dirtyFields.clear();
+    if (_dirtyFields.isEmpty) return true;
+
+    _isSaving = true;
+    _error = null;
     notifyListeners();
-    return true;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      for (String fieldName in _dirtyFields.toList()) {
+        String prefKey = _getPrefKeyForField(fieldName);
+        String value = _getValueForField(fieldName);
+        await prefs.setString(prefKey, value);
+      }
+
+      _dirtyFields.clear();
+      return true;
+    } catch (e) {
+      _error = 'Failed to save changes: $e';
+      debugPrint('Error saving all changes: $e');
+      return false;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
+  }
+
+  // Helper methods
+  String _getPrefKeyForField(String fieldName) {
+    switch (fieldName) {
+      case 'companyName':
+        return _companyNameKey;
+      case 'tagline':
+        return _taglineKey;
+      case 'industry':
+        return _industryKey;
+      case 'region':
+        return _regionKey;
+      default:
+        throw ArgumentError('Unknown field: $fieldName');
+    }
+  }
+
+  String _getValueForField(String fieldName) {
+    switch (fieldName) {
+      case 'companyName':
+        return _companyNameController.text;
+      case 'tagline':
+        return _taglineController.text;
+      case 'industry':
+        return _industryController.text;
+      case 'region':
+        return _regionController.text;
+      default:
+        throw ArgumentError('Unknown field: $fieldName');
+    }
   }
 
   // Getters for controllers
@@ -135,7 +250,7 @@ class StartupProfileOverviewProvider with ChangeNotifier {
   // Clear all profile data
   Future<void> clearProfileData() async {
     _removeListeners();
-
+    
     _companyNameController.clear();
     _taglineController.clear();
     _industryController.clear();
@@ -144,6 +259,17 @@ class StartupProfileOverviewProvider with ChangeNotifier {
 
     _addListeners();
     notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_companyNameKey);
+      await prefs.remove(_taglineKey);
+      await prefs.remove(_industryKey);
+      await prefs.remove(_regionKey);
+    } catch (e) {
+      _error = 'Failed to clear profile data: $e';
+      debugPrint('Error clearing profile preferences: $e');
+    }
   }
 
   // Method to update profile data programmatically
@@ -154,7 +280,7 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     String? region,
   }) {
     _removeListeners();
-
+    
     if (companyName != null) {
       _companyNameController.text = companyName;
       _dirtyFields.add('companyName');
@@ -171,7 +297,7 @@ class StartupProfileOverviewProvider with ChangeNotifier {
       _regionController.text = region;
       _dirtyFields.add('region');
     }
-
+    
     _addListeners();
     notifyListeners();
   }
@@ -212,6 +338,7 @@ class StartupProfileOverviewProvider with ChangeNotifier {
 
   @override
   void dispose() {
+    _saveTimer?.cancel();
     _removeListeners();
     _companyNameController.dispose();
     _taglineController.dispose();

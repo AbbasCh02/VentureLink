@@ -126,29 +126,14 @@ class _StartupProfilePageState extends State<StartupProfilePage>
         }
       });
     } else {
-      // Show validation errors
-      String errorMessage = 'Please fill all required fields correctly';
+      // Show specific validation errors
+      final validationErrors = provider.getValidationErrors();
+      String errorMessage = 'Please fix the following issues:';
 
-      // Check specific validation errors
-      List<String> errors = [];
-
-      if (provider.ideaDescriptionController.text.trim().isEmpty) {
-        errors.add('• Idea description is required');
-      }
-
-      if (provider.fundingGoalController.text.trim().isEmpty) {
-        errors.add('• Funding goal is required');
+      if (validationErrors.isNotEmpty) {
+        errorMessage += '\n${validationErrors.values.join('\n')}';
       } else {
-        final fundingValidation = provider.validateFundingGoal(
-          provider.fundingGoalController.text,
-        );
-        if (fundingValidation != null) {
-          errors.add('• $fundingValidation');
-        }
-      }
-
-      if (errors.isNotEmpty) {
-        errorMessage = 'Please fix the following issues:\n${errors.join('\n')}';
+        errorMessage = 'Please fill all required fields correctly';
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -335,6 +320,8 @@ class _StartupProfilePageState extends State<StartupProfilePage>
     );
   }
 
+  // Add this method to your _StartupProfilePageState class in startup_profile_page.dart
+
   Widget _buildLogoutButton({
     required String text,
     required VoidCallback onPressed,
@@ -391,6 +378,8 @@ class _StartupProfilePageState extends State<StartupProfilePage>
     );
   }
 
+  // Add this method to your _StartupProfilePageState class in startup_profile_page.dart
+
   Future<void> _handleLogout() async {
     // Show confirmation dialog first
     final shouldLogout = await showDialog<bool>(
@@ -433,21 +422,23 @@ class _StartupProfilePageState extends State<StartupProfilePage>
       },
     );
 
-    if (shouldLogout == true && mounted) {
+    if (shouldLogout == true) {
       final authProvider = Provider.of<StartupAuthProvider>(
         context,
         listen: false,
       );
 
       // Show loading indicator
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder:
-            (context) => const Center(
-              child: CircularProgressIndicator(color: Color(0xFFffa500)),
-            ),
-      );
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (context) => const Center(
+                child: CircularProgressIndicator(color: Color(0xFFffa500)),
+              ),
+        );
+      }
 
       try {
         await authProvider.signOut();
@@ -627,10 +618,10 @@ class _StartupProfilePageState extends State<StartupProfilePage>
                               ),
                             ),
 
-                            // Pitch Deck
+                            // Pitch Deck - Now using the separate widget consistently
                             _buildSectionCard(
                               title: 'Pitch Deck',
-                              child: const PitchDeck(),
+                              child: PitchDeck(),
                             ),
 
                             // Business Canvas
@@ -644,8 +635,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
                                     context,
                                     MaterialPageRoute(
                                       builder:
-                                          (context) =>
-                                              const BusinessModelCanvas(),
+                                          (context) => BusinessModelCanvas(),
                                     ),
                                   );
                                 },
@@ -670,7 +660,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
                               ),
                             ),
 
-                            // Funding Section
+                            // Funding Section - Now using simplified widget
                             _buildSectionCard(
                               title: 'Funding Information',
                               child: const Funding(),
