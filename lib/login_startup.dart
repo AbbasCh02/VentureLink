@@ -318,7 +318,9 @@ class _StartupLoginPageState extends State<StartupLoginPage>
         final hasContent = controller.text.isNotEmpty;
         final hasFocus = focusNode.hasFocus;
         final hasError =
-            validator(controller.text) != null && authProvider.validateRealTime;
+            controller.text.isNotEmpty &&
+            validator(controller.text) != null &&
+            authProvider.validateRealTime;
 
         return Container(
           decoration: BoxDecoration(
@@ -499,8 +501,7 @@ class _StartupLoginPageState extends State<StartupLoginPage>
             onPressed: (isFormValid && !isLoading) ? _handleLogin : null,
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              backgroundColor:
-                  isFormValid ? const Color(0xFFffa500) : Colors.grey[700],
+              backgroundColor: const Color(0xFFffa500),
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),

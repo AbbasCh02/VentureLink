@@ -341,7 +341,9 @@ class _StartupSignupPageState extends State<StartupSignupPage>
         final hasContent = controller.text.isNotEmpty;
         final hasFocus = focusNode.hasFocus;
         final hasError =
-            validator(controller.text) != null && authProvider.validateRealTime;
+            controller.text.isNotEmpty &&
+            validator(controller.text) != null &&
+            authProvider.validateRealTime;
 
         return Container(
           decoration: BoxDecoration(
@@ -558,8 +560,7 @@ class _StartupSignupPageState extends State<StartupSignupPage>
             onPressed: (isFormValid && !isLoading) ? _handleSignup : null,
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
-              backgroundColor:
-                  isFormValid ? const Color(0xFFffa500) : Colors.grey[700],
+              backgroundColor: const Color(0xFFffa500),
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -612,8 +613,7 @@ class _StartupSignupPageState extends State<StartupSignupPage>
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color:
-                                isFormValid ? Colors.black : Colors.grey[400],
+                            color: Colors.black,
                             letterSpacing: 0.3,
                           ),
                         ),
