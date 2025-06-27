@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import 'dart:async';
 
 class TeamMember {
@@ -67,9 +65,6 @@ class TeamMember {
 }
 
 class TeamMembersProvider with ChangeNotifier {
-  // Keys for SharedPreferences
-  static const String _teamMembersKey = 'team_members';
-
   // Controllers for the form
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _roleController = TextEditingController();
@@ -141,6 +136,7 @@ class TeamMembersProvider with ChangeNotifier {
   }
 
   // Initialize and load data from SharedPreferences
+  // Replace the entire initialize() method with:
   Future<void> initialize() async {
     _isLoading = true;
     _isInitializing = true;
@@ -148,25 +144,9 @@ class TeamMembersProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-
-      // Load team members data
-      final teamMembersData = prefs.getString(_teamMembersKey);
-      if (teamMembersData != null) {
-        try {
-          final List<dynamic> teamMembersList = json.decode(teamMembersData);
-          _teamMembers =
-              teamMembersList
-                  .map(
-                    (memberMap) =>
-                        TeamMember.fromMap(memberMap as Map<String, dynamic>),
-                  )
-                  .toList();
-        } catch (e) {
-          debugPrint('Error parsing team members data: $e');
-          _teamMembers = [];
-        }
-      }
+      // TODO: Load team members from Supabase here
+      // For now, just initialize with empty list
+      _teamMembers = [];
 
       // Add listeners after initialization
       _addListeners();
@@ -183,18 +163,15 @@ class TeamMembersProvider with ChangeNotifier {
   }
 
   // Save team members to preferences
+  // Replace the entire saveTeamMembers() method with:
   Future<bool> saveTeamMembers() async {
     _isSaving = true;
     _error = null;
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final teamMembersData = json.encode(
-        _teamMembers.map((member) => member.toMap()).toList(),
-      );
-      await prefs.setString(_teamMembersKey, teamMembersData);
-
+      // TODO: Save team members to Supabase here
+      // For now, just clear the dirty state
       _dirtyFields.remove('teamMembers');
       return true;
     } catch (e) {
@@ -337,6 +314,7 @@ class TeamMembersProvider with ChangeNotifier {
   }
 
   // Clear all team members
+  // Replace clearAllTeamMembers() method with:
   Future<void> clearAllTeamMembers() async {
     _teamMembers.clear();
     _dirtyFields.clear();
@@ -344,11 +322,10 @@ class TeamMembersProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_teamMembersKey);
+      // TODO: Clear team members from Supabase if needed
     } catch (e) {
       _error = 'Failed to clear team members data: $e';
-      debugPrint('Error clearing team members preferences: $e');
+      debugPrint('Error clearing team members data: $e');
     }
   }
 
