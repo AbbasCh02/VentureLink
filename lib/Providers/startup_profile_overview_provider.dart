@@ -1,14 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 
 class StartupProfileOverviewProvider with ChangeNotifier {
-  // Keys for SharedPreferences
-  static const String _companyNameKey = 'startup_company_name';
-  static const String _taglineKey = 'startup_tagline';
-  static const String _industryKey = 'startup_industry';
-  static const String _regionKey = 'startup_region';
-
   // Controllers for profile data
   final TextEditingController _companyNameController = TextEditingController();
   final TextEditingController _taglineController = TextEditingController();
@@ -49,7 +42,7 @@ class StartupProfileOverviewProvider with ChangeNotifier {
   void _onFieldChanged(String fieldName) {
     // Don't mark as dirty during initialization
     if (_isInitializing) return;
-    
+
     _dirtyFields.add(fieldName);
     notifyListeners();
 
@@ -87,30 +80,11 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-
       // Remove listeners temporarily to prevent triggering dirty state
       _removeListeners();
 
-      // Load data and sync with controllers
-      final companyName = prefs.getString(_companyNameKey) ?? '';
-      final tagline = prefs.getString(_taglineKey) ?? '';
-      final industry = prefs.getString(_industryKey) ?? '';
-      final region = prefs.getString(_regionKey) ?? '';
-
-      // Sync controllers with loaded data
-      if (_companyNameController.text != companyName) {
-        _companyNameController.text = companyName;
-      }
-      if (_taglineController.text != tagline) {
-        _taglineController.text = tagline;
-      }
-      if (_industryController.text != industry) {
-        _industryController.text = industry;
-      }
-      if (_regionController.text != region) {
-        _regionController.text = region;
-      }
+      // TODO: Load data from Supabase here
+      // For now, just initialize with empty values
 
       // Re-add listeners
       _addListeners();
@@ -135,13 +109,9 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      String prefKey = _getPrefKeyForField(fieldName);
-      String value = _getValueForField(fieldName);
-
-      await prefs.setString(prefKey, value);
+      // TODO: Save to Supabase here
+      // For now, just clear the dirty state
       _dirtyFields.remove(fieldName);
-
       return true;
     } catch (e) {
       _error = 'Failed to save $fieldName: $e';
@@ -162,14 +132,8 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-
-      for (String fieldName in _dirtyFields.toList()) {
-        String prefKey = _getPrefKeyForField(fieldName);
-        String value = _getValueForField(fieldName);
-        await prefs.setString(prefKey, value);
-      }
-
+      // TODO: Save all fields to Supabase here
+      // For now, just clear all dirty states
       _dirtyFields.clear();
       return true;
     } catch (e) {
@@ -179,37 +143,6 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     } finally {
       _isSaving = false;
       notifyListeners();
-    }
-  }
-
-  // Helper methods
-  String _getPrefKeyForField(String fieldName) {
-    switch (fieldName) {
-      case 'companyName':
-        return _companyNameKey;
-      case 'tagline':
-        return _taglineKey;
-      case 'industry':
-        return _industryKey;
-      case 'region':
-        return _regionKey;
-      default:
-        throw ArgumentError('Unknown field: $fieldName');
-    }
-  }
-
-  String _getValueForField(String fieldName) {
-    switch (fieldName) {
-      case 'companyName':
-        return _companyNameController.text;
-      case 'tagline':
-        return _taglineController.text;
-      case 'industry':
-        return _industryController.text;
-      case 'region':
-        return _regionController.text;
-      default:
-        throw ArgumentError('Unknown field: $fieldName');
     }
   }
 
@@ -248,9 +181,10 @@ class StartupProfileOverviewProvider with ChangeNotifier {
   }
 
   // Clear all profile data
+  // Replace clearProfileData() method with:
   Future<void> clearProfileData() async {
     _removeListeners();
-    
+
     _companyNameController.clear();
     _taglineController.clear();
     _industryController.clear();
@@ -261,14 +195,10 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_companyNameKey);
-      await prefs.remove(_taglineKey);
-      await prefs.remove(_industryKey);
-      await prefs.remove(_regionKey);
+      // TODO: Clear data from Supabase if needed
     } catch (e) {
       _error = 'Failed to clear profile data: $e';
-      debugPrint('Error clearing profile preferences: $e');
+      debugPrint('Error clearing profile data: $e');
     }
   }
 
@@ -280,7 +210,7 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     String? region,
   }) {
     _removeListeners();
-    
+
     if (companyName != null) {
       _companyNameController.text = companyName;
       _dirtyFields.add('companyName');
@@ -297,7 +227,7 @@ class StartupProfileOverviewProvider with ChangeNotifier {
       _regionController.text = region;
       _dirtyFields.add('region');
     }
-    
+
     _addListeners();
     notifyListeners();
   }
