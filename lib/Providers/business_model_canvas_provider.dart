@@ -1,18 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class BusinessModelCanvasProvider extends ChangeNotifier {
-  // Keys for SharedPreferences
-  static const String _keyPartnersKey = 'key_partners';
-  static const String _keyActivitiesKey = 'key_activities';
-  static const String _keyResourcesKey = 'key_resources';
-  static const String _valuePropositionsKey = 'value_propositions';
-  static const String _customerRelationshipsKey = 'customer_relationships';
-  static const String _customerSegmentsKey = 'customer_segments';
-  static const String _channelsKey = 'channels';
-  static const String _costStructureKey = 'cost_structure';
-  static const String _revenueStreamsKey = 'revenue_streams';
-
   // Business Model Canvas data
   String _keyPartners = '';
   String _keyActivities = '';
@@ -56,26 +44,15 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Initialize and load data from SharedPreferences
   Future<void> initialize() async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-
-      _keyPartners = prefs.getString(_keyPartnersKey) ?? '';
-      _keyActivities = prefs.getString(_keyActivitiesKey) ?? '';
-      _keyResources = prefs.getString(_keyResourcesKey) ?? '';
-      _valuePropositions = prefs.getString(_valuePropositionsKey) ?? '';
-      _customerRelationships = prefs.getString(_customerRelationshipsKey) ?? '';
-      _customerSegments = prefs.getString(_customerSegmentsKey) ?? '';
-      _channels = prefs.getString(_channelsKey) ?? '';
-      _costStructure = prefs.getString(_costStructureKey) ?? '';
-      _revenueStreams = prefs.getString(_revenueStreamsKey) ?? '';
-
-      _dirtyFields.clear(); // Clear dirty state after loading
+      // TODO: Load data from Supabase here
+      // For now, just set loading to false
+      _dirtyFields.clear();
     } catch (e) {
       _error = 'Failed to load data: $e';
       debugPrint('Error loading BMC data: $e');
@@ -123,7 +100,6 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Save specific field to preferences
   Future<bool> saveField(String fieldName) async {
     if (!_dirtyFields.contains(fieldName)) return true;
 
@@ -132,13 +108,9 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      String prefKey = _getPrefKeyForField(fieldName);
-      String value = _getValueForField(fieldName);
-
-      await prefs.setString(prefKey, value);
-      _dirtyFields.remove(fieldName); // Clear dirty state after saving
-
+      // TODO: Save to Supabase here
+      // For now, just clear the dirty state
+      _dirtyFields.remove(fieldName);
       return true;
     } catch (e) {
       _error = 'Failed to save $fieldName: $e';
@@ -147,57 +119,6 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
     } finally {
       _isSaving = false;
       notifyListeners();
-    }
-  }
-
-  // Helper methods
-  String _getPrefKeyForField(String fieldName) {
-    switch (fieldName) {
-      case 'keyPartners':
-        return _keyPartnersKey;
-      case 'keyActivities':
-        return _keyActivitiesKey;
-      case 'keyResources':
-        return _keyResourcesKey;
-      case 'valuePropositions':
-        return _valuePropositionsKey;
-      case 'customerRelationships':
-        return _customerRelationshipsKey;
-      case 'customerSegments':
-        return _customerSegmentsKey;
-      case 'channels':
-        return _channelsKey;
-      case 'costStructure':
-        return _costStructureKey;
-      case 'revenueStreams':
-        return _revenueStreamsKey;
-      default:
-        throw ArgumentError('Unknown field: $fieldName');
-    }
-  }
-
-  String _getValueForField(String fieldName) {
-    switch (fieldName) {
-      case 'keyPartners':
-        return _keyPartners;
-      case 'keyActivities':
-        return _keyActivities;
-      case 'keyResources':
-        return _keyResources;
-      case 'valuePropositions':
-        return _valuePropositions;
-      case 'customerRelationships':
-        return _customerRelationships;
-      case 'customerSegments':
-        return _customerSegments;
-      case 'channels':
-        return _channels;
-      case 'costStructure':
-        return _costStructure;
-      case 'revenueStreams':
-        return _revenueStreams;
-      default:
-        throw ArgumentError('Unknown field: $fieldName');
     }
   }
 
@@ -252,6 +173,7 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
   int get completedSectionsCount => (completionPercentage * 9).round();
 
   // Clear all data
+  // Replace clearAllData() method with:
   Future<void> clearAllData() async {
     _keyPartners = '';
     _keyActivities = '';
@@ -267,11 +189,10 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
+      // TODO: Clear data from Supabase if needed
     } catch (e) {
       _error = 'Failed to clear data: $e';
-      debugPrint('Error clearing preferences: $e');
+      debugPrint('Error clearing data: $e');
     }
   }
 }
