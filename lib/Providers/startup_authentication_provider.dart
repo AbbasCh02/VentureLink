@@ -1,6 +1,5 @@
 // lib/Providers/startup_authentication_provider.dart
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:logger/logger.dart';
 import '../config/supabase_config.dart';
@@ -72,10 +71,6 @@ enum PasswordStrength { none, weak, medium, strong }
 /// Unified provider that handles both authentication logic and form management using Supabase
 class StartupAuthProvider with ChangeNotifier {
   final Logger _logger = Logger();
-
-  // Keys for SharedPreferences (for remember me functionality)
-  static const String _rememberMeKey = 'startup_remember_me';
-  static const String _savedEmailKey = 'startup_saved_email';
 
   // ========== FORM MANAGEMENT ==========
   // Form controllers (single source of truth)
@@ -203,9 +198,10 @@ class StartupAuthProvider with ChangeNotifier {
 
   Future<void> _loadPreferences() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      _rememberMe = prefs.getBool(_rememberMeKey) ?? false;
-      _savedEmail = prefs.getString(_savedEmailKey);
+      // TODO: Load preferences from Supabase user metadata if needed
+      // For now, just set default values
+      _rememberMe = false;
+      _savedEmail = null;
     } catch (e) {
       _logger.w('Error loading preferences: $e');
     }
@@ -402,22 +398,23 @@ class StartupAuthProvider with ChangeNotifier {
   }
 
   // ========== HELPER METHODS ==========
+  // Replace the entire _saveRememberMe() method with:
   Future<void> _saveRememberMe(String email) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_rememberMeKey, true);
-      await prefs.setString(_savedEmailKey, email);
+      // TODO: Save to Supabase user metadata if needed
+      // For now, just update in-memory state
+      _rememberMe = true;
       _savedEmail = email;
     } catch (e) {
       _logger.w('Error saving remember me: $e');
     }
   }
 
+  // Replace the entire _clearRememberMe() method with:
   Future<void> _clearRememberMe() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_rememberMeKey);
-      await prefs.remove(_savedEmailKey);
+      // TODO: Clear from Supabase user metadata if needed
+      // For now, just clear in-memory state
       _savedEmail = null;
       _rememberMe = false;
     } catch (e) {
@@ -586,6 +583,12 @@ class StartupAuthProvider with ChangeNotifier {
   void togglePasswordVisibility() {
     _isPasswordVisible = !_isPasswordVisible;
     notifyListeners();
+  }
+
+  void toggleRememberMe() {
+    _rememberMe = !_rememberMe;
+    notifyListeners();
+    // Note: No longer persisting to SharedPreferences
   }
 
   void toggleConfirmPasswordVisibility() {
