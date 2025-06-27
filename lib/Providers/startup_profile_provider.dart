@@ -1,21 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
-import 'dart:convert';
 import 'dart:async';
 
 class StartupProfileProvider with ChangeNotifier {
-  // Keys for SharedPreferences
-  static const String _ideaDescriptionKey = 'startup_idea_description';
-  static const String _fundingGoalKey = 'startup_funding_goal';
-  static const String _profileImageKey = 'startup_profile_image';
-  static const String _pitchDeckFilesKey = 'startup_pitch_deck_files';
-  static const String _fundingGoalAmountKey = 'startup_funding_goal_amount';
-  static const String _selectedFundingPhaseKey = 'startup_funding_phase';
-  static const String _isPitchDeckSubmittedKey = 'startup_pitch_deck_submitted';
-  static const String _pitchDeckSubmissionDateKey =
-      'startup_pitch_deck_submission_date';
-
   // Text controllers
   final TextEditingController _ideaDescriptionController =
       TextEditingController();
@@ -103,6 +90,8 @@ class StartupProfileProvider with ChangeNotifier {
   }
 
   // Initialize and load data from SharedPreferences
+  // Replace the entire initialize() method with:
+  // Replace the entire initialize() method with:
   Future<void> initialize() async {
     if (_isInitialized) return; // Prevent multiple initializations
 
@@ -112,59 +101,11 @@ class StartupProfileProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-
       // Remove listeners temporarily
       _removeListeners();
 
-      // Load text data and sync with controllers
-      final ideaDescription = prefs.getString(_ideaDescriptionKey) ?? '';
-      final fundingGoal = prefs.getString(_fundingGoalKey) ?? '';
-
-      // Sync controllers with loaded data
-      _ideaDescriptionController.text = ideaDescription;
-      _fundingGoalController.text = fundingGoal;
-
-      // Load other data
-      final profileImagePath = prefs.getString(_profileImageKey);
-      if (profileImagePath != null && File(profileImagePath).existsSync()) {
-        _profileImage = File(profileImagePath);
-      }
-
-      // Load pitch deck files (paths only - files might not exist after app restart)
-      final pitchDeckData = prefs.getString(_pitchDeckFilesKey);
-      if (pitchDeckData != null) {
-        try {
-          final List<dynamic> filePathsList = json.decode(pitchDeckData);
-          _pitchDeckFiles =
-              filePathsList
-                  .map((path) => File(path as String))
-                  .where((file) => file.existsSync())
-                  .toList();
-          // Note: thumbnails will need to be regenerated
-          _pitchDeckThumbnails = [];
-        } catch (e) {
-          debugPrint('Error loading pitch deck files: $e');
-          _pitchDeckFiles = [];
-          _pitchDeckThumbnails = [];
-        }
-      }
-
-      // Load funding information
-      _fundingGoalAmount = prefs.getInt(_fundingGoalAmountKey);
-      _selectedFundingPhase = prefs.getString(_selectedFundingPhaseKey);
-
-      // Update funding goal controller with the amount if it exists
-      if (_fundingGoalAmount != null && _fundingGoalController.text.isEmpty) {
-        _fundingGoalController.text = _fundingGoalAmount.toString();
-      }
-
-      _isPitchDeckSubmitted = prefs.getBool(_isPitchDeckSubmittedKey) ?? false;
-
-      final submissionDateString = prefs.getString(_pitchDeckSubmissionDateKey);
-      if (submissionDateString != null) {
-        _pitchDeckSubmissionDate = DateTime.tryParse(submissionDateString);
-      }
+      // TODO: Load data from Supabase here
+      // For now, just initialize with empty values
 
       // Re-add listeners
       _addListeners();
@@ -196,67 +137,8 @@ class StartupProfileProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-
-      switch (fieldName) {
-        case 'ideaDescription':
-          await prefs.setString(
-            _ideaDescriptionKey,
-            _ideaDescriptionController.text,
-          );
-          break;
-        case 'fundingGoal':
-          await prefs.setString(_fundingGoalKey, _fundingGoalController.text);
-          // Also try to parse and save as amount
-          final amount = int.tryParse(
-            _fundingGoalController.text.replaceAll(',', ''),
-          );
-          if (amount != null) {
-            _fundingGoalAmount = amount;
-            await prefs.setInt(_fundingGoalAmountKey, amount);
-          }
-          break;
-        case 'profileImage':
-          if (_profileImage != null) {
-            await prefs.setString(_profileImageKey, _profileImage!.path);
-          } else {
-            await prefs.remove(_profileImageKey);
-          }
-          break;
-        case 'pitchDeckFiles':
-          final filePaths = _pitchDeckFiles.map((file) => file.path).toList();
-          await prefs.setString(_pitchDeckFilesKey, json.encode(filePaths));
-          break;
-        case 'fundingGoalAmount':
-          if (_fundingGoalAmount != null) {
-            await prefs.setInt(_fundingGoalAmountKey, _fundingGoalAmount!);
-          } else {
-            await prefs.remove(_fundingGoalAmountKey);
-          }
-          break;
-        case 'selectedFundingPhase':
-          if (_selectedFundingPhase != null) {
-            await prefs.setString(
-              _selectedFundingPhaseKey,
-              _selectedFundingPhase!,
-            );
-          } else {
-            await prefs.remove(_selectedFundingPhaseKey);
-          }
-          break;
-        case 'pitchDeckSubmission':
-          await prefs.setBool(_isPitchDeckSubmittedKey, _isPitchDeckSubmitted);
-          if (_pitchDeckSubmissionDate != null) {
-            await prefs.setString(
-              _pitchDeckSubmissionDateKey,
-              _pitchDeckSubmissionDate!.toIso8601String(),
-            );
-          } else {
-            await prefs.remove(_pitchDeckSubmissionDateKey);
-          }
-          break;
-      }
-
+      // TODO: Save to Supabase here based on fieldName
+      // For now, just clear the dirty state
       _dirtyFields.remove(fieldName);
       return true;
     } catch (e) {
@@ -270,6 +152,7 @@ class StartupProfileProvider with ChangeNotifier {
   }
 
   // Save all dirty fields
+  // Replace the entire saveAllChanges() method with:
   Future<bool> saveAllChanges() async {
     if (_dirtyFields.isEmpty) return true;
 
@@ -278,72 +161,8 @@ class StartupProfileProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-
-      for (String fieldName in _dirtyFields.toList()) {
-        switch (fieldName) {
-          case 'ideaDescription':
-            await prefs.setString(
-              _ideaDescriptionKey,
-              _ideaDescriptionController.text,
-            );
-            break;
-          case 'fundingGoal':
-            await prefs.setString(_fundingGoalKey, _fundingGoalController.text);
-            // Also try to parse and save as amount
-            final amount = int.tryParse(
-              _fundingGoalController.text.replaceAll(',', ''),
-            );
-            if (amount != null) {
-              _fundingGoalAmount = amount;
-              await prefs.setInt(_fundingGoalAmountKey, amount);
-            }
-            break;
-          case 'profileImage':
-            if (_profileImage != null) {
-              await prefs.setString(_profileImageKey, _profileImage!.path);
-            } else {
-              await prefs.remove(_profileImageKey);
-            }
-            break;
-          case 'pitchDeckFiles':
-            final filePaths = _pitchDeckFiles.map((file) => file.path).toList();
-            await prefs.setString(_pitchDeckFilesKey, json.encode(filePaths));
-            break;
-          case 'fundingGoalAmount':
-            if (_fundingGoalAmount != null) {
-              await prefs.setInt(_fundingGoalAmountKey, _fundingGoalAmount!);
-            } else {
-              await prefs.remove(_fundingGoalAmountKey);
-            }
-            break;
-          case 'selectedFundingPhase':
-            if (_selectedFundingPhase != null) {
-              await prefs.setString(
-                _selectedFundingPhaseKey,
-                _selectedFundingPhase!,
-              );
-            } else {
-              await prefs.remove(_selectedFundingPhaseKey);
-            }
-            break;
-          case 'pitchDeckSubmission':
-            await prefs.setBool(
-              _isPitchDeckSubmittedKey,
-              _isPitchDeckSubmitted,
-            );
-            if (_pitchDeckSubmissionDate != null) {
-              await prefs.setString(
-                _pitchDeckSubmissionDateKey,
-                _pitchDeckSubmissionDate!.toIso8601String(),
-              );
-            } else {
-              await prefs.remove(_pitchDeckSubmissionDateKey);
-            }
-            break;
-        }
-      }
-
+      // TODO: Save all fields to Supabase here
+      // For now, just clear all dirty states
       _dirtyFields.clear();
       return true;
     } catch (e) {
@@ -494,19 +313,20 @@ class StartupProfileProvider with ChangeNotifier {
     }
 
     try {
-      // Simulate file upload/submission process
-      await Future.delayed(const Duration(seconds: 2));
-
-      // Mark as submitted
+      // Set submission status
       _isPitchDeckSubmitted = true;
       _pitchDeckSubmissionDate = DateTime.now();
       _dirtyFields.add('pitchDeckSubmission');
-      notifyListeners();
 
-      // Auto-save submission status
-      await saveField('pitchDeckSubmission');
+      // TODO: Upload files to Supabase storage and save metadata
+      // For now, just update state
+
+      notifyListeners();
     } catch (e) {
-      throw Exception('Failed to submit pitch deck files: $e');
+      // Reset on error
+      _isPitchDeckSubmitted = false;
+      _pitchDeckSubmissionDate = null;
+      rethrow; // Changed from 'throw e' to 'rethrow'
     }
   }
 
@@ -625,6 +445,7 @@ class StartupProfileProvider with ChangeNotifier {
   }
 
   // Clear all data
+  // Replace clearAllData() method with:
   Future<void> clearAllData() async {
     _removeListeners();
 
@@ -643,18 +464,10 @@ class StartupProfileProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_ideaDescriptionKey);
-      await prefs.remove(_fundingGoalKey);
-      await prefs.remove(_profileImageKey);
-      await prefs.remove(_pitchDeckFilesKey);
-      await prefs.remove(_fundingGoalAmountKey);
-      await prefs.remove(_selectedFundingPhaseKey);
-      await prefs.remove(_isPitchDeckSubmittedKey);
-      await prefs.remove(_pitchDeckSubmissionDateKey);
+      // TODO: Clear data from Supabase if needed
     } catch (e) {
       _error = 'Failed to clear startup profile data: $e';
-      debugPrint('Error clearing startup profile preferences: $e');
+      debugPrint('Error clearing startup profile data: $e');
     }
   }
 
