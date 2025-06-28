@@ -65,10 +65,7 @@ class MyApp extends StatelessWidget {
           lazy: false,
         ),
 
-        ChangeNotifierProvider(
-          create: (context) => UserTypeProvider(),
-          lazy: false,
-        ),
+        ChangeNotifierProvider(create: (context) => UserTypeProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
