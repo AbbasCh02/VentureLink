@@ -16,6 +16,7 @@ import 'startup_page.dart';
 import 'signup_startup.dart';
 import 'login_startup.dart';
 import 'config/supabase_config.dart';
+import 'Providers/user_type_provider.dart';
 
 Future<void> main() async {
   // Ensure Flutter is initialized
@@ -61,6 +62,11 @@ class MyApp extends StatelessWidget {
         // Authentication Provider - this will handle auto-login with Supabase
         ChangeNotifierProvider(
           create: (context) => StartupAuthProvider(),
+          lazy: false,
+        ),
+
+        ChangeNotifierProvider(
+          create: (context) => UserTypeProvider(),
           lazy: false,
         ),
       ],

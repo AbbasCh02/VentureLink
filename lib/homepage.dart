@@ -11,6 +11,7 @@ class WelcomePage extends StatefulWidget {
 
 class _WelcomePageState extends State<WelcomePage>
     with TickerProviderStateMixin {
+  String? selectedUserType;
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late AnimationController _pulseController;
@@ -380,6 +381,7 @@ class _WelcomePageState extends State<WelcomePage>
                                       accentColor: const Color(0xFFff8c00),
                                       icon: Icons.rocket_launch,
                                       onPressed: () {
+                                        selectedUserType = 'Startup';
                                         Navigator.of(context).push(
                                           MaterialPageRoute(
                                             builder:
