@@ -1,4 +1,7 @@
+// lib/Providers/business_model_canvas_provider.dart
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
 
 class BusinessModelCanvasProvider extends ChangeNotifier {
   // Business Model Canvas data
@@ -17,8 +20,25 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
   bool _isSaving = false;
   String? _error;
 
-  // Dirty tracking for unsaved changes - KEEP THIS, it's essential!
+  // Dirty tracking for unsaved changes - ESSENTIAL for UI
   final Set<String> _dirtyFields = <String>{};
+
+  // Auto-save timer
+  Timer? _saveTimer;
+
+  // BMC record ID for linking to user
+  String? _bmcId;
+
+  // Flag to prevent infinite loops during initialization
+  bool _isInitializing = false;
+
+  // Supabase client
+  final SupabaseClient _supabase = Supabase.instance.client;
+
+  BusinessModelCanvasProvider() {
+    // Initialize automatically when provider is created
+    initialize();
+  }
 
   // Getters
   String get keyPartners => _keyPartners;
@@ -44,19 +64,64 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Initialize and load data from Supabase
   Future<void> initialize() async {
     _isLoading = true;
+    _isInitializing = true;
     _error = null;
     notifyListeners();
 
     try {
-      // TODO: Load data from Supabase here
-      // For now, just set loading to false
-      _dirtyFields.clear();
+      // Get current user
+      final User? currentUser = _supabase.auth.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // First, get user's BMC ID from the users table
+      final userResponse =
+          await _supabase
+              .from('users')
+              .select('bmc_id')
+              .eq('id', currentUser.id)
+              .maybeSingle();
+
+      _bmcId = userResponse?['bmc_id'];
+
+      // If user has a BMC ID, load the BMC data
+      if (_bmcId != null) {
+        final bmcResponse =
+            await _supabase
+                .from('business_model_canvas')
+                .select('*')
+                .eq('id', _bmcId!)
+                .maybeSingle();
+
+        if (bmcResponse != null) {
+          // Populate all BMC fields with loaded data
+          _keyPartners = bmcResponse['key_partners'] ?? '';
+          _keyActivities = bmcResponse['key_activities'] ?? '';
+          _keyResources = bmcResponse['key_resources'] ?? '';
+          _valuePropositions = bmcResponse['value_propositions'] ?? '';
+          _customerRelationships = bmcResponse['customer_relationships'] ?? '';
+          _customerSegments = bmcResponse['customer_segments'] ?? '';
+          _channels = bmcResponse['channels'] ?? '';
+          _costStructure = bmcResponse['cost_structure'] ?? '';
+          _revenueStreams = bmcResponse['revenue_streams'] ?? '';
+
+          debugPrint('BMC data loaded successfully');
+        }
+      } else {
+        // No BMC exists yet, initialize with empty values
+        debugPrint('No BMC found for user, starting with empty canvas');
+      }
+
+      _dirtyFields.clear(); // Clear dirty state after loading
     } catch (e) {
-      _error = 'Failed to load data: $e';
+      _error = 'Failed to load BMC data: $e';
       debugPrint('Error loading BMC data: $e');
     } finally {
+      _isInitializing = false;
       _isLoading = false;
       notifyListeners();
     }
@@ -64,6 +129,9 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
 
   // Generic method to update field and track dirty state
   void _updateField(String fieldName, String value) {
+    // Don't mark as dirty during initialization
+    if (_isInitializing) return;
+
     // Update the field value
     switch (fieldName) {
       case 'keyPartners':
@@ -98,8 +166,17 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
     // Mark field as dirty - ESSENTIAL for save button functionality
     _dirtyFields.add(fieldName);
     notifyListeners();
+
+    // Auto-save with debouncing (1 second after user stops typing)
+    _saveTimer?.cancel();
+    _saveTimer = Timer(Duration(seconds: 1), () {
+      if (_dirtyFields.contains(fieldName)) {
+        saveField(fieldName);
+      }
+    });
   }
 
+  // Save specific field to Supabase
   Future<bool> saveField(String fieldName) async {
     if (!_dirtyFields.contains(fieldName)) return true;
 
@@ -108,13 +185,193 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // TODO: Save to Supabase here
-      // For now, just clear the dirty state
+      // Get current user
+      final User? currentUser = _supabase.auth.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Create BMC record if it doesn't exist
+      if (_bmcId == null) {
+        await _createBMCRecord(currentUser.id);
+      }
+
+      // Prepare update data based on field name
+      Map<String, dynamic> updateData = {};
+
+      switch (fieldName) {
+        case 'keyPartners':
+          updateData['key_partners'] = _keyPartners;
+          break;
+        case 'keyActivities':
+          updateData['key_activities'] = _keyActivities;
+          break;
+        case 'keyResources':
+          updateData['key_resources'] = _keyResources;
+          break;
+        case 'valuePropositions':
+          updateData['value_propositions'] = _valuePropositions;
+          break;
+        case 'customerRelationships':
+          updateData['customer_relationships'] = _customerRelationships;
+          break;
+        case 'customerSegments':
+          updateData['customer_segments'] = _customerSegments;
+          break;
+        case 'channels':
+          updateData['channels'] = _channels;
+          break;
+        case 'costStructure':
+          updateData['cost_structure'] = _costStructure;
+          break;
+        case 'revenueStreams':
+          updateData['revenue_streams'] = _revenueStreams;
+          break;
+        default:
+          debugPrint('Unknown field: $fieldName');
+          return false;
+      }
+
+      // Calculate and update completion percentage
+      updateData['completion_percentage'] = _calculateCompletionPercentage();
+      updateData['updated_at'] = DateTime.now().toIso8601String();
+
+      // Update in Supabase
+      await _supabase
+          .from('business_model_canvas')
+          .update(updateData)
+          .eq('id', _bmcId!);
+
       _dirtyFields.remove(fieldName);
+      debugPrint('Successfully saved $fieldName to Supabase');
       return true;
     } catch (e) {
       _error = 'Failed to save $fieldName: $e';
       debugPrint('Error saving $fieldName: $e');
+      return false;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
+  }
+
+  // Create new BMC record and link to user
+  Future<void> _createBMCRecord(String userId) async {
+    try {
+      // Create new BMC record
+      final bmcResponse =
+          await _supabase
+              .from('business_model_canvas')
+              .insert({
+                'completion_percentage': 0.0,
+                'created_at': DateTime.now().toIso8601String(),
+                'updated_at': DateTime.now().toIso8601String(),
+              })
+              .select('id')
+              .single();
+
+      _bmcId = bmcResponse['id'];
+
+      // Update user record to link the BMC
+      await _supabase
+          .from('users')
+          .update({
+            'bmc_id': _bmcId,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', userId);
+
+      debugPrint('Created new BMC record: $_bmcId');
+    } catch (e) {
+      throw Exception('Failed to create BMC record: $e');
+    }
+  }
+
+  // Calculate completion percentage
+  double _calculateCompletionPercentage() {
+    int completedSections = 0;
+    const int totalSections = 9;
+
+    if (_keyPartners.trim().isNotEmpty) completedSections++;
+    if (_keyActivities.trim().isNotEmpty) completedSections++;
+    if (_keyResources.trim().isNotEmpty) completedSections++;
+    if (_valuePropositions.trim().isNotEmpty) completedSections++;
+    if (_customerRelationships.trim().isNotEmpty) completedSections++;
+    if (_customerSegments.trim().isNotEmpty) completedSections++;
+    if (_channels.trim().isNotEmpty) completedSections++;
+    if (_costStructure.trim().isNotEmpty) completedSections++;
+    if (_revenueStreams.trim().isNotEmpty) completedSections++;
+
+    return (completedSections / totalSections) * 100;
+  }
+
+  // Save all dirty fields to Supabase
+  Future<bool> saveAllFields() async {
+    if (_dirtyFields.isEmpty) return true;
+
+    _isSaving = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // Get current user
+      final User? currentUser = _supabase.auth.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Create BMC record if it doesn't exist
+      if (_bmcId == null) {
+        await _createBMCRecord(currentUser.id);
+      }
+
+      // Prepare update data for all dirty fields
+      Map<String, dynamic> updateData = {};
+
+      if (_dirtyFields.contains('keyPartners')) {
+        updateData['key_partners'] = _keyPartners;
+      }
+      if (_dirtyFields.contains('keyActivities')) {
+        updateData['key_activities'] = _keyActivities;
+      }
+      if (_dirtyFields.contains('keyResources')) {
+        updateData['key_resources'] = _keyResources;
+      }
+      if (_dirtyFields.contains('valuePropositions')) {
+        updateData['value_propositions'] = _valuePropositions;
+      }
+      if (_dirtyFields.contains('customerRelationships')) {
+        updateData['customer_relationships'] = _customerRelationships;
+      }
+      if (_dirtyFields.contains('customerSegments')) {
+        updateData['customer_segments'] = _customerSegments;
+      }
+      if (_dirtyFields.contains('channels')) {
+        updateData['channels'] = _channels;
+      }
+      if (_dirtyFields.contains('costStructure')) {
+        updateData['cost_structure'] = _costStructure;
+      }
+      if (_dirtyFields.contains('revenueStreams')) {
+        updateData['revenue_streams'] = _revenueStreams;
+      }
+
+      // Always update completion percentage and timestamp
+      updateData['completion_percentage'] = _calculateCompletionPercentage();
+      updateData['updated_at'] = DateTime.now().toIso8601String();
+
+      // Update in Supabase
+      await _supabase
+          .from('business_model_canvas')
+          .update(updateData)
+          .eq('id', _bmcId!);
+
+      _dirtyFields.clear();
+      debugPrint('Successfully saved all BMC changes to Supabase');
+      return true;
+    } catch (e) {
+      _error = 'Failed to save BMC changes: $e';
+      debugPrint('Error saving BMC changes: $e');
       return false;
     } finally {
       _isSaving = false;
@@ -153,27 +410,91 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
 
   // Get overall completion percentage
   double get completionPercentage {
-    int completedSections = 0;
-    const int totalSections = 9;
-
-    if (isKeyPartnersComplete) completedSections++;
-    if (isKeyActivitiesComplete) completedSections++;
-    if (isKeyResourcesComplete) completedSections++;
-    if (isValuePropositionsComplete) completedSections++;
-    if (isCustomerRelationshipsComplete) completedSections++;
-    if (isCustomerSegmentsComplete) completedSections++;
-    if (isChannelsComplete) completedSections++;
-    if (isCostStructureComplete) completedSections++;
-    if (isRevenueStreamsComplete) completedSections++;
-
-    return completedSections / totalSections;
+    return _calculateCompletionPercentage() / 100;
   }
 
   // Get completed sections count
-  int get completedSectionsCount => (completionPercentage * 9).round();
+  int get completedSectionsCount =>
+      (_calculateCompletionPercentage() / 100 * 9).round();
 
-  // Clear all data
-  // Replace clearAllData() method with:
+  // Check if BMC is fully complete
+  bool get isFullyComplete => completedSectionsCount == 9;
+
+  // Get BMC summary data
+  Map<String, dynamic> getBMCSummary() {
+    return {
+      'completionPercentage': _calculateCompletionPercentage(),
+      'completedSections': completedSectionsCount,
+      'totalSections': 9,
+      'isComplete': isFullyComplete,
+      'bmcId': _bmcId,
+      'hasUnsavedChanges': hasAnyUnsavedChanges,
+    };
+  }
+
+  // Export BMC data for backup/sharing
+  Map<String, dynamic> exportBMCData() {
+    return {
+      'keyPartners': _keyPartners,
+      'keyActivities': _keyActivities,
+      'keyResources': _keyResources,
+      'valuePropositions': _valuePropositions,
+      'customerRelationships': _customerRelationships,
+      'customerSegments': _customerSegments,
+      'channels': _channels,
+      'costStructure': _costStructure,
+      'revenueStreams': _revenueStreams,
+      'completionPercentage': _calculateCompletionPercentage(),
+      'exportedAt': DateTime.now().toIso8601String(),
+    };
+  }
+
+  // Import BMC data with Supabase save
+  Future<bool> importBMCData(Map<String, dynamic> data) async {
+    try {
+      _isInitializing = true;
+
+      // Update all fields
+      _keyPartners = data['keyPartners'] ?? '';
+      _keyActivities = data['keyActivities'] ?? '';
+      _keyResources = data['keyResources'] ?? '';
+      _valuePropositions = data['valuePropositions'] ?? '';
+      _customerRelationships = data['customerRelationships'] ?? '';
+      _customerSegments = data['customerSegments'] ?? '';
+      _channels = data['channels'] ?? '';
+      _costStructure = data['costStructure'] ?? '';
+      _revenueStreams = data['revenueStreams'] ?? '';
+
+      // Mark all fields as dirty
+      _dirtyFields.addAll([
+        'keyPartners',
+        'keyActivities',
+        'keyResources',
+        'valuePropositions',
+        'customerRelationships',
+        'customerSegments',
+        'channels',
+        'costStructure',
+        'revenueStreams',
+      ]);
+
+      _isInitializing = false;
+      notifyListeners();
+
+      // Save all changes to Supabase
+      await saveAllFields();
+
+      debugPrint('BMC data imported successfully');
+      return true;
+    } catch (e) {
+      _error = 'Failed to import BMC data: $e';
+      debugPrint('Error importing BMC data: $e');
+      _isInitializing = false;
+      return false;
+    }
+  }
+
+  // Clear all BMC data
   Future<void> clearAllData() async {
     _keyPartners = '';
     _keyActivities = '';
@@ -184,15 +505,105 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
     _channels = '';
     _costStructure = '';
     _revenueStreams = '';
-    _dirtyFields.clear();
+
+    // Mark all fields as dirty for saving
+    _dirtyFields.addAll([
+      'keyPartners',
+      'keyActivities',
+      'keyResources',
+      'valuePropositions',
+      'customerRelationships',
+      'customerSegments',
+      'channels',
+      'costStructure',
+      'revenueStreams',
+    ]);
 
     notifyListeners();
 
     try {
-      // TODO: Clear data from Supabase if needed
+      // Clear data in Supabase
+      if (_bmcId != null) {
+        await _supabase
+            .from('business_model_canvas')
+            .update({
+              'key_partners': '',
+              'key_activities': '',
+              'key_resources': '',
+              'value_propositions': '',
+              'customer_relationships': '',
+              'customer_segments': '',
+              'channels': '',
+              'cost_structure': '',
+              'revenue_streams': '',
+              'completion_percentage': 0.0,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', _bmcId!);
+
+        _dirtyFields.clear();
+        debugPrint('BMC data cleared successfully');
+      }
     } catch (e) {
-      _error = 'Failed to clear data: $e';
-      debugPrint('Error clearing data: $e');
+      _error = 'Failed to clear BMC data: $e';
+      debugPrint('Error clearing BMC data: $e');
     }
+  }
+
+  // Refresh data from database
+  Future<void> refreshFromDatabase() async {
+    await initialize();
+  }
+
+  // Validate BMC completeness for specific sections
+  List<String> getIncompleteSection() {
+    List<String> incomplete = [];
+
+    if (!isKeyPartnersComplete) incomplete.add('Key Partners');
+    if (!isKeyActivitiesComplete) incomplete.add('Key Activities');
+    if (!isKeyResourcesComplete) incomplete.add('Key Resources');
+    if (!isValuePropositionsComplete) incomplete.add('Value Propositions');
+    if (!isCustomerRelationshipsComplete)
+      incomplete.add('Customer Relationships');
+    if (!isCustomerSegmentsComplete) incomplete.add('Customer Segments');
+    if (!isChannelsComplete) incomplete.add('Channels');
+    if (!isCostStructureComplete) incomplete.add('Cost Structure');
+    if (!isRevenueStreamsComplete) incomplete.add('Revenue Streams');
+
+    return incomplete;
+  }
+
+  // Get recommendations for improving BMC
+  List<String> getBMCRecommendations() {
+    List<String> recommendations = [];
+
+    if (!isValuePropositionsComplete) {
+      recommendations.add(
+        'Start with Value Propositions - this is the heart of your business model',
+      );
+    }
+    if (!isCustomerSegmentsComplete) {
+      recommendations.add(
+        'Define your Customer Segments to understand who you serve',
+      );
+    }
+    if (!isKeyActivitiesComplete) {
+      recommendations.add(
+        'Identify Key Activities needed to deliver your value proposition',
+      );
+    }
+    if (!isRevenueStreamsComplete) {
+      recommendations.add(
+        'Define Revenue Streams to understand how you make money',
+      );
+    }
+
+    return recommendations;
+  }
+
+  @override
+  void dispose() {
+    _saveTimer?.cancel();
+    super.dispose();
   }
 }

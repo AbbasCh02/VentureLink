@@ -1,4 +1,6 @@
+// lib/Providers/startup_profile_overview_provider.dart
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
 
 class StartupProfileOverviewProvider with ChangeNotifier {
@@ -19,6 +21,9 @@ class StartupProfileOverviewProvider with ChangeNotifier {
 
   // Flag to prevent infinite loops during initialization
   bool _isInitializing = false;
+
+  // Supabase client
+  final SupabaseClient _supabase = Supabase.instance.client;
 
   StartupProfileOverviewProvider() {
     // Initialize automatically when provider is created
@@ -72,7 +77,7 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Initialize and load data from SharedPreferences
+  // Initialize and load data from Supabase
   Future<void> initialize() async {
     _isLoading = true;
     _isInitializing = true;
@@ -83,13 +88,33 @@ class StartupProfileOverviewProvider with ChangeNotifier {
       // Remove listeners temporarily to prevent triggering dirty state
       _removeListeners();
 
-      // TODO: Load data from Supabase here
-      // For now, just initialize with empty values
+      // Get current user
+      final User? currentUser = _supabase.auth.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Load user data from Supabase
+      final response =
+          await _supabase
+              .from('users')
+              .select('company_name, tagline, industry, region')
+              .eq('id', currentUser.id)
+              .maybeSingle();
+
+      if (response != null) {
+        // Populate controllers with loaded data
+        _companyNameController.text = response['company_name'] ?? '';
+        _taglineController.text = response['tagline'] ?? '';
+        _industryController.text = response['industry'] ?? '';
+        _regionController.text = response['region'] ?? '';
+      }
 
       // Re-add listeners
       _addListeners();
 
       _dirtyFields.clear(); // Clear dirty state after loading
+      debugPrint('Profile overview data loaded successfully');
     } catch (e) {
       _error = 'Failed to load profile data: $e';
       debugPrint('Error loading startup profile data: $e');
@@ -100,7 +125,7 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     }
   }
 
-  // Save specific field to preferences
+  // Save specific field to Supabase
   Future<bool> saveField(String fieldName) async {
     if (!_dirtyFields.contains(fieldName)) return true;
 
@@ -109,9 +134,41 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // TODO: Save to Supabase here
-      // For now, just clear the dirty state
+      // Get current user
+      final User? currentUser = _supabase.auth.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Prepare update data based on field name
+      Map<String, dynamic> updateData = {};
+
+      switch (fieldName) {
+        case 'companyName':
+          updateData['company_name'] = _companyNameController.text;
+          break;
+        case 'tagline':
+          updateData['tagline'] = _taglineController.text;
+          break;
+        case 'industry':
+          updateData['industry'] = _industryController.text;
+          break;
+        case 'region':
+          updateData['region'] = _regionController.text;
+          break;
+        default:
+          debugPrint('Unknown field: $fieldName');
+          return false;
+      }
+
+      // Add updated_at timestamp
+      updateData['updated_at'] = DateTime.now().toIso8601String();
+
+      // Update in Supabase
+      await _supabase.from('users').update(updateData).eq('id', currentUser.id);
+
       _dirtyFields.remove(fieldName);
+      debugPrint('Successfully saved $fieldName to Supabase');
       return true;
     } catch (e) {
       _error = 'Failed to save $fieldName: $e';
@@ -123,7 +180,7 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     }
   }
 
-  // Save all dirty fields
+  // Save all dirty fields to Supabase
   Future<bool> saveAllChanges() async {
     if (_dirtyFields.isEmpty) return true;
 
@@ -132,9 +189,36 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // TODO: Save all fields to Supabase here
-      // For now, just clear all dirty states
+      // Get current user
+      final User? currentUser = _supabase.auth.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Prepare update data for all dirty fields
+      Map<String, dynamic> updateData = {};
+
+      if (_dirtyFields.contains('companyName')) {
+        updateData['company_name'] = _companyNameController.text;
+      }
+      if (_dirtyFields.contains('tagline')) {
+        updateData['tagline'] = _taglineController.text;
+      }
+      if (_dirtyFields.contains('industry')) {
+        updateData['industry'] = _industryController.text;
+      }
+      if (_dirtyFields.contains('region')) {
+        updateData['region'] = _regionController.text;
+      }
+
+      // Add updated_at timestamp
+      updateData['updated_at'] = DateTime.now().toIso8601String();
+
+      // Update in Supabase
+      await _supabase.from('users').update(updateData).eq('id', currentUser.id);
+
       _dirtyFields.clear();
+      debugPrint('Successfully saved all changes to Supabase');
       return true;
     } catch (e) {
       _error = 'Failed to save changes: $e';
@@ -143,6 +227,45 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     } finally {
       _isSaving = false;
       notifyListeners();
+    }
+  }
+
+  // Create user record if it doesn't exist
+  Future<bool> createUserRecord() async {
+    try {
+      final User? currentUser = _supabase.auth.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Check if user record already exists
+      final existingUser =
+          await _supabase
+              .from('users')
+              .select('id')
+              .eq('id', currentUser.id)
+              .maybeSingle();
+
+      if (existingUser == null) {
+        // Create new user record
+        await _supabase.from('users').insert({
+          'id': currentUser.id,
+          'email': currentUser.email,
+          'username': currentUser.userMetadata?['username'],
+          'user_status': 'startup', // Default to startup
+          'created_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+          'is_verified': currentUser.emailConfirmedAt != null,
+        });
+
+        debugPrint('Created new user record in Supabase');
+      }
+
+      return true;
+    } catch (e) {
+      _error = 'Failed to create user record: $e';
+      debugPrint('Error creating user record: $e');
+      return false;
     }
   }
 
@@ -181,7 +304,6 @@ class StartupProfileOverviewProvider with ChangeNotifier {
   }
 
   // Clear all profile data
-  // Replace clearProfileData() method with:
   Future<void> clearProfileData() async {
     _removeListeners();
 
@@ -195,7 +317,20 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // TODO: Clear data from Supabase if needed
+      // Clear data from Supabase
+      final User? currentUser = _supabase.auth.currentUser;
+      if (currentUser != null) {
+        await _supabase
+            .from('users')
+            .update({
+              'company_name': null,
+              'tagline': null,
+              'industry': null,
+              'region': null,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', currentUser.id);
+      }
     } catch (e) {
       _error = 'Failed to clear profile data: $e';
       debugPrint('Error clearing profile data: $e');
@@ -235,6 +370,11 @@ class StartupProfileOverviewProvider with ChangeNotifier {
   // Method to force notification (can be called externally)
   void forceUpdate() {
     notifyListeners();
+  }
+
+  // Force refresh from database
+  Future<void> refreshFromDatabase() async {
+    await initialize();
   }
 
   // Validation methods

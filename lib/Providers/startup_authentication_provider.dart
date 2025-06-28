@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:logger/logger.dart';
-import '../config/supabase_config.dart';
 import 'dart:async';
 
 // User model for startup authentication
@@ -71,6 +70,9 @@ enum PasswordStrength { none, weak, medium, strong }
 /// Unified provider that handles both authentication logic and form management using Supabase
 class StartupAuthProvider with ChangeNotifier {
   final Logger _logger = Logger();
+
+  // Supabase client
+  final SupabaseClient _supabase = Supabase.instance.client;
 
   // ========== FORM MANAGEMENT ==========
   // Form controllers (single source of truth)
@@ -198,10 +200,12 @@ class StartupAuthProvider with ChangeNotifier {
 
   Future<void> _loadPreferences() async {
     try {
-      // TODO: Load preferences from Supabase user metadata if needed
-      // For now, just set default values
-      _rememberMe = false;
-      _savedEmail = null;
+      // Load saved email if remember me was checked
+      final currentSession = _supabase.auth.currentSession;
+      if (currentSession?.user != null) {
+        _savedEmail = currentSession!.user.email;
+        _rememberMe = true;
+      }
     } catch (e) {
       _logger.w('Error loading preferences: $e');
     }
@@ -209,10 +213,14 @@ class StartupAuthProvider with ChangeNotifier {
 
   Future<void> _checkAuthState() async {
     try {
-      final session = supabase.auth.currentSession;
+      final session = _supabase.auth.currentSession;
       if (session?.user != null) {
         _currentUser = StartupUser.fromSupabaseUser(session!.user);
         _isLoggedIn = true;
+
+        // Create or update user record in our users table
+        await _createOrUpdateUserRecord(_currentUser!);
+
         _logger.i('User already logged in: ${_currentUser!.email}');
       } else {
         _currentUser = null;
@@ -227,7 +235,7 @@ class StartupAuthProvider with ChangeNotifier {
   }
 
   void _listenToAuthChanges() {
-    _authSubscription = supabase.auth.onAuthStateChange.listen((data) {
+    _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
       final AuthState state = data;
       _logger.i('Auth state changed: ${state.event}');
 
@@ -237,6 +245,10 @@ class StartupAuthProvider with ChangeNotifier {
             _currentUser = StartupUser.fromSupabaseUser(state.session!.user);
             _isLoggedIn = true;
             _error = null;
+
+            // Create or update user record
+            _createOrUpdateUserRecord(_currentUser!);
+
             _logger.i('User signed in: ${_currentUser!.email}');
           }
           break;
@@ -248,67 +260,121 @@ class StartupAuthProvider with ChangeNotifier {
         case AuthChangeEvent.userUpdated:
           if (state.session?.user != null) {
             _currentUser = StartupUser.fromSupabaseUser(state.session!.user);
+
+            // Update user record
+            _createOrUpdateUserRecord(_currentUser!);
+
             _logger.i('User updated: ${_currentUser!.email}');
           }
           break;
-        default:
+        case AuthChangeEvent.passwordRecovery:
+          _logger.i('Password recovery initiated');
           break;
+        default:
+          _logger.i('Auth event: ${state.event}');
       }
       notifyListeners();
     });
   }
 
-  // ========== AUTHENTICATION METHODS ==========
+  // Create or update user record in our users table
+  Future<void> _createOrUpdateUserRecord(StartupUser user) async {
+    try {
+      // Check if user record exists
+      final existingUser =
+          await _supabase
+              .from('users')
+              .select('id, email, created_at')
+              .eq('id', user.id)
+              .maybeSingle();
 
-  // Login method (alias for signIn to maintain compatibility)
-  Future<bool> login({
-    required String email,
-    required String password,
-    bool rememberMe = false,
-  }) async {
-    _rememberMe = rememberMe;
-    return await signIn(email: email, password: password);
+      if (existingUser == null) {
+        // Create new user record
+        await _supabase.from('users').insert({
+          'id': user.id,
+          'email': user.email,
+          'username': user.email.split('@')[0], // Default username from email
+          'user_status': 'startup', // Default to startup
+          'created_at': user.createdAt.toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+          'last_login_at': user.lastLoginAt.toIso8601String(),
+          'is_verified': user.isVerified,
+        });
+
+        _logger.i('Created new user record for: ${user.email}');
+      } else {
+        // Update existing user record
+        await _supabase
+            .from('users')
+            .update({
+              'last_login_at': user.lastLoginAt.toIso8601String(),
+              'is_verified': user.isVerified,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', user.id);
+
+        _logger.i('Updated user record for: ${user.email}');
+      }
+    } catch (e) {
+      _logger.e('Error creating/updating user record: $e');
+      // Don't throw error to not break authentication flow
+    }
   }
 
+  // ========== AUTHENTICATION METHODS ==========
   Future<bool> signUp({
-    required String fullName,
-    required String email,
-    required String password,
-    required String confirmPassword,
+    String? fullName,
+    String? email,
+    String? password,
+    String? confirmPassword,
   }) async {
-    if (password != confirmPassword) {
-      _error = 'Passwords do not match';
-      notifyListeners();
-      return false;
-    }
+    // Use provided values or controller values
+    if (fullName != null) _nameController.text = fullName;
+    if (email != null) _emailController.text = email;
+    if (password != null) _passwordController.text = password;
+    if (confirmPassword != null)
+      _confirmPasswordController.text = confirmPassword;
+
+    if (!_validateSignupForm()) return false;
 
     _isAuthenticating = true;
     _error = null;
     notifyListeners();
 
     try {
-      final response = await supabase.auth.signUp(
-        email: email,
-        password: password,
-        data: {'full_name': fullName},
+      _logger.i('Attempting signup for: ${this.email}');
+
+      final response = await _supabase.auth.signUp(
+        email: this.email,
+        password: this.password,
+        data: {
+          'full_name': fullName ?? this.fullName,
+          'email': email ?? this.email,
+        },
       );
 
       if (response.user != null) {
-        // Handle remember me
+        _logger.i('Signup successful: ${this.email}');
+
+        // User will be set via auth state listener
+        // Save remember me if checked
         if (_rememberMe) {
-          await _saveRememberMe(email);
+          await _saveRememberMe(this.email);
         }
 
+        clearForm();
         return true;
       } else {
         _error = 'Signup failed. Please try again.';
         return false;
       }
     } on AuthException catch (e) {
+      _logger.e('Auth exception during signup: ${e.message}');
       _error = e.message;
       return false;
     } catch (e) {
-      _error = 'An unexpected error occurred. Please try again.';
+      _logger.e('Unexpected error during signup: $e');
+      _error = 'Signup failed. Please try again.';
       return false;
     } finally {
       _isAuthenticating = false;
@@ -316,34 +382,43 @@ class StartupAuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> signIn({required String email, required String password}) async {
+  Future<bool> signIn() async {
+    if (!_validateLoginForm()) return false;
+
     _isAuthenticating = true;
     _error = null;
     notifyListeners();
 
     try {
-      final response = await supabase.auth.signInWithPassword(
+      _logger.i('Attempting login for: $email');
+
+      final response = await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
 
       if (response.user != null) {
-        // Handle remember me
+        _logger.i('Login successful: $email');
+
+        // User will be set via auth state listener
+        // Save remember me if checked
         if (_rememberMe) {
           await _saveRememberMe(email);
         }
 
-        // Note: User will be automatically set via auth state listener
+        clearForm();
         return true;
       } else {
-        _error = 'Invalid email or password';
+        _error = 'Login failed. Please check your credentials.';
         return false;
       }
     } on AuthException catch (e) {
+      _logger.e('Auth exception during login: ${e.message}');
       _error = e.message;
       return false;
     } catch (e) {
-      _error = 'An unexpected error occurred. Please try again.';
+      _logger.e('Unexpected error during login: $e');
+      _error = 'Login failed. Please try again.';
       return false;
     } finally {
       _isAuthenticating = false;
@@ -357,12 +432,15 @@ class StartupAuthProvider with ChangeNotifier {
 
     try {
       _logger.i('Signing out user');
-      await supabase.auth.signOut();
+      await _supabase.auth.signOut();
 
       // Clear remember me if not set
       if (!_rememberMe) {
         await _clearRememberMe();
       }
+
+      // Clear form
+      clearForm();
 
       // Note: User will be automatically cleared via auth state listener
     } catch (e) {
@@ -380,7 +458,7 @@ class StartupAuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      await supabase.auth.resetPasswordForEmail(email);
+      await _supabase.auth.resetPasswordForEmail(email);
       _logger.i('Password reset email sent to: $email');
       return true;
     } on AuthException catch (e) {
@@ -397,32 +475,143 @@ class StartupAuthProvider with ChangeNotifier {
     }
   }
 
+  // Resend email verification
+  Future<bool> resendEmailVerification() async {
+    if (_currentUser == null) return false;
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _supabase.auth.resend(
+        type: OtpType.signup,
+        email: _currentUser!.email,
+      );
+      _logger.i('Verification email resent to: ${_currentUser!.email}');
+      return true;
+    } on AuthException catch (e) {
+      _logger.e('Error resending verification: ${e.message}');
+      _error = e.message;
+      return false;
+    } catch (e) {
+      _logger.e('Unexpected error resending verification: $e');
+      _error = 'Failed to resend verification email.';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Update user profile
+  Future<bool> updateProfile({String? fullName, String? email}) async {
+    if (_currentUser == null) return false;
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      Map<String, dynamic> updates = {};
+
+      if (fullName != null && fullName != _currentUser!.fullName) {
+        updates['full_name'] = fullName;
+      }
+
+      if (email != null && email != _currentUser!.email) {
+        updates['email'] = email;
+      }
+
+      if (updates.isNotEmpty) {
+        await _supabase.auth.updateUser(
+          UserAttributes(email: email, data: updates),
+        );
+
+        _logger.i('Profile updated successfully');
+        return true;
+      }
+
+      return true; // No changes needed
+    } on AuthException catch (e) {
+      _logger.e('Error updating profile: ${e.message}');
+      _error = e.message;
+      return false;
+    } catch (e) {
+      _logger.e('Unexpected error updating profile: $e');
+      _error = 'Failed to update profile.';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   // ========== HELPER METHODS ==========
-  // Replace the entire _saveRememberMe() method with:
   Future<void> _saveRememberMe(String email) async {
     try {
-      // TODO: Save to Supabase user metadata if needed
-      // For now, just update in-memory state
       _rememberMe = true;
       _savedEmail = email;
+      _logger.i('Remember me saved for: $email');
     } catch (e) {
       _logger.w('Error saving remember me: $e');
     }
   }
 
-  // Replace the entire _clearRememberMe() method with:
   Future<void> _clearRememberMe() async {
     try {
-      // TODO: Clear from Supabase user metadata if needed
-      // For now, just clear in-memory state
       _savedEmail = null;
       _rememberMe = false;
+      _logger.i('Remember me cleared');
     } catch (e) {
       _logger.w('Error clearing remember me: $e');
     }
   }
 
   // ========== FORM MANAGEMENT METHODS ==========
+  void setFormType(FormType type) {
+    _currentFormType = type;
+    clearForm();
+    clearError();
+    notifyListeners();
+  }
+
+  void enableRealTimeValidation() {
+    _validateRealTime = true;
+    notifyListeners();
+  }
+
+  bool validateForm() {
+    switch (_currentFormType) {
+      case FormType.signup:
+        return _validateSignupForm();
+      case FormType.login:
+        return _validateLoginForm();
+    }
+  }
+
+  // Login method (alias for signIn for backward compatibility)
+  Future<bool> login({
+    String? email,
+    String? password,
+    bool? rememberMe,
+  }) async {
+    // Use provided values or controller values
+    if (email != null) _emailController.text = email;
+    if (password != null) _passwordController.text = password;
+    if (rememberMe != null) _rememberMe = rememberMe;
+
+    return await signIn();
+  }
+
+  void clearPasswords() {
+    _passwordController.clear();
+    _confirmPasswordController.clear();
+    _passwordError = null;
+    _confirmPasswordError = null;
+    notifyListeners();
+  }
+
   void _onFormFieldChanged() {
     if (_validateRealTime) {
       _validateCurrentForm();
@@ -449,79 +638,139 @@ class StartupAuthProvider with ChangeNotifier {
       case FormType.login:
         _emailError = validateEmail(_emailController.text);
         _passwordError =
-            _passwordController.text.isEmpty ? 'Password is required' : null;
+            _passwordController.text.isEmpty
+                ? 'Please enter your password'
+                : null;
         break;
     }
-    _updateFormValidity();
     notifyListeners();
   }
 
   void _updateFormValidity() {
+    bool wasValid = _isFormValid;
+
     switch (_currentFormType) {
       case FormType.signup:
         _isFormValid =
-            _nameController.text.trim().isNotEmpty &&
-            _emailController.text.trim().isNotEmpty &&
-            _passwordController.text.isNotEmpty &&
-            _confirmPasswordController.text.isNotEmpty &&
-            _nameError == null &&
-            _emailError == null &&
-            _passwordError == null &&
-            _confirmPasswordError == null;
+            validateName(_nameController.text) == null &&
+            validateEmail(_emailController.text) == null &&
+            validatePassword(_passwordController.text) == null &&
+            validateConfirmPassword(
+                  _passwordController.text,
+                  _confirmPasswordController.text,
+                ) ==
+                null;
         break;
       case FormType.login:
         _isFormValid =
-            _emailController.text.trim().isNotEmpty &&
-            _passwordController.text.isNotEmpty &&
-            _emailError == null &&
-            _passwordError == null;
+            validateEmail(_emailController.text) == null &&
+            _passwordController.text.isNotEmpty;
         break;
     }
+
+    if (wasValid != _isFormValid) {
+      notifyListeners();
+    }
+  }
+
+  bool _validateSignupForm() {
+    _validateRealTime = true;
+    _validateCurrentForm();
+    return _isFormValid;
+  }
+
+  bool _validateLoginForm() {
+    _validateRealTime = true;
+    _validateCurrentForm();
+    return _isFormValid;
+  }
+
+  // ========== FORM UI METHODS ==========
+  void switchToLogin() {
+    _currentFormType = FormType.login;
+    clearForm();
+    clearError();
+    notifyListeners();
+  }
+
+  void switchToSignup() {
+    _currentFormType = FormType.signup;
+    clearForm();
+    clearError();
+    notifyListeners();
+  }
+
+  void togglePasswordVisibility() {
+    _isPasswordVisible = !_isPasswordVisible;
+    notifyListeners();
+  }
+
+  void toggleConfirmPasswordVisibility() {
+    _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+    notifyListeners();
+  }
+
+  void setRememberMe(bool value) {
+    _rememberMe = value;
+    notifyListeners();
+  }
+
+  void clearError() {
+    _error = null;
+    notifyListeners();
+  }
+
+  void clearForm() {
+    _nameController.clear();
+    _emailController.clear();
+    _passwordController.clear();
+    _confirmPasswordController.clear();
+
+    _nameError = null;
+    _emailError = null;
+    _passwordError = null;
+    _confirmPasswordError = null;
+    _validateRealTime = false;
+    _isFormValid = false;
+
+    notifyListeners();
   }
 
   // ========== VALIDATION METHODS ==========
   String? validateName(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Full name is required';
+      return 'Please enter your full name';
     }
     if (value.trim().length < 2) {
       return 'Name must be at least 2 characters';
-    }
-    if (value.trim().length > 50) {
-      return 'Name must be less than 50 characters';
     }
     return null;
   }
 
   String? validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Email is required';
+      return 'Please enter your email';
     }
 
-    // More permissive and standard email regex
-    final emailRegex = RegExp(
-      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
-    );
+    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
     if (!emailRegex.hasMatch(value.trim())) {
       return 'Please enter a valid email address';
     }
+
     return null;
   }
 
   String? validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Password is required';
+      return 'Please enter a password';
     }
-    if (value.length < 8) {
-      return 'Password must be at least 8 characters';
-    }
-    if (!RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)').hasMatch(value)) {
-      return 'Password must contain uppercase, lowercase, and numbers';
+    if (value.length < 6) {
+      return 'Password must be at least 6 characters';
     }
     return null;
   }
 
-  String? validateConfirmPassword(String password, String? confirmPassword) {
+  String? validateConfirmPassword(String? password, String? confirmPassword) {
     if (confirmPassword == null || confirmPassword.isEmpty) {
       return 'Please confirm your password';
     }
@@ -531,29 +780,34 @@ class StartupAuthProvider with ChangeNotifier {
     return null;
   }
 
-  bool validateForm() {
-    _validateCurrentForm();
-    return _isFormValid;
-  }
-
-  // ========== PASSWORD STRENGTH METHODS ==========
+  // Password strength checker
   PasswordStrength getPasswordStrength(String password) {
     if (password.isEmpty) return PasswordStrength.none;
+    if (password.length < 6) return PasswordStrength.weak;
 
     int score = 0;
     if (password.length >= 8) score++;
-    if (password.length >= 12) score++;
-    if (RegExp(r'[a-z]').hasMatch(password)) score++;
     if (RegExp(r'[A-Z]').hasMatch(password)) score++;
+    if (RegExp(r'[a-z]').hasMatch(password)) score++;
     if (RegExp(r'[0-9]').hasMatch(password)) score++;
     if (RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password)) score++;
 
     if (score <= 2) return PasswordStrength.weak;
-    if (score <= 4) return PasswordStrength.medium;
+    if (score <= 3) return PasswordStrength.medium;
     return PasswordStrength.strong;
   }
 
-  Color getPasswordStrengthColor(PasswordStrength strength) {
+  // Get password strength color for UI - accepts both String and PasswordStrength
+  Color getPasswordStrengthColor(dynamic input) {
+    PasswordStrength strength;
+    if (input is String) {
+      strength = getPasswordStrength(input);
+    } else if (input is PasswordStrength) {
+      strength = input;
+    } else {
+      strength = PasswordStrength.none;
+    }
+
     switch (strength) {
       case PasswordStrength.none:
         return Colors.grey;
@@ -566,7 +820,17 @@ class StartupAuthProvider with ChangeNotifier {
     }
   }
 
-  String getPasswordStrengthText(PasswordStrength strength) {
+  // Get password strength text for UI - accepts both String and PasswordStrength
+  String getPasswordStrengthText(dynamic input) {
+    PasswordStrength strength;
+    if (input is String) {
+      strength = getPasswordStrength(input);
+    } else if (input is PasswordStrength) {
+      strength = input;
+    } else {
+      strength = PasswordStrength.none;
+    }
+
     switch (strength) {
       case PasswordStrength.none:
         return '';
@@ -579,74 +843,36 @@ class StartupAuthProvider with ChangeNotifier {
     }
   }
 
-  // ========== UI CONTROL METHODS ==========
-  void togglePasswordVisibility() {
-    _isPasswordVisible = !_isPasswordVisible;
-    notifyListeners();
+  // Alternative methods that return string directly (for UI compatibility)
+  String getPasswordStrengthString(String password) {
+    return getPasswordStrength(password).name;
   }
 
-  void toggleRememberMe() {
-    _rememberMe = !_rememberMe;
-    notifyListeners();
-    // Note: No longer persisting to SharedPreferences
+  // Signup method with named parameters (for backward compatibility)
+  Future<bool> signup({
+    String? fullName,
+    String? email,
+    String? password,
+    String? confirmPassword,
+  }) async {
+    return await signUp(
+      fullName: fullName,
+      email: email,
+      password: password,
+      confirmPassword: confirmPassword,
+    );
   }
 
-  void toggleConfirmPasswordVisibility() {
-    _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
-    notifyListeners();
+  // Get user status for dashboard routing
+  String getUserStatus() {
+    return 'startup'; // Default for now, can be enhanced to read from database
   }
 
-  void setFormType(FormType formType) {
-    _currentFormType = formType;
-    _clearFormErrors();
-    _updateFormValidity();
-    notifyListeners();
-  }
-
-  void setRememberMe(bool value) {
-    _rememberMe = value;
-    notifyListeners();
-  }
-
-  void clearForm() {
-    _nameController.clear();
-    _emailController.clear();
-    _passwordController.clear();
-    _confirmPasswordController.clear();
-    _clearFormErrors();
-    _updateFormValidity();
-    notifyListeners();
-  }
-
-  void clearPasswords() {
-    _passwordController.clear();
-    _confirmPasswordController.clear();
-    _isPasswordVisible = false;
-    _isConfirmPasswordVisible = false;
-    _updateFormValidity();
-    notifyListeners();
-  }
-
-  void _clearFormErrors() {
-    _nameError = null;
-    _emailError = null;
-    _passwordError = null;
-    _confirmPasswordError = null;
-    _error = null;
-  }
-
-  void enableRealTimeValidation() {
-    _validateRealTime = true;
-  }
-
-  void clearError() {
-    _error = null;
-    notifyListeners();
-  }
-
-  // ========== DISPOSAL ==========
   @override
   void dispose() {
+    _authSubscription?.cancel();
+    _validationTimer?.cancel();
+
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -656,9 +882,6 @@ class StartupAuthProvider with ChangeNotifier {
     _emailFocusNode.dispose();
     _passwordFocusNode.dispose();
     _confirmPasswordFocusNode.dispose();
-
-    _validationTimer?.cancel();
-    _authSubscription?.cancel();
 
     super.dispose();
   }
