@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:venturelink/signup_investor.dart';
-import 'package:venturelink/login_investor.dart';
+import 'package:venturelink/Investor/signup_investor.dart';
+import 'package:venturelink/Investor/login_investor.dart';
 
 class InvestorPage extends StatefulWidget {
   const InvestorPage({super.key});

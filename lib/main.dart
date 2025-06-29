@@ -2,28 +2,24 @@
 import "package:flutter/material.dart";
 import "package:provider/provider.dart";
 import "homepage.dart";
-import "Providers/startup_profile_overview_provider.dart";
-import "Providers/startup_profile_provider.dart";
-import "Providers/team_members_provider.dart";
-import 'Providers/business_model_canvas_provider.dart';
-import 'Providers/startup_authentication_provider.dart';
-import 'Startup_Dashboard/profile_overview.dart';
-import 'Startup_Dashboard/startup_profile_page.dart';
-import 'Startup_Dashboard/team_members_page.dart';
-import 'Startup_Dashboard/Business_Model_Canvas/business_model_canvas.dart';
-import 'Startup_Dashboard/startup_dashboard.dart';
-import 'startup_page.dart';
-import 'signup_startup.dart';
-import 'login_startup.dart';
-import 'config/supabase_config.dart';
-import 'Providers/user_type_provider.dart';
+import "Startup/Providers/startup_profile_overview_provider.dart";
+import "Startup/Providers/startup_profile_provider.dart";
+import "Startup/Providers/team_members_provider.dart";
+import 'Startup/Providers/business_model_canvas_provider.dart';
+import 'Startup/Providers/startup_authentication_provider.dart';
+import 'Startup/Startup_Dashboard/profile_overview.dart';
+import 'Startup/Startup_Dashboard/startup_profile_page.dart';
+import 'Startup/Startup_Dashboard/team_members_page.dart';
+import 'Startup/Startup_Dashboard/Business_Model_Canvas/business_model_canvas.dart';
+import 'Startup/Startup_Dashboard/startup_dashboard.dart';
+import 'Startup/startup_page.dart';
+import 'Startup/signup_startup.dart';
+import 'Startup/login_startup.dart';
+import 'Startup/Providers/user_type_provider.dart';
 
 Future<void> main() async {
   // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize Supabase
-  await SupabaseConfig.initialize();
 
   runApp(const MyApp());
 }

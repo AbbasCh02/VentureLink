@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:venturelink/Startup_Dashboard/startup_profile_page.dart';
+import 'package:venturelink/Startup/Startup_Dashboard/startup_profile_page.dart';
 import '../Providers/startup_profile_overview_provider.dart';
 import '../Providers/startup_profile_provider.dart';
 import '../Providers/business_model_canvas_provider.dart';

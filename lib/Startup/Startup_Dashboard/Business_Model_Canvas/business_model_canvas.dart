@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../Providers/business_model_canvas_provider.dart';
-import 'package:venturelink/Startup_Dashboard/Business_Model_Canvas/channels_page.dart';
-import 'package:venturelink/Startup_Dashboard/Business_Model_Canvas/cost_structure_page.dart';
-import 'package:venturelink/Startup_Dashboard/Business_Model_Canvas/customer_relationships_page.dart';
-import 'package:venturelink/Startup_Dashboard/Business_Model_Canvas/customer_segments_page.dart';
-import 'package:venturelink/Startup_Dashboard/Business_Model_Canvas/key_activities_page.dart';
-import 'package:venturelink/Startup_Dashboard/Business_Model_Canvas/key_partners_page.dart';
-import 'package:venturelink/Startup_Dashboard/Business_Model_Canvas/key_resources_page.dart';
-import 'package:venturelink/Startup_Dashboard/Business_Model_Canvas/revenue_streams_page.dart';
-import 'package:venturelink/Startup_Dashboard/Business_Model_Canvas/value_propositions_page.dart';
+import 'package:venturelink/Startup/Startup_Dashboard/Business_Model_Canvas/channels_page.dart';
+import 'package:venturelink/Startup/Startup_Dashboard/Business_Model_Canvas/cost_structure_page.dart';
+import 'package:venturelink/Startup/Startup_Dashboard/Business_Model_Canvas/customer_relationships_page.dart';
+import 'package:venturelink/Startup/Startup_Dashboard/Business_Model_Canvas/customer_segments_page.dart';
+import 'package:venturelink/Startup/Startup_Dashboard/Business_Model_Canvas/key_activities_page.dart';
+import 'package:venturelink/Startup/Startup_Dashboard/Business_Model_Canvas/key_partners_page.dart';
+import 'package:venturelink/Startup/Startup_Dashboard/Business_Model_Canvas/key_resources_page.dart';
+import 'package:venturelink/Startup/Startup_Dashboard/Business_Model_Canvas/revenue_streams_page.dart';
+import 'package:venturelink/Startup/Startup_Dashboard/Business_Model_Canvas/value_propositions_page.dart';
 
 class BusinessModelCanvas extends StatefulWidget {
   const BusinessModelCanvas({super.key});

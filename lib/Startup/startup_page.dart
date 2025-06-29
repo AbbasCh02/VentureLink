@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:venturelink/login_startup.dart';
+import 'package:venturelink/Startup/login_startup.dart';
 import "signup_startup.dart";
 import 'Providers/startup_authentication_provider.dart'; // Fixed import path to match the typo in filename
 

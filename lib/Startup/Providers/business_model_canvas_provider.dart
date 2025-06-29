@@ -563,8 +563,9 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
     if (!isKeyActivitiesComplete) incomplete.add('Key Activities');
     if (!isKeyResourcesComplete) incomplete.add('Key Resources');
     if (!isValuePropositionsComplete) incomplete.add('Value Propositions');
-    if (!isCustomerRelationshipsComplete)
+    if (!isCustomerRelationshipsComplete) {
       incomplete.add('Customer Relationships');
+    }
     if (!isCustomerSegmentsComplete) incomplete.add('Customer Segments');
     if (!isChannelsComplete) incomplete.add('Channels');
     if (!isCostStructureComplete) incomplete.add('Cost Structure');

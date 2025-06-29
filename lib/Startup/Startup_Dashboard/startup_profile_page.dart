@@ -5,9 +5,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:logger/logger.dart';
 import '../Providers/startup_profile_provider.dart';
 import 'Business_Model_Canvas/business_model_canvas.dart';
-import 'package:venturelink/Startup_Dashboard/team_members_page.dart';
+import 'package:venturelink/Startup/Startup_Dashboard/team_members_page.dart';
 import 'funding_progress.dart';
-import 'package:venturelink/Startup_Dashboard/profile_overview.dart';
+import 'package:venturelink/Startup/Startup_Dashboard/profile_overview.dart';
 import 'pitch_deck.dart';
 import '../Providers/startup_authentication_provider.dart';
 

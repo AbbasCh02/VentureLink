@@ -332,8 +332,9 @@ class StartupAuthProvider with ChangeNotifier {
     if (fullName != null) _nameController.text = fullName;
     if (email != null) _emailController.text = email;
     if (password != null) _passwordController.text = password;
-    if (confirmPassword != null)
+    if (confirmPassword != null) {
       _confirmPasswordController.text = confirmPassword;
+    }
 
     if (!_validateSignupForm()) return false;
 
