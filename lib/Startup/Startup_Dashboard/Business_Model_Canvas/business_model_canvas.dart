@@ -1,3 +1,4 @@
+// lib/Startup/Startup_Dashboard/Business_Model_Canvas/business_model_canvas.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../Providers/business_model_canvas_provider.dart';
@@ -51,9 +52,10 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
     _fadeController.forward();
     _slideController.forward();
 
-    // Initialize the provider
+    // Initialize the BMC provider
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<BusinessModelCanvasProvider>().initialize();
+      final bmcProvider = context.read<BusinessModelCanvasProvider>();
+      bmcProvider.initialize();
     });
   }
 
@@ -68,12 +70,76 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0a0a0a),
-      appBar: _buildElegantAppBar(),
+      appBar: _buildAppBar(),
       body: Consumer<BusinessModelCanvasProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading) {
             return const Center(
-              child: CircularProgressIndicator(color: Color(0xFFffa500)),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: Color(0xFFffa500)),
+                  SizedBox(height: 16),
+                  Text(
+                    'Loading Business Model Canvas...',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          if (provider.error != null) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading BMC',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red[400],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Text(
+                      provider.error!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () {
+                          provider.clearError();
+                          provider.refreshFromDatabase();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFffa500),
+                          foregroundColor: Colors.black,
+                        ),
+                        child: const Text('Retry'),
+                      ),
+                      const SizedBox(width: 16),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text(
+                          'Go Back',
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             );
           }
 
@@ -86,20 +152,13 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Hero Section
-                    _buildHeroSection(provider),
-
-                    const SizedBox(height: 40),
-
-                    // Progress Section
+                    _buildHeader(provider),
+                    const SizedBox(height: 32),
                     _buildProgressSection(provider),
-
-                    const SizedBox(height: 40),
-
-                    // Canvas Sections
-                    _buildCanvasSections(context, provider),
-
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 32),
+                    _buildBMCSections(provider),
+                    const SizedBox(height: 32),
+                    _buildActionButtons(provider),
                   ],
                 ),
               ),
@@ -110,139 +169,60 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
     );
   }
 
-  PreferredSizeWidget _buildElegantAppBar() {
+  PreferredSizeWidget _buildAppBar() {
     return AppBar(
       backgroundColor: Colors.grey[900],
       elevation: 0,
-      toolbarHeight: 80,
-      leading: Container(
-        margin: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
-        decoration: BoxDecoration(
-          color: Color(0xFFffa500),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.black, width: 1),
-        ),
-        child: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: Colors.black,
-            size: 20,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Color(0xFFffa500)),
+        onPressed: () => Navigator.of(context).pop(),
       ),
-      title: Flexible(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFFffa500), Color(0xFFffa500)],
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.dashboard_customize,
-                    color: Colors.black,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Business Model Canvas',
-                    style: TextStyle(
-                      fontSize: 18, // Reduced from 20
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFFffa500),
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 2), // Reduced from 4
-            Text(
-              'Strategic planning made simple',
-              style: TextStyle(
-                fontSize: 12, // Reduced from 14
-                color: Colors.white,
-                fontWeight: FontWeight.normal,
-              ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            ),
-          ],
+      title: const Text(
+        'Business Model Canvas',
+        style: TextStyle(
+          color: Color(0xFFffa500),
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
         ),
       ),
       actions: [
-        PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert, color: Color(0xFFffa500)),
-          onSelected: (value) async {
-            final provider = context.read<BusinessModelCanvasProvider>();
-            if (value == 'clear') {
-              _showClearDialog(context, provider);
-            }
-          },
-          itemBuilder:
-              (context) => [
-                const PopupMenuItem(
-                  value: 'clear',
-                  child: Row(
-                    children: [
-                      Icon(Icons.clear_all, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text('Clear All Data'),
-                    ],
+        Consumer<BusinessModelCanvasProvider>(
+          builder: (context, provider, child) {
+            if (provider.isSaving) {
+              return const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFFffa500),
+                    ),
                   ),
                 ),
-              ],
+              );
+            }
+            return const SizedBox.shrink();
+          },
         ),
       ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
-        child: Container(
-          height: 1,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Colors.transparent,
-                Colors.black.withValues(alpha: 0.3),
-                Colors.transparent,
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 
-  Widget _buildHeroSection(BusinessModelCanvasProvider provider) {
+  Widget _buildHeader(BusinessModelCanvasProvider provider) {
     return Container(
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.grey[900]!.withValues(alpha: 0.8),
-            Colors.grey[850]!.withValues(alpha: 0.9),
-          ],
+        gradient: const LinearGradient(
+          colors: [Color(0xFFffa500), Color(0xFFff8c00)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFffa500).withValues(alpha: 0.3),
-          width: 1,
-        ),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFffa500).withValues(alpha: 0.1),
+            color: const Color(0xFFffa500).withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -253,50 +233,24 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFFffa500).withValues(alpha: 0.2),
-                      const Color(0xFFff8c00).withValues(alpha: 0.1),
-                    ],
+              const Icon(Icons.business_center, color: Colors.black, size: 28),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Business Model Canvas',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
                   ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(
-                  Icons.lightbulb_outline,
-                  color: Color(0xFFffa500),
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 16),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Strategic Planning Made Simple',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Build your complete business model',
-                      style: TextStyle(fontSize: 14, color: Colors.grey),
-                    ),
-                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           const Text(
-            'The Business Model Canvas is a strategic management template used for developing new business models and documenting existing ones. Complete each section to build a comprehensive view of your business.',
-            style: TextStyle(fontSize: 16, color: Colors.grey, height: 1.6),
+            'Create a strategic plan for your startup by defining the key elements of your business model.',
+            style: TextStyle(fontSize: 14, color: Colors.black87, height: 1.4),
           ),
         ],
       ),
@@ -304,406 +258,443 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
   }
 
   Widget _buildProgressSection(BusinessModelCanvasProvider provider) {
+    final completionPercentage = provider.completionPercentage;
+    final completedSections = provider.completedSectionsCount;
+
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.grey[900]!, Colors.grey[850]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFFffa500).withValues(alpha: 0.3),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFffa500).withValues(alpha: 0.1),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[800]!),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFffa500).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.analytics_outlined,
-                  color: Color(0xFFffa500),
-                  size: 24,
+              Text(
+                'Progress',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[200],
                 ),
               ),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Progress Overview',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFffa500),
-                    ),
-                  ),
-                  Text(
-                    '${provider.completedSectionsCount} of 9 sections completed',
-                    style: const TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
-                ],
+              Text(
+                '${(completionPercentage * 100).toInt()}% Complete',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFFffa500),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           LinearProgressIndicator(
-            value: provider.completionPercentage,
+            value: completionPercentage,
             backgroundColor: Colors.grey[800],
             valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFffa500)),
             minHeight: 8,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
-            '${(provider.completionPercentage * 100).toInt()}% Complete',
-            style: const TextStyle(
-              fontSize: 14,
-              color: Color(0xFFffa500),
-              fontWeight: FontWeight.w500,
-            ),
+            '$completedSections of 9 sections completed',
+            style: TextStyle(color: Colors.grey[400], fontSize: 14),
           ),
+          if (provider.hasAnyUnsavedChanges) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.edit, color: Colors.orange[400], size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  'You have unsaved changes',
+                  style: TextStyle(color: Colors.orange[400], fontSize: 14),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildCanvasSections(
-    BuildContext context,
+  Widget _buildBMCSections(BusinessModelCanvasProvider provider) {
+    final sections = _getBMCSections(provider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Canvas Sections',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[200],
+          ),
+        ),
+        const SizedBox(height: 16),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: 0.85,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+          ),
+          itemCount: sections.length,
+          itemBuilder: (context, index) {
+            final section = sections[index];
+            return _buildSectionCard(
+              title: section['title'],
+              description: section['description'],
+              icon: section['icon'],
+              isComplete: section['isComplete'],
+              onTap:
+                  () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => section['page']),
+                  ),
+              hasUnsavedChanges: provider.hasUnsavedChanges(
+                section['fieldName'],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionCard({
+    required String title,
+    required String description,
+    required IconData icon,
+    required bool isComplete,
+    required VoidCallback onTap,
+    required bool hasUnsavedChanges,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[900],
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isComplete ? const Color(0xFFffa500) : Colors.grey[800]!,
+            width: isComplete ? 2 : 1,
+          ),
+          boxShadow:
+              isComplete
+                  ? [
+                    BoxShadow(
+                      color: const Color(0xFFffa500).withValues(alpha: 0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                  : null,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color:
+                        isComplete
+                            ? const Color(0xFFffa500).withValues(alpha: 0.2)
+                            : Colors.grey[800],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    icon,
+                    color:
+                        isComplete ? const Color(0xFFffa500) : Colors.grey[400],
+                    size: 20,
+                  ),
+                ),
+                if (isComplete)
+                  const Icon(
+                    Icons.check_circle,
+                    color: Color(0xFFffa500),
+                    size: 20,
+                  )
+                else if (hasUnsavedChanges)
+                  Icon(Icons.edit, color: Colors.orange[400], size: 16),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: isComplete ? const Color(0xFFffa500) : Colors.grey[200],
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: Text(
+                description,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[400],
+                  height: 1.3,
+                ),
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(BusinessModelCanvasProvider provider) {
+    return Column(
+      children: [
+        if (provider.hasAnyUnsavedChanges)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed:
+                  provider.isSaving
+                      ? null
+                      : () async {
+                        final success = await provider.saveAllFields();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                success
+                                    ? 'All changes saved successfully!'
+                                    : 'Failed to save changes: ${provider.error}',
+                              ),
+                              backgroundColor:
+                                  success
+                                      ? const Color(0xFFffa500)
+                                      : Colors.red,
+                            ),
+                          );
+                        }
+                      },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFffa500),
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child:
+                  provider.isSaving
+                      ? const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.black,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Text('Saving...'),
+                        ],
+                      )
+                      : const Text(
+                        'Save All Changes',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+            ),
+          ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder:
+                        (context) => AlertDialog(
+                          backgroundColor: Colors.grey[900],
+                          title: const Text(
+                            'Clear All Data',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          content: const Text(
+                            'Are you sure you want to clear all Business Model Canvas data? This action cannot be undone.',
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: const Text('Cancel'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                              ),
+                              child: const Text('Clear All'),
+                            ),
+                          ],
+                        ),
+                  );
+
+                  if (confirm == true) {
+                    await provider.clearAllData();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('All BMC data cleared'),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                    }
+                  }
+                },
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.grey[600]!),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  'Clear All',
+                  style: TextStyle(color: Colors.grey[300]),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () async {
+                  await provider.refreshFromDatabase();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Data refreshed from database'),
+                        backgroundColor: Color(0xFFffa500),
+                      ),
+                    );
+                  }
+                },
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFFffa500)),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Refresh',
+                  style: TextStyle(color: Color(0xFFffa500)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  List<Map<String, dynamic>> _getBMCSections(
     BusinessModelCanvasProvider provider,
   ) {
-    final sections = [
+    return [
       {
         'title': 'Key Partners',
-        'description':
-            'Who are your key partners & suppliers? Identify the network of suppliers and partners that make the business model work.',
+        'description': 'Who are your key partners and suppliers?',
         'icon': Icons.handshake_outlined,
-        'page': KeyPartnersPage(),
-        'color': const Color(0xFFffa500),
+        'page': const KeyPartnersPage(),
         'isComplete': provider.isKeyPartnersComplete,
+        'fieldName': 'keyPartners',
       },
       {
         'title': 'Key Activities',
         'description':
-            'What key activities does your value proposition require? The most important things your company must do to operate successfully.',
+            'What key activities does your value proposition require?',
         'icon': Icons.settings_outlined,
-        'page': KeyActivitiesPage(),
-        'color': const Color(0xFFffa500),
+        'page': const KeyActivitiesPage(),
         'isComplete': provider.isKeyActivitiesComplete,
+        'fieldName': 'keyActivities',
       },
       {
         'title': 'Key Resources',
         'description':
-            'What key resources does your value proposition require? The most important assets required to make your business model work.',
+            'What key resources does your value proposition require?',
         'icon': Icons.inventory_2_outlined,
-        'page': KeyResourcesPage(),
-        'color': const Color(0xFFffa500),
+        'page': const KeyResourcesPage(),
         'isComplete': provider.isKeyResourcesComplete,
+        'fieldName': 'keyResources',
       },
       {
         'title': 'Value Propositions',
-        'description':
-            'What value do you deliver to customers? The bundle of products and services that create value for your customer segments.',
+        'description': 'What value do you deliver to customers?',
         'icon': Icons.diamond_outlined,
-        'page': ValuePropositionsPage(),
-        'color': const Color(0xFFffa500),
+        'page': const ValuePropositionsPage(),
         'isComplete': provider.isValuePropositionsComplete,
+        'fieldName': 'valuePropositions',
       },
       {
         'title': 'Customer Relationships',
-        'description':
-            'What type of relationship do you establish with each customer segment? Describe the types of relationships you establish.',
+        'description': 'What type of relationship do you establish?',
         'icon': Icons.favorite_outline,
-        'page': CustomerRelationshipsPage(),
-        'color': const Color(0xFFffa500),
+        'page': const CustomerRelationshipsPage(),
         'isComplete': provider.isCustomerRelationshipsComplete,
+        'fieldName': 'customerRelationships',
       },
       {
         'title': 'Customer Segments',
-        'description':
-            'For whom are you creating value? Define the different groups of people or organizations you aim to reach and serve.',
+        'description': 'For whom are you creating value?',
         'icon': Icons.group_outlined,
-        'page': CustomerSegmentsPage(),
-        'color': const Color(0xFFffa500),
+        'page': const CustomerSegmentsPage(),
         'isComplete': provider.isCustomerSegmentsComplete,
+        'fieldName': 'customerSegments',
       },
       {
         'title': 'Channels',
-        'description':
-            'Through which channels do you reach customers? How your company communicates and reaches its customer segments.',
+        'description': 'Through which channels do you reach customers?',
         'icon': Icons.alt_route_outlined,
-        'page': ChannelsPage(),
-        'color': const Color(0xFFffa500),
+        'page': const ChannelsPage(),
         'isComplete': provider.isChannelsComplete,
+        'fieldName': 'channels',
       },
       {
         'title': 'Cost Structure',
-        'description':
-            'What are the most important costs? All costs incurred to operate your business model and create value.',
-        'icon': Icons.trending_down_outlined,
-        'page': CostStructurePage(),
-        'color': const Color(0xFFffa500),
+        'description': 'What are the most important costs?',
+        'icon': Icons.account_balance_wallet_outlined,
+        'page': const CostStructurePage(),
         'isComplete': provider.isCostStructureComplete,
+        'fieldName': 'costStructure',
       },
       {
         'title': 'Revenue Streams',
-        'description':
-            'For what value are customers willing to pay? The cash your company generates from each customer segment.',
+        'description': 'For what value are customers willing to pay?',
         'icon': Icons.trending_up_outlined,
-        'page': RevenueStreamsPage(),
-        'color': const Color(0xFFffa500),
+        'page': const RevenueStreamsPage(),
         'isComplete': provider.isRevenueStreamsComplete,
+        'fieldName': 'revenueStreams',
       },
     ];
-
-    return Column(
-      children:
-          sections
-              .map(
-                (section) => Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: _buildCanvasSection(
-                    context,
-                    section['title'] as String,
-                    section['description'] as String,
-                    section['icon'] as IconData,
-                    section['page'] as Widget,
-                    section['color'] as Color,
-                    section['isComplete'] as bool,
-                    sections.indexOf(section),
-                  ),
-                ),
-              )
-              .toList(),
-    );
-  }
-
-  Widget _buildCanvasSection(
-    BuildContext context,
-    String title,
-    String description,
-    IconData icon,
-    Widget page,
-    Color color,
-    bool isComplete,
-    int index,
-  ) {
-    return TweenAnimationBuilder<double>(
-      duration: Duration(milliseconds: 600 + (index * 100)),
-      tween: Tween(begin: 0.0, end: 1.0),
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(0, 20 * (1 - value)),
-          child: Opacity(
-            opacity: value,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.grey[900]!, Colors.grey[850]!],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color:
-                      isComplete
-                          ? Colors.green.withValues(alpha: 0.5)
-                          : color.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color:
-                        isComplete
-                            ? Colors.green.withValues(alpha: 0.1)
-                            : color.withValues(alpha: 0.1),
-                    blurRadius: 15,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap:
-                      () => Navigator.push(
-                        context,
-                        PageRouteBuilder(
-                          pageBuilder:
-                              (context, animation, secondaryAnimation) => page,
-                          transitionsBuilder: (
-                            context,
-                            animation,
-                            secondaryAnimation,
-                            child,
-                          ) {
-                            const begin = Offset(1.0, 0.0);
-                            const end = Offset.zero;
-                            const curve = Curves.easeInOutCubic;
-                            var tween = Tween(
-                              begin: begin,
-                              end: end,
-                            ).chain(CurveTween(curve: curve));
-                            return SlideTransition(
-                              position: animation.drive(tween),
-                              child: child,
-                            );
-                          },
-                        ),
-                      ),
-                  borderRadius: BorderRadius.circular(20),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color:
-                              isComplete
-                                  ? Colors.green.withValues(alpha: 0.2)
-                                  : color.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          icon,
-                          color: isComplete ? Colors.green : color,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    title,
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: isComplete ? Colors.green : color,
-                                    ),
-                                  ),
-                                ),
-                                if (isComplete)
-                                  Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.green,
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: const Icon(
-                                      Icons.check,
-                                      color: Colors.white,
-                                      size: 16,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              description,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[400],
-                                height: 1.4,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color:
-                              isComplete
-                                  ? Colors.green.withValues(alpha: 0.1)
-                                  : color.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color:
-                                isComplete
-                                    ? Colors.green.withValues(alpha: 0.3)
-                                    : color.withValues(alpha: 0.3),
-                            width: 1,
-                          ),
-                        ),
-                        child: Icon(
-                          Icons.arrow_forward_ios,
-                          color: isComplete ? Colors.green : color,
-                          size: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showClearDialog(
-    BuildContext context,
-    BusinessModelCanvasProvider provider,
-  ) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            backgroundColor: Colors.grey[900],
-            title: const Text(
-              'Clear All Data',
-              style: TextStyle(color: Colors.white),
-            ),
-            content: const Text(
-              'Are you sure you want to clear all Business Model Canvas data? This action cannot be undone.',
-              style: TextStyle(color: Colors.grey),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  'Cancel',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ),
-              TextButton(
-                onPressed: () async {
-                  await provider.clearAllData();
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('All data cleared successfully'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                },
-                child: const Text('Clear', style: TextStyle(color: Colors.red)),
-              ),
-            ],
-          ),
-    );
   }
 }

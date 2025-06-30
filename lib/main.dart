@@ -1,4 +1,3 @@
-// lib/main.dart
 import "package:flutter/material.dart";
 import "package:provider/provider.dart";
 import "homepage.dart";
@@ -12,14 +11,40 @@ import 'Startup/Startup_Dashboard/startup_profile_page.dart';
 import 'Startup/Startup_Dashboard/team_members_page.dart';
 import 'Startup/Startup_Dashboard/Business_Model_Canvas/business_model_canvas.dart';
 import 'Startup/Startup_Dashboard/startup_dashboard.dart';
-import 'Startup/startup_page.dart';
-import 'Startup/signup_startup.dart';
-import 'Startup/login_startup.dart';
 import 'Startup/Providers/user_type_provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:logger/logger.dart';
 
 Future<void> main() async {
+  Logger logger = Logger();
   // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables FIRST
+  await dotenv.load(fileName: ".env");
+
+  // Verify environment variables are loaded
+  final supabaseUrl = dotenv.env['SUPABASE_URL'];
+  final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'];
+
+  if (supabaseUrl == null || supabaseAnonKey == null) {
+    throw Exception(
+      'Missing Supabase environment variables. Please check your .env file.',
+    );
+  }
+
+  logger.i('✅ Environment variables loaded successfully');
+  logger.i('📍 Supabase URL: ${supabaseUrl.substring(0, 30)}...');
+
+  // Initialize Supabase with loaded environment variables
+  await Supabase.initialize(
+    url: supabaseUrl,
+    anonKey: supabaseAnonKey,
+    debug: true, // Set to false in production
+  );
+
+  logger.i('✅ Supabase initialized successfully');
 
   runApp(const MyApp());
 }
@@ -72,25 +97,21 @@ class MyApp extends StatelessWidget {
           primaryColor: Colors.blueGrey,
           scaffoldBackgroundColor: Colors.black,
         ),
-        // Use AuthWrapper instead of directly going to WelcomePage
+        // Use AuthWrapper instead of directly going to homepage
         home: const AuthWrapper(),
         routes: {
           '/profile-overview': (context) => const ProfileOverview(),
           '/startup-profile': (context) => const StartupProfilePage(),
           '/team-members': (context) => const TeamMembersPage(),
           '/business_model': (context) => const BusinessModelCanvas(),
-          '/choose_profile': (context) => const StartupPage(),
-          '/signup_startup': (context) => const StartupSignupPage(),
-          '/login_startup': (context) => const StartupLoginPage(),
-          '/dashboard': (context) => const StartupDashboard(),
-          '/welcome': (context) => const WelcomePage(),
+          '/startup-dashboard': (context) => const StartupDashboard(),
         },
       ),
     );
   }
 }
 
-// AuthWrapper widget to handle auto-login logic with Supabase
+// AuthWrapper to handle authentication state
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
@@ -98,32 +119,22 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<StartupAuthProvider>(
       builder: (context, authProvider, child) {
-        // Show loading screen while checking auth state
+        // Show loading while checking authentication
         if (authProvider.isLoading) {
           return const Scaffold(
-            backgroundColor: Color(0xFF0a0a0a),
+            backgroundColor: Colors.black,
             body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: Color(0xFFffa500)),
-                  SizedBox(height: 20),
-                  Text(
-                    'Loading...',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                  ),
-                ],
-              ),
+              child: CircularProgressIndicator(color: Color(0xFFffa500)),
             ),
           );
         }
 
-        // If user is logged in, go to dashboard
+        // If user is logged in, show dashboard
         if (authProvider.isLoggedIn) {
           return const StartupDashboard();
         }
 
-        // If user is not logged in, show welcome page
+        // If not logged in, show homepage
         return const WelcomePage();
       },
     );

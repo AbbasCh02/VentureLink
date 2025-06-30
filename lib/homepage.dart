@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'startup_page.dart';
-import 'investor_page.dart';
+import 'Startup/startup_page.dart';
+import 'Investor/investor_page.dart';
 import 'package:provider/provider.dart';
-import 'Providers/user_type_provider.dart';
+import 'Startup/Providers/user_type_provider.dart';
 
 class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});

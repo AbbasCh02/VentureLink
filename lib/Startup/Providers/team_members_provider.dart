@@ -1,8 +1,9 @@
-// lib/Providers/team_members_provider.dart
+// lib/Startup/Providers/team_members_provider.dart
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
 
+// Team Member model
 class TeamMember {
   final String id;
   final String name;
@@ -15,25 +16,11 @@ class TeamMember {
     required this.id,
     required this.name,
     required this.role,
-    required this.linkedin,
-    required this.avatar,
+    this.linkedin = '',
+    this.avatar = '',
     required this.dateAdded,
   });
 
-  // Convert to Map for Supabase storage
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'role': role,
-      'linkedin_url': linkedin,
-      'avatar_url': avatar,
-      'created_at': dateAdded.toIso8601String(),
-      'updated_at': dateAdded.toIso8601String(),
-    };
-  }
-
-  // Create from Supabase Map
   factory TeamMember.fromSupabaseMap(Map<String, dynamic> map) {
     return TeamMember(
       id: map['id'] ?? '',
@@ -47,21 +34,17 @@ class TeamMember {
     );
   }
 
-  // Create from Map for backward compatibility
-  factory TeamMember.fromMap(Map<String, dynamic> map) {
-    return TeamMember(
-      id: map['id'] ?? '',
-      name: map['name'] ?? '',
-      role: map['role'] ?? '',
-      linkedin: map['linkedin'] ?? '',
-      avatar: map['avatar'] ?? 'https://via.placeholder.com/150',
-      dateAdded: DateTime.parse(
-        map['dateAdded'] ?? DateTime.now().toIso8601String(),
-      ),
-    );
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'role': role,
+      'linkedin_url': linkedin,
+      'avatar_url': avatar,
+      'created_at': dateAdded.toIso8601String(),
+    };
   }
 
-  // Create a copy with modified fields
   TeamMember copyWith({
     String? id,
     String? name,
@@ -82,7 +65,7 @@ class TeamMember {
 }
 
 class TeamMembersProvider with ChangeNotifier {
-  // Controllers for the form
+  // Form controllers
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _roleController = TextEditingController();
   final TextEditingController _linkedinController = TextEditingController();
@@ -103,16 +86,14 @@ class TeamMembersProvider with ChangeNotifier {
 
   // Flag to prevent infinite loops during initialization
   bool _isInitializing = false;
+  bool _isInitialized = false;
 
   // Supabase client
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  // Track if provider is initialized
-  bool _isInitialized = false;
-
   TeamMembersProvider() {
     // Initialize automatically when provider is created
-    initialize();
+    _addListeners();
   }
 
   void _addListeners() {
@@ -133,14 +114,6 @@ class TeamMembersProvider with ChangeNotifier {
 
     _dirtyFields.add(fieldName);
     notifyListeners();
-
-    // For form fields, we use debounced auto-save but don't actually save
-    // since form fields get cleared after adding a team member
-    _saveTimer?.cancel();
-    _saveTimer = Timer(Duration(seconds: 1), () {
-      // Form fields don't auto-save - they're just for UI state consistency
-      // The actual saving happens when team members are added/updated/removed
-    });
   }
 
   // Getters for states
@@ -160,7 +133,11 @@ class TeamMembersProvider with ChangeNotifier {
 
   // Initialize and load team members from Supabase
   Future<void> initialize() async {
-    if (_isInitialized) return; // Prevent multiple initializations
+    if (_isInitialized) {
+      // If already initialized, just refresh data
+      await _loadTeamMembers();
+      return;
+    }
 
     _isLoading = true;
     _isInitializing = true;
@@ -168,14 +145,30 @@ class TeamMembersProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      await _loadTeamMembers();
+      _isInitialized = true;
+      debugPrint('Team members initialized successfully');
+    } catch (e) {
+      _error = 'Failed to initialize team members: $e';
+      debugPrint('Error initializing team members: $e');
+    } finally {
+      _isInitializing = false;
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _loadTeamMembers() async {
+    try {
       // Get current user
       final User? currentUser = _supabase.auth.currentUser;
       if (currentUser == null) {
-        throw Exception('User not authenticated');
+        debugPrint('No authenticated user found');
+        _teamMembers = [];
+        return;
       }
 
       // Load all team members from the database
-      // In a production app, you might want to filter by user or organization
       final teamMembersResponse = await _supabase
           .from('team_members')
           .select('*')
@@ -190,53 +183,16 @@ class TeamMembersProvider with ChangeNotifier {
         debugPrint('Loaded ${_teamMembers.length} team members');
       } else {
         _teamMembers = [];
+        debugPrint('No team members found');
       }
 
-      // Add listeners after initialization
-      _addListeners();
-
       _dirtyFields.clear(); // Clear dirty state after loading
-      _isInitialized = true;
-      debugPrint('Team members data loaded successfully');
     } catch (e) {
-      _error = 'Failed to load team members data: $e';
-      debugPrint('Error loading team members data: $e');
-      _teamMembers = []; // Set empty list on error
-    } finally {
-      _isInitializing = false;
-      _isLoading = false;
-      notifyListeners();
+      _error = 'Failed to load team members: $e';
+      debugPrint('Error loading team members: $e');
+      _teamMembers = [];
+      rethrow;
     }
-  }
-
-  // Save team members to Supabase (bulk operation)
-  Future<bool> saveTeamMembers() async {
-    _isSaving = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      // Note: Individual team members are saved when added/updated/removed
-      // This method is for consistency with the existing API
-      _dirtyFields.remove('teamMembers');
-      debugPrint('Team members sync completed');
-      return true;
-    } catch (e) {
-      _error = 'Failed to save team members: $e';
-      debugPrint('Error saving team members: $e');
-      return false;
-    } finally {
-      _isSaving = false;
-      notifyListeners();
-    }
-  }
-
-  // Mark team members as dirty and auto-save
-  void _markTeamMembersDirtyAndSave() {
-    _dirtyFields.add('teamMembers');
-    notifyListeners();
-    // Auto-save team members immediately when they change
-    saveTeamMembers();
   }
 
   // Getters for controllers
@@ -268,7 +224,14 @@ class TeamMembersProvider with ChangeNotifier {
 
   // Get leadership team (CEO, CTO, etc.)
   List<TeamMember> get leadershipTeam {
-    final leadershipRoles = ['ceo', 'cto', 'cfo', 'co-founder', 'founder'];
+    final leadershipRoles = [
+      'ceo',
+      'cto',
+      'cfo',
+      'co-founder',
+      'founder',
+      'president',
+    ];
     return _teamMembers
         .where(
           (member) => leadershipRoles.any(
@@ -276,6 +239,15 @@ class TeamMembersProvider with ChangeNotifier {
           ),
         )
         .toList();
+  }
+
+  // Check if team member exists
+  bool isTeamMemberExists(String name, String role) {
+    return _teamMembers.any(
+      (member) =>
+          member.name.toLowerCase() == name.toLowerCase() &&
+          member.role.toLowerCase() == role.toLowerCase(),
+    );
   }
 
   // Add a new team member with Supabase save
@@ -289,79 +261,80 @@ class TeamMembersProvider with ChangeNotifier {
     final role = customRole ?? _roleController.text.trim();
     final linkedin = customLinkedin ?? _linkedinController.text.trim();
 
-    if (name.isNotEmpty && role.isNotEmpty) {
-      _isSaving = true;
+    if (name.isEmpty || role.isEmpty) {
+      _error = 'Name and role are required';
       notifyListeners();
-
-      try {
-        // Create team member in Supabase
-        final memberData = {
-          'name': name,
-          'role': role,
-          'linkedin_url': linkedin.isEmpty ? null : linkedin,
-          'avatar_url': customAvatar ?? 'https://via.placeholder.com/150',
-          'created_at': DateTime.now().toIso8601String(),
-          'updated_at': DateTime.now().toIso8601String(),
-        };
-
-        final response =
-            await _supabase
-                .from('team_members')
-                .insert(memberData)
-                .select('*')
-                .single();
-
-        // Create TeamMember object and add to local list
-        final newMember = TeamMember.fromSupabaseMap(response);
-        _teamMembers.add(newMember);
-
-        // Get current user and potentially link this team member
-        final User? currentUser = _supabase.auth.currentUser;
-        if (currentUser != null && _teamMembers.length == 1) {
-          // If this is the first team member, we might want to link it to the user
-          // For now, we'll skip this and manage team members separately
-          debugPrint('First team member added, could link to user profile');
-        }
-
-        // Clear form controllers
-        clearForm();
-
-        // Mark as dirty for any additional processing
-        _markTeamMembersDirtyAndSave();
-
-        debugPrint('Team member added successfully: ${newMember.name}');
-        return true;
-      } catch (e) {
-        _error = 'Failed to add team member: $e';
-        debugPrint('Error adding team member: $e');
-        return false;
-      } finally {
-        _isSaving = false;
-        notifyListeners();
-      }
+      return false;
     }
-    return false;
-  }
 
-  // Remove a team member with Supabase delete
-  Future<bool> removeTeamMember(String id) async {
-    final memberIndex = _teamMembers.indexWhere((member) => member.id == id);
-    if (memberIndex == -1) return false;
+    // Check if team member already exists
+    if (isTeamMemberExists(name, role)) {
+      _error = 'A team member with this name and role already exists';
+      notifyListeners();
+      return false;
+    }
 
     _isSaving = true;
+    _error = null;
     notifyListeners();
 
     try {
-      // Delete from Supabase
+      // Create team member in Supabase
+      final memberData = {
+        'name': name,
+        'role': role,
+        'linkedin_url': linkedin.isEmpty ? null : linkedin,
+        'avatar_url': customAvatar ?? 'https://via.placeholder.com/150',
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      final response =
+          await _supabase
+              .from('team_members')
+              .insert(memberData)
+              .select('*')
+              .single();
+
+      // Create TeamMember object and add to local list
+      final newMember = TeamMember.fromSupabaseMap(response);
+      _teamMembers.insert(0, newMember); // Add at beginning for newest first
+
+      _markTeamMembersDirtyAndSave();
+      debugPrint('Team member added successfully: ${newMember.name}');
+      return true;
+    } catch (e) {
+      _error = 'Failed to add team member: $e';
+      debugPrint('Error adding team member: $e');
+      return false;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
+  }
+
+  // Remove a team member
+  Future<bool> removeTeamMember(String id) async {
+    final memberIndex = _teamMembers.indexWhere((member) => member.id == id);
+    if (memberIndex == -1) {
+      _error = 'Team member not found';
+      notifyListeners();
+      return false;
+    }
+
+    _isSaving = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // Remove from Supabase
       await _supabase.from('team_members').delete().eq('id', id);
 
       // Remove from local list
-      _teamMembers.removeAt(memberIndex);
+      final removedMember = _teamMembers.removeAt(memberIndex);
 
-      // Mark as dirty for additional processing
       _markTeamMembersDirtyAndSave();
-
-      debugPrint('Team member removed successfully');
+      debugPrint('Team member removed successfully: ${removedMember.name}');
       return true;
     } catch (e) {
       _error = 'Failed to remove team member: $e';
@@ -373,16 +346,7 @@ class TeamMembersProvider with ChangeNotifier {
     }
   }
 
-  // Remove team member by index with Supabase delete
-  Future<bool> removeTeamMemberAt(int index) async {
-    if (index >= 0 && index < _teamMembers.length) {
-      final memberId = _teamMembers[index].id;
-      return await removeTeamMember(memberId);
-    }
-    return false;
-  }
-
-  // Update a team member with Supabase save
+  // Update a team member
   Future<bool> updateTeamMember(
     String id, {
     String? name,
@@ -391,9 +355,14 @@ class TeamMembersProvider with ChangeNotifier {
     String? avatar,
   }) async {
     final memberIndex = _teamMembers.indexWhere((member) => member.id == id);
-    if (memberIndex == -1) return false;
+    if (memberIndex == -1) {
+      _error = 'Team member not found';
+      notifyListeners();
+      return false;
+    }
 
     _isSaving = true;
+    _error = null;
     notifyListeners();
 
     try {
@@ -419,9 +388,7 @@ class TeamMembersProvider with ChangeNotifier {
       // Update local member
       _teamMembers[memberIndex] = TeamMember.fromSupabaseMap(response);
 
-      // Mark as dirty for additional processing
       _markTeamMembersDirtyAndSave();
-
       debugPrint('Team member updated successfully');
       return true;
     } catch (e) {
@@ -434,19 +401,74 @@ class TeamMembersProvider with ChangeNotifier {
     }
   }
 
+  // Add multiple team members (bulk operation)
+  Future<bool> addMultipleTeamMembers(List<Map<String, String>> members) async {
+    if (members.isEmpty) return true;
+
+    _isSaving = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // Prepare data for bulk insert
+      final insertData =
+          members
+              .map(
+                (member) => {
+                  'name': member['name'] ?? '',
+                  'role': member['role'] ?? '',
+                  'linkedin_url':
+                      member['linkedin']?.isEmpty == false
+                          ? member['linkedin']
+                          : null,
+                  'avatar_url':
+                      member['avatar'] ?? 'https://via.placeholder.com/150',
+                  'created_at': DateTime.now().toIso8601String(),
+                  'updated_at': DateTime.now().toIso8601String(),
+                },
+              )
+              .toList();
+
+      // Bulk insert to Supabase
+      final response = await _supabase
+          .from('team_members')
+          .insert(insertData)
+          .select('*');
+
+      // Add to local list
+      final newMembers =
+          (response as List)
+              .map((memberData) => TeamMember.fromSupabaseMap(memberData))
+              .toList();
+
+      _teamMembers.insertAll(0, newMembers); // Add at beginning
+
+      _markTeamMembersDirtyAndSave();
+      debugPrint('Added ${newMembers.length} team members successfully');
+      return true;
+    } catch (e) {
+      _error = 'Failed to add multiple team members: $e';
+      debugPrint('Error adding multiple team members: $e');
+      return false;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
+  }
+
   // Clear all team members with Supabase delete
   Future<void> clearAllTeamMembers() async {
     if (_teamMembers.isEmpty) return;
 
     _isSaving = true;
+    _error = null;
     notifyListeners();
 
     try {
       // Get all team member IDs
       final memberIds = _teamMembers.map((member) => member.id).toList();
 
-      // Delete all from Supabase using individual deletes
-      // Note: Supabase doesn't support bulk delete with `in` operator directly
+      // Delete all from Supabase
       for (final memberId in memberIds) {
         await _supabase.from('team_members').delete().eq('id', memberId);
       }
@@ -455,15 +477,42 @@ class TeamMembersProvider with ChangeNotifier {
       _teamMembers.clear();
       _dirtyFields.clear();
 
-      notifyListeners();
       debugPrint('All team members cleared successfully');
     } catch (e) {
-      _error = 'Failed to clear team members data: $e';
-      debugPrint('Error clearing team members data: $e');
+      _error = 'Failed to clear team members: $e';
+      debugPrint('Error clearing team members: $e');
     } finally {
       _isSaving = false;
       notifyListeners();
     }
+  }
+
+  // Save team members to Supabase (for consistency with UI)
+  Future<bool> saveTeamMembers() async {
+    _isSaving = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // In this implementation, team members are saved individually
+      // This method is mainly for UI consistency and clearing dirty flags
+      _dirtyFields.clear();
+      debugPrint('Team members sync completed');
+      return true;
+    } catch (e) {
+      _error = 'Failed to save team members: $e';
+      debugPrint('Error saving team members: $e');
+      return false;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
+  }
+
+  // Mark team members as dirty
+  void _markTeamMembersDirtyAndSave() {
+    _dirtyFields.add('teamMembers');
+    notifyListeners();
   }
 
   // Clear form controllers
@@ -489,7 +538,7 @@ class TeamMembersProvider with ChangeNotifier {
   // Validation methods
   String? validateName(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Please enter team member\'s name';
+      return 'Name is required';
     }
     if (value.trim().length < 2) {
       return 'Name must be at least 2 characters';
@@ -499,7 +548,7 @@ class TeamMembersProvider with ChangeNotifier {
 
   String? validateRole(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Please enter team member\'s role';
+      return 'Role is required';
     }
     if (value.trim().length < 2) {
       return 'Role must be at least 2 characters';
@@ -513,172 +562,72 @@ class TeamMembersProvider with ChangeNotifier {
     }
 
     final linkedinPattern = RegExp(
-      r'^https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9\-]+\/?$',
+      r'^https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9-]+\/?$',
       caseSensitive: false,
     );
 
     if (!linkedinPattern.hasMatch(value.trim())) {
-      return 'Please enter a valid LinkedIn URL';
+      return 'Please enter a valid LinkedIn profile URL';
     }
+
     return null;
   }
 
-  // Check if team member already exists
-  bool isTeamMemberExists(String name, String role) {
-    return _teamMembers.any(
-      (member) =>
-          member.name.toLowerCase() == name.toLowerCase() &&
-          member.role.toLowerCase() == role.toLowerCase(),
-    );
-  }
-
-  // Get team summary for dashboard
+  // Get team summary for display
   Map<String, dynamic> getTeamSummary() {
+    final roles = <String, int>{};
+    for (final member in _teamMembers) {
+      final role = member.role.toLowerCase();
+      roles[role] = (roles[role] ?? 0) + 1;
+    }
+
     return {
       'totalMembers': _teamMembers.length,
       'leadershipCount': leadershipTeam.length,
-      'recentlyAdded':
-          _teamMembers
-              .where(
-                (member) =>
-                    DateTime.now().difference(member.dateAdded).inDays <= 7,
-              )
-              .length,
-      'roles': _teamMembers.map((member) => member.role).toSet().toList(),
+      'roleDistribution': roles,
+      'hasFounder': _teamMembers.any(
+        (m) =>
+            m.role.toLowerCase().contains('founder') ||
+            m.role.toLowerCase().contains('ceo'),
+      ),
+      'averageTeamSize': _teamMembers.length,
+      'newestMember': _teamMembers.isNotEmpty ? _teamMembers.first : null,
+      'oldestMember': _teamMembers.isNotEmpty ? _teamMembers.last : null,
     };
   }
 
-  // Export team data
-  List<Map<String, dynamic>> exportTeamData() {
-    return _teamMembers.map((member) => member.toMap()).toList();
+  // Export team data for backup/sharing
+  Map<String, dynamic> exportTeamData() {
+    return {
+      'teamMembers': _teamMembers.map((member) => member.toMap()).toList(),
+      'teamCount': _teamMembers.length,
+      'leadershipCount': leadershipTeam.length,
+      'exportedAt': DateTime.now().toIso8601String(),
+    };
   }
 
-  // Import team data with Supabase save
-  Future<bool> importTeamData(List<Map<String, dynamic>> data) async {
-    _isSaving = true;
-    notifyListeners();
-
+  // Import team data
+  Future<bool> importTeamData(List<Map<String, String>> membersData) async {
     try {
-      // Clear existing team members first
-      await clearAllTeamMembers();
-
-      // Import each team member
-      for (final memberData in data) {
-        await addTeamMember(
-          customName: memberData['name'],
-          customRole: memberData['role'],
-          customLinkedin: memberData['linkedin'] ?? memberData['linkedin_url'],
-          customAvatar: memberData['avatar'] ?? memberData['avatar_url'],
-        );
-      }
-
+      await addMultipleTeamMembers(membersData);
       debugPrint('Team data imported successfully');
       return true;
     } catch (e) {
-      _error = 'Error importing team data: $e';
+      _error = 'Failed to import team data: $e';
       debugPrint('Error importing team data: $e');
       return false;
-    } finally {
-      _isSaving = false;
-      notifyListeners();
     }
   }
 
-  // Search team members
-  List<TeamMember> searchTeamMembers(String query) {
-    if (query.trim().isEmpty) return _teamMembers;
-
-    final searchQuery = query.toLowerCase().trim();
-    return _teamMembers
-        .where(
-          (member) =>
-              member.name.toLowerCase().contains(searchQuery) ||
-              member.role.toLowerCase().contains(searchQuery),
-        )
-        .toList();
-  }
-
-  // Sort team members with automatic save
-  void sortTeamMembers(String sortBy) {
-    switch (sortBy.toLowerCase()) {
-      case 'name':
-        _teamMembers.sort((a, b) => a.name.compareTo(b.name));
-        break;
-      case 'role':
-        _teamMembers.sort((a, b) => a.role.compareTo(b.role));
-        break;
-      case 'date_added':
-        _teamMembers.sort((a, b) => b.dateAdded.compareTo(a.dateAdded));
-        break;
-      default:
-        // Default to name sorting
-        _teamMembers.sort((a, b) => a.name.compareTo(b.name));
-    }
-
-    // Mark as dirty for any additional processing
-    _markTeamMembersDirtyAndSave();
-    notifyListeners();
-  }
-
-  // Refresh data from Supabase
+  // Refresh data from database
   Future<void> refreshFromDatabase() async {
+    _isInitialized = false;
     await initialize();
-  }
-
-  // Bulk operations for efficiency
-  Future<bool> addMultipleTeamMembers(
-    List<Map<String, dynamic>> membersData,
-  ) async {
-    _isSaving = true;
-    notifyListeners();
-
-    try {
-      // Prepare data for bulk insert
-      final insertData =
-          membersData
-              .map(
-                (data) => {
-                  'name': data['name'],
-                  'role': data['role'],
-                  'linkedin_url': data['linkedin'],
-                  'avatar_url':
-                      data['avatar'] ?? 'https://via.placeholder.com/150',
-                  'created_at': DateTime.now().toIso8601String(),
-                  'updated_at': DateTime.now().toIso8601String(),
-                },
-              )
-              .toList();
-
-      // Bulk insert to Supabase
-      final response = await _supabase
-          .from('team_members')
-          .insert(insertData)
-          .select('*');
-
-      // Add to local list
-      final newMembers =
-          (response as List)
-              .map((memberData) => TeamMember.fromSupabaseMap(memberData))
-              .toList();
-
-      _teamMembers.addAll(newMembers);
-
-      _markTeamMembersDirtyAndSave();
-      debugPrint('Added ${newMembers.length} team members successfully');
-      return true;
-    } catch (e) {
-      _error = 'Failed to add multiple team members: $e';
-      debugPrint('Error adding multiple team members: $e');
-      return false;
-    } finally {
-      _isSaving = false;
-      notifyListeners();
-    }
   }
 
   @override
   void dispose() {
-    _saveTimer?.cancel(); // Clean up auto-save timer
+    _saveTimer?.cancel();
     _removeListeners();
     _nameController.dispose();
     _roleController.dispose();

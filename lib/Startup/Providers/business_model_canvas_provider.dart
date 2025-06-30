@@ -1,4 +1,4 @@
-// lib/Providers/business_model_canvas_provider.dart
+// lib/Startup/Providers/business_model_canvas_provider.dart
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
@@ -31,6 +31,7 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
 
   // Flag to prevent infinite loops during initialization
   bool _isInitializing = false;
+  bool _isInitialized = false;
 
   // Supabase client
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -66,6 +67,8 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
 
   // Initialize and load data from Supabase
   Future<void> initialize() async {
+    if (_isInitialized) return; // Prevent multiple initializations
+
     _isLoading = true;
     _isInitializing = true;
     _error = null;
@@ -75,7 +78,8 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
       // Get current user
       final User? currentUser = _supabase.auth.currentUser;
       if (currentUser == null) {
-        throw Exception('User not authenticated');
+        debugPrint('No authenticated user found');
+        return;
       }
 
       // First, get user's BMC ID from the users table
@@ -87,6 +91,7 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
               .maybeSingle();
 
       _bmcId = userResponse?['bmc_id'];
+      debugPrint('User BMC ID: $_bmcId');
 
       // If user has a BMC ID, load the BMC data
       if (_bmcId != null) {
@@ -117,6 +122,7 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
       }
 
       _dirtyFields.clear(); // Clear dirty state after loading
+      _isInitialized = true;
     } catch (e) {
       _error = 'Failed to load BMC data: $e';
       debugPrint('Error loading BMC data: $e');
@@ -167,9 +173,9 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
     _dirtyFields.add(fieldName);
     notifyListeners();
 
-    // Auto-save with debouncing (1 second after user stops typing)
+    // Auto-save with debouncing (2 seconds after user stops typing)
     _saveTimer?.cancel();
-    _saveTimer = Timer(Duration(seconds: 1), () {
+    _saveTimer = Timer(const Duration(seconds: 2), () {
       if (_dirtyFields.contains(fieldName)) {
         saveField(fieldName);
       }
@@ -258,12 +264,23 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
   // Create new BMC record and link to user
   Future<void> _createBMCRecord(String userId) async {
     try {
-      // Create new BMC record
+      debugPrint('Creating new BMC record for user: $userId');
+
+      // Create new BMC record with all fields initialized
       final bmcResponse =
           await _supabase
               .from('business_model_canvas')
               .insert({
-                'completion_percentage': 0.0,
+                'key_partners': _keyPartners,
+                'key_activities': _keyActivities,
+                'key_resources': _keyResources,
+                'value_propositions': _valuePropositions,
+                'customer_relationships': _customerRelationships,
+                'customer_segments': _customerSegments,
+                'channels': _channels,
+                'cost_structure': _costStructure,
+                'revenue_streams': _revenueStreams,
+                'completion_percentage': _calculateCompletionPercentage(),
                 'created_at': DateTime.now().toIso8601String(),
                 'updated_at': DateTime.now().toIso8601String(),
               })
@@ -271,6 +288,7 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
               .single();
 
       _bmcId = bmcResponse['id'];
+      debugPrint('Created BMC record with ID: $_bmcId');
 
       // Update user record to link the BMC
       await _supabase
@@ -281,8 +299,9 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
           })
           .eq('id', userId);
 
-      debugPrint('Created new BMC record: $_bmcId');
+      debugPrint('Linked BMC $_bmcId to user $userId');
     } catch (e) {
+      debugPrint('Error creating BMC record: $e');
       throw Exception('Failed to create BMC record: $e');
     }
   }
@@ -552,6 +571,7 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
 
   // Refresh data from database
   Future<void> refreshFromDatabase() async {
+    _isInitialized = false;
     await initialize();
   }
 

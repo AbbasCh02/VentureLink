@@ -950,82 +950,6 @@ class _StartupDashboardState extends State<StartupDashboard>
     );
   }
 
-  Widget _buildQuickActionCard({
-    required String title,
-    required String description,
-    required IconData icon,
-    required VoidCallback onTap,
-    required Color accentColor,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.grey[900]!, Colors.grey[850]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: accentColor.withValues(alpha: 0.3), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: accentColor.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, color: accentColor, size: 24),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: accentColor,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        description,
-                        style: TextStyle(fontSize: 14, color: Colors.grey[300]),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: Colors.grey[600],
-                  size: 16,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildWelcomeSection() {
     return Container(
       margin: const EdgeInsets.only(bottom: 32),
@@ -1499,53 +1423,6 @@ class _StartupDashboardState extends State<StartupDashboard>
                 ),
 
                 const SizedBox(height: 16),
-
-                // Second row of metrics
-                Row(
-                  children: [
-                    _buildMetricCard(
-                      title: 'Investors',
-                      value: '0',
-                      icon: Icons.group_outlined,
-                      color: const Color(0xFF2196F3),
-                      subtitle: 'Connected',
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 40),
-
-                // Quick Actions Section
-                const Text(
-                  'Quick Actions',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                _buildQuickActionCard(
-                  title: 'Find Investors',
-                  description: 'Browse and connect with potential investors',
-                  icon: Icons.search,
-                  accentColor: const Color(0xFF2196F3),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Investor search coming soon!'),
-                        backgroundColor: const Color(0xFF2196F3),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 32),
               ],
             ),
           ),

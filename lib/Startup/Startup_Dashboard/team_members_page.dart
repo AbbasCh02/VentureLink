@@ -1,6 +1,7 @@
+// lib/Startup/Startup_Dashboard/team_members_page.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../Providers/team_members_provider.dart'; // Add this import
+import '../Providers/team_members_provider.dart';
 
 class TeamMembersPage extends StatefulWidget {
   const TeamMembersPage({super.key});
@@ -12,7 +13,6 @@ class TeamMembersPage extends StatefulWidget {
 class _TeamMembersPageState extends State<TeamMembersPage>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
@@ -43,6 +43,12 @@ class _TeamMembersPageState extends State<TeamMembersPage>
 
     _fadeController.forward();
     _slideController.forward();
+
+    // Initialize the team members provider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final teamProvider = context.read<TeamMembersProvider>();
+      teamProvider.initialize();
+    });
   }
 
   @override
@@ -52,224 +58,165 @@ class _TeamMembersPageState extends State<TeamMembersPage>
     super.dispose();
   }
 
-  void _addTeamMember() {
-    final provider = Provider.of<TeamMembersProvider>(context, listen: false);
-
-    if (_formKey.currentState!.validate() && provider.isFormValid) {
-      // Check if team member already exists
-      if (provider.isTeamMemberExists(
-        provider.nameController.text.trim(),
-        provider.roleController.text.trim(),
-      )) {
-        _showMessage(
-          'A team member with this name and role already exists!',
-          isError: true,
-        );
-        return;
-      }
-
-      provider.addTeamMember();
-      _showMessage('Team member added successfully!');
-
-      // Clear focus from form fields
-      FocusScope.of(context).unfocus();
-    } else {
-      _showMessage(
-        'Please fill in all required fields correctly!',
-        isError: true,
-      );
-    }
-  }
-
-  void _showMessage(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red[600] : const Color(0xFFffa500),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Consumer<TeamMembersProvider>(
-      builder: (context, provider, child) {
-        return Scaffold(
-          backgroundColor: const Color(0xFF0a0a0a),
-          appBar: _buildElegantAppBar(provider),
-          resizeToAvoidBottomInset: true,
-          body: FadeTransition(
+    return Scaffold(
+      backgroundColor: const Color(0xFF0a0a0a),
+      appBar: _buildAppBar(),
+      body: Consumer<TeamMembersProvider>(
+        builder: (context, provider, child) {
+          if (provider.isLoading) {
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: Color(0xFFffa500)),
+                  SizedBox(height: 16),
+                  Text(
+                    'Loading team members...',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          if (provider.error != null) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading team members',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red[400],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Text(
+                      provider.error!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () {
+                          provider.clearError();
+                          provider.initialize();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFffa500),
+                          foregroundColor: Colors.black,
+                        ),
+                        child: const Text('Retry'),
+                      ),
+                      const SizedBox(width: 16),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text(
+                          'Go Back',
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return FadeTransition(
             opacity: _fadeAnimation,
             child: SlideTransition(
               position: _slideAnimation,
               child: SingleChildScrollView(
-                padding: EdgeInsets.only(
-                  left: 24.0,
-                  right: 24.0,
-                  top: 24.0,
-                  bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
-                ),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Hero Section
-                      _buildHeroSection(provider),
-
-                      const SizedBox(height: 32),
-
-                      // Add Team Member Form
-                      _buildAddMemberForm(provider),
-
-                      const SizedBox(height: 32),
-
-                      // Team Members Grid
-                      _buildTeamMembersGrid(provider),
-
-                      const SizedBox(height: 32),
-
-                      // Team Summary (if members exist)
-                      if (provider.hasTeamMembers) ...[
-                        _buildTeamSummary(provider),
-                        const SizedBox(height: 32),
-                      ],
-
-                      // Save Button
-                      _buildSaveButton(provider),
-
-                      const SizedBox(height: 24),
-                    ],
-                  ),
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(provider),
+                    const SizedBox(height: 32),
+                    _buildProgressSection(provider),
+                    const SizedBox(height: 32),
+                    _buildAddMemberSection(provider),
+                    const SizedBox(height: 32),
+                    _buildTeamMembersSection(provider),
+                    const SizedBox(height: 32),
+                    _buildActionButtons(provider),
+                  ],
                 ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
-  PreferredSizeWidget _buildElegantAppBar(TeamMembersProvider provider) {
+  PreferredSizeWidget _buildAppBar() {
     return AppBar(
       backgroundColor: Colors.grey[900],
       elevation: 0,
-      toolbarHeight: 80,
-      leading: Container(
-        margin: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFFffa500),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.black, width: 1),
-        ),
-        child: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: Colors.black,
-            size: 20,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Color(0xFFffa500)),
+        onPressed: () => Navigator.of(context).pop(),
       ),
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFffa500), Color(0xFFffa500)],
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.group, color: Colors.black, size: 20),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Team Members',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFFffa500),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            provider.hasTeamMembers
-                ? 'Build your dream team (${provider.teamMemberCount} members)'
-                : 'Build your dream team',
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.white,
-              fontWeight: FontWeight.normal,
-            ),
-          ),
-        ],
+      title: const Text(
+        'Team Members',
+        style: TextStyle(
+          color: Color(0xFFffa500),
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+        ),
       ),
       actions: [
-        if (provider.hasTeamMembers)
-          Container(
-            margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
-            decoration: BoxDecoration(
-              color: Colors.red[600],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.black, width: 1),
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.clear_all, color: Colors.white, size: 20),
-              onPressed: () {
-                _showClearAllDialog(provider);
-              },
-              tooltip: 'Clear all members',
-            ),
-          ),
-      ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
-        child: Container(
-          height: 1,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Colors.transparent,
-                Colors.black.withValues(alpha: 0.3),
-                Colors.transparent,
-              ],
-            ),
-          ),
+        Consumer<TeamMembersProvider>(
+          builder: (context, provider, child) {
+            if (provider.isSaving) {
+              return const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFFffa500),
+                    ),
+                  ),
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          },
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildHeroSection(TeamMembersProvider provider) {
+  Widget _buildHeader(TeamMembersProvider provider) {
     return Container(
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.grey[900]!.withValues(alpha: 0.8),
-            Colors.grey[850]!.withValues(alpha: 0.9),
-          ],
+        gradient: const LinearGradient(
+          colors: [Color(0xFFffa500), Color(0xFFff8c00)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFffa500).withValues(alpha: 0.3),
-          width: 1,
-        ),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFffa500).withValues(alpha: 0.1),
+            color: const Color(0xFFffa500).withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -280,79 +227,154 @@ class _TeamMembersPageState extends State<TeamMembersPage>
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFFffa500).withValues(alpha: 0.2),
-                      const Color(0xFFff8c00).withValues(alpha: 0.1),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(
-                  Icons.people_outline,
-                  color: Color(0xFFffa500),
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 16),
+              const Icon(Icons.groups, color: Colors.black, size: 28),
+              const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Assemble Your Team',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      provider.hasTeamMembers
-                          ? '${provider.teamMemberCount} members • ${provider.leadershipTeam.length} leadership'
-                          : 'No members added yet',
-                      style: const TextStyle(fontSize: 14, color: Colors.grey),
-                    ),
-                  ],
+                child: Text(
+                  'Team Members',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          const Text(
-            'Great teams are built on trust, diversity, and shared vision. Add your team members to showcase the talent behind your venture.',
-            style: TextStyle(fontSize: 16, color: Colors.grey, height: 1.6),
+          const SizedBox(height: 12),
+          Text(
+            provider.hasTeamMembers
+                ? 'Manage your ${provider.teamMemberCount} team members and build your dream team.'
+                : 'Build your dream team by adding talented individuals who share your vision.',
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.black87,
+              height: 1.4,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAddMemberForm(TeamMembersProvider provider) {
+  Widget _buildProgressSection(TeamMembersProvider provider) {
+    final teamCount = provider.teamMemberCount;
+    final leadershipCount = provider.leadershipTeam.length;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[800]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Team Overview',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[200],
+                ),
+              ),
+              Text(
+                '$teamCount Members',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFFffa500),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTeamStatCard(
+                  'Total Members',
+                  teamCount.toString(),
+                  Icons.people_outline,
+                  Colors.blue,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildTeamStatCard(
+                  'Leadership',
+                  leadershipCount.toString(),
+                  Icons.star_outline,
+                  Colors.amber,
+                ),
+              ),
+            ],
+          ),
+          if (provider.hasAnyUnsavedChanges) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.edit, color: Colors.orange[400], size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  'You have unsaved changes',
+                  style: TextStyle(color: Colors.orange[400], fontSize: 14),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTeamStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[850],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[700]!),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddMemberSection(TeamMembersProvider provider) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.grey[900]!, Colors.grey[850]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFFffa500).withValues(alpha: 0.3),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFffa500).withValues(alpha: 0.1),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[800]!),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -360,98 +382,110 @@ class _TeamMembersPageState extends State<TeamMembersPage>
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: const Color(0xFFffa500).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
                   Icons.person_add,
                   color: Color(0xFFffa500),
-                  size: 24,
+                  size: 20,
                 ),
               ),
-              const SizedBox(width: 16),
-              const Text(
-                'Add New Team Member',
+              const SizedBox(width: 12),
+              Text(
+                'Add Team Member',
                 style: TextStyle(
                   fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFffa500),
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[200],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-
-          // Name Field
-          _buildInputField(
-            controller: provider.nameController,
-            label: 'Full Name *',
-            icon: Icons.person_outline,
-            hint: 'Enter team member\'s name',
-            validator: provider.validateName,
-          ),
-
-          const SizedBox(height: 16),
-
-          // Role Field
-          _buildInputField(
-            controller: provider.roleController,
-            label: 'Role/Position *',
-            icon: Icons.work_outline,
-            hint: 'e.g., CEO, CTO, Designer',
-            validator: provider.validateRole,
-          ),
-
-          const SizedBox(height: 16),
-
-          // LinkedIn Field
-          _buildInputField(
-            controller: provider.linkedinController,
-            label: 'LinkedIn Profile (Optional)',
-            icon: Icons.link,
-            hint: 'https://linkedin.com/in/username',
-            validator: provider.validateLinkedin,
-          ),
-
-          const SizedBox(height: 24),
-
-          // Add Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: provider.isFormValid ? _addTeamMember : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFffa500),
-                foregroundColor: Colors.black,
-                disabledBackgroundColor: Colors.grey[700],
-                disabledForegroundColor: Colors.grey[500],
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+          const SizedBox(height: 20),
+          Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildInputField(
+                        controller: provider.nameController,
+                        label: 'Full Name *',
+                        hint: 'Enter full name',
+                        icon: Icons.person_outline,
+                        validator: provider.validateName,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildInputField(
+                        controller: provider.roleController,
+                        label: 'Role/Position *',
+                        hint: 'e.g., CEO, CTO, Designer',
+                        icon: Icons.work_outline,
+                        validator: provider.validateRole,
+                      ),
+                    ),
+                  ],
                 ),
-                elevation: 0,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    provider.isFormValid ? Icons.add : Icons.add_outlined,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    provider.isFormValid
-                        ? 'Add Team Member'
-                        : 'Fill required fields',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                const SizedBox(height: 16),
+                _buildInputField(
+                  controller: provider.linkedinController,
+                  label: 'LinkedIn Profile (Optional)',
+                  hint: 'https://linkedin.com/in/username',
+                  icon: Icons.link,
+                  validator: provider.validateLinkedin,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed:
+                        provider.isFormValid
+                            ? () => _addTeamMember(provider)
+                            : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          provider.isFormValid
+                              ? const Color(0xFFffa500)
+                              : Colors.grey[700],
+                      foregroundColor:
+                          provider.isFormValid
+                              ? Colors.black
+                              : Colors.grey[500],
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          provider.isFormValid
+                              ? Icons.add
+                              : Icons.person_add_disabled,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          provider.isFormValid
+                              ? 'Add Team Member'
+                              : 'Fill Required Fields',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
@@ -462,8 +496,8 @@ class _TeamMembersPageState extends State<TeamMembersPage>
   Widget _buildInputField({
     required TextEditingController controller,
     required String label,
-    required IconData icon,
     required String hint,
+    required IconData icon,
     String? Function(String?)? validator,
   }) {
     return Column(
@@ -513,531 +547,443 @@ class _TeamMembersPageState extends State<TeamMembersPage>
             ),
           ),
           validator: validator,
-          onChanged: (_) {
-            // Trigger rebuild to update form validation state
-            setState(() {});
-          },
+          onChanged: (_) => setState(() {}),
         ),
       ],
+    );
+  }
+
+  Widget _buildTeamMembersSection(TeamMembersProvider provider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Team Members',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[200],
+          ),
+        ),
+        const SizedBox(height: 16),
+        if (!provider.hasTeamMembers)
+          _buildEmptyState()
+        else
+          _buildTeamMembersGrid(provider),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(40),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[800]!),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.group_outlined, size: 64, color: Colors.grey[600]),
+          const SizedBox(height: 16),
+          Text(
+            'No team members yet',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[400],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Add your first team member using the form above',
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildTeamMembersGrid(TeamMembersProvider provider) {
-    if (!provider.hasTeamMembers) {
-      return Container(
-        padding: const EdgeInsets.all(32),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.grey[900]!, Colors.grey[850]!],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Colors.grey[700]!.withValues(alpha: 0.5),
-            width: 1,
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(Icons.group_outlined, size: 64, color: Colors.grey[600]),
-            const SizedBox(height: 16),
-            Text(
-              'No team members yet',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey[400],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Add your first team member above',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFffa500).withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.groups,
-                color: Color(0xFFffa500),
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Text(
-              'Your Team (${provider.teamMemberCount})',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFFffa500),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-
-        // Team members grid
-        Wrap(
-          spacing: 16,
-          runSpacing: 16,
-          children:
-              provider.teamMembers.asMap().entries.map((entry) {
-                return SizedBox(
-                  width: (MediaQuery.of(context).size.width - 72) / 2,
-                  child: _buildTeamMemberCard(entry.value, entry.key, provider),
-                );
-              }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTeamMemberCard(
-    TeamMember member,
-    int index,
-    TeamMembersProvider provider,
-  ) {
-    return TweenAnimationBuilder<double>(
-      duration: Duration(milliseconds: 600 + (index * 100)),
-      tween: Tween(begin: 0.0, end: 1.0),
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(0, 20 * (1 - value)),
-          child: Opacity(
-            opacity: value,
-            child: Container(
-              height: 300,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.grey[900]!, Colors.grey[850]!],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: const Color(0xFFffa500).withValues(alpha: 0.3),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFffa500).withValues(alpha: 0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Avatar with remove button
-                  Stack(
-                    children: [
-                      Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [
-                              const Color(0xFFffa500).withValues(alpha: 0.3),
-                              const Color(0xFFff8c00).withValues(alpha: 0.2),
-                            ],
-                          ),
-                          border: Border.all(
-                            color: const Color(
-                              0xFFffa500,
-                            ).withValues(alpha: 0.5),
-                            width: 2,
-                          ),
-                        ),
-                        child: ClipOval(
-                          child: Image.network(
-                            member.avatar,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.person,
-                                color: Color(0xFFffa500),
-                                size: 50,
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        top: -2,
-                        right: -2,
-                        child: GestureDetector(
-                          onTap: () => _showRemoveDialog(member, provider),
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.close,
-                              color: Colors.white,
-                              size: 12,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 20),
-                  // Name
-                  Text(
-                    member.name,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                  const SizedBox(height: 8),
-                  // Role
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFffa500).withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      member.role,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFFffa500),
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-
-                  // LinkedIn button area (fixed height)
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 44,
-                    child:
-                        member.linkedin.isNotEmpty
-                            ? GestureDetector(
-                              onTap: () {
-                                _showMessage('Opening LinkedIn profile...');
-                                // TODO: Launch LinkedIn URL
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF0077B5),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  Icons.link,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              ),
-                            )
-                            : Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[700]!.withValues(alpha: 0.3),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: Colors.grey[600]!.withValues(
-                                    alpha: 0.5,
-                                  ),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Icon(
-                                Icons.link_off,
-                                color: Colors.grey[500],
-                                size: 20,
-                              ),
-                            ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.75,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+      ),
+      itemCount: provider.teamMembers.length,
+      itemBuilder: (context, index) {
+        final member = provider.teamMembers[index];
+        return _buildTeamMemberCard(member, provider);
       },
     );
   }
 
-  Widget _buildTeamSummary(TeamMembersProvider provider) {
-    final summary = provider.getTeamSummary();
+  Widget _buildTeamMemberCard(TeamMember member, TeamMembersProvider provider) {
+    final isLeadership = provider.leadershipTeam.any(
+      (leader) => leader.id == member.id,
+    );
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFFffa500).withValues(alpha: 0.1),
-            const Color(0xFFff8c00).withValues(alpha: 0.05),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0xFFffa500).withValues(alpha: 0.3),
-          width: 1,
+          color: isLeadership ? const Color(0xFFffa500) : Colors.grey[800]!,
+          width: isLeadership ? 2 : 1,
         ),
+        boxShadow:
+            isLeadership
+                ? [
+                  BoxShadow(
+                    color: const Color(0xFFffa500).withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+                : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFffa500).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.analytics_outlined,
-                  color: Color(0xFFffa500),
-                  size: 24,
-                ),
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: const Color(0xFFffa500).withValues(alpha: 0.2),
+                backgroundImage:
+                    member.avatar.isNotEmpty
+                        ? NetworkImage(member.avatar)
+                        : null,
+                child:
+                    member.avatar.isEmpty
+                        ? Text(
+                          member.name.substring(0, 1).toUpperCase(),
+                          style: const TextStyle(
+                            color: Color(0xFFffa500),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        )
+                        : null,
               ),
-              const SizedBox(width: 16),
-              const Text(
-                'Team Summary',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFffa500),
-                ),
+              Row(
+                children: [
+                  if (isLeadership)
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFffa500).withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Icon(
+                        Icons.star,
+                        color: Color(0xFFffa500),
+                        size: 12,
+                      ),
+                    ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => _showRemoveDialog(member, provider),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        color: Colors.red,
+                        size: 12,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 20),
-
-          // Summary stats
-          Row(
-            children: [
-              Expanded(
-                child: _buildSummaryItem(
-                  'Total Members',
-                  summary['totalMembers'].toString(),
-                  Icons.group,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildSummaryItem(
-                  'Leadership',
-                  summary['leadershipCount'].toString(),
-                  Icons.stars,
-                ),
-              ),
-            ],
-          ),
-
-          if ((summary['roles'] as List).isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Text(
-              'Roles: ${(summary['roles'] as List).join(', ')}',
-              style: TextStyle(fontSize: 14, color: Colors.grey[300]),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSummaryItem(String title, String value, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[800]!.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: const Color(0xFFffa500), size: 24),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
-            value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFFffa500),
+            member.name,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: isLeadership ? const Color(0xFFffa500) : Colors.grey[200],
             ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
           Text(
-            title,
-            style: TextStyle(fontSize: 12, color: Colors.grey[400]),
-            textAlign: TextAlign.center,
+            member.role,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[400],
+              fontWeight: FontWeight.w500,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
+          const Spacer(),
+          if (member.linkedin.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.link, color: Colors.blue, size: 12),
+                  const SizedBox(width: 4),
+                  Text(
+                    'LinkedIn',
+                    style: TextStyle(
+                      color: Colors.blue[300],
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildSaveButton(TeamMembersProvider provider) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed:
-            provider.canSave
-                ? () {
-                  // Save team data
-                  final teamData = provider.exportTeamData();
-                  _showMessage(
-                    '${provider.teamMemberCount} team members saved successfully!',
-                  );
-
-                  // TODO: Save to database or local storage
-                  debugPrint('Team data saved: $teamData');
-                }
-                : null,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFffa500),
-          foregroundColor: Colors.black,
-          disabledBackgroundColor: Colors.grey[700],
-          disabledForegroundColor: Colors.grey[500],
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+  Widget _buildActionButtons(TeamMembersProvider provider) {
+    return Column(
+      children: [
+        if (provider.hasTeamMembers)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed:
+                  provider.isSaving
+                      ? null
+                      : () async {
+                        final success = await provider.saveTeamMembers();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                success
+                                    ? 'Team data saved successfully!'
+                                    : 'Failed to save team: ${provider.error}',
+                              ),
+                              backgroundColor:
+                                  success
+                                      ? const Color(0xFFffa500)
+                                      : Colors.red,
+                            ),
+                          );
+                        }
+                      },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFffa500),
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child:
+                  provider.isSaving
+                      ? const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.black,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Text('Saving...'),
+                        ],
+                      )
+                      : Text(
+                        'Save Team (${provider.teamMemberCount} members)',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+            ),
           ),
-          elevation: 0,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        const SizedBox(height: 16),
+        Row(
           children: [
-            Icon(provider.canSave ? Icons.save : Icons.save_outlined, size: 24),
-            const SizedBox(width: 12),
-            Text(
-              provider.canSave
-                  ? 'Save Team (${provider.teamMemberCount} members)'
-                  : 'Add team members to save',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            if (provider.hasTeamMembers) ...[
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () async {
+                    final confirm = await _showClearAllDialog();
+                    if (confirm == true) {
+                      await provider.clearAllTeamMembers();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('All team members cleared'),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: Colors.grey[600]!),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Clear All',
+                    style: TextStyle(color: Colors.grey[300]),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+            ],
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () async {
+                  await provider.initialize();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Team data refreshed'),
+                        backgroundColor: Color(0xFFffa500),
+                      ),
+                    );
+                  }
+                },
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFFffa500)),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Refresh',
+                  style: TextStyle(color: Color(0xFFffa500)),
+                ),
+              ),
             ),
           ],
         ),
-      ),
+      ],
     );
+  }
+
+  void _addTeamMember(TeamMembersProvider provider) async {
+    if (_formKey.currentState!.validate() && provider.isFormValid) {
+      final success = await provider.addTeamMember();
+      if (mounted) {
+        if (success) {
+          provider.clearForm();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Team member added successfully!'),
+              backgroundColor: Color(0xFFffa500),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to add team member: ${provider.error}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   void _showRemoveDialog(TeamMember member, TeamMembersProvider provider) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange[400]),
-              const SizedBox(width: 12),
-              const Text(
-                'Remove Team Member',
-                style: TextStyle(color: Colors.white, fontSize: 18),
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: Colors.grey[900],
+            title: const Text(
+              'Remove Team Member',
+              style: TextStyle(color: Colors.white),
+            ),
+            content: Text(
+              'Are you sure you want to remove ${member.name} from the team?',
+              style: const TextStyle(color: Colors.white70),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  final success = await provider.removeTeamMember(member.id);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          success
+                              ? '${member.name} removed from team'
+                              : 'Failed to remove team member',
+                        ),
+                        backgroundColor: success ? Colors.orange : Colors.red,
+                      ),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text('Remove'),
               ),
             ],
           ),
-          content: Text(
-            'Are you sure you want to remove ${member.name} (${member.role}) from your team?',
-            style: TextStyle(color: Colors.grey[300]),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel', style: TextStyle(color: Colors.grey[400])),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                provider.removeTeamMember(member.id);
-                Navigator.of(context).pop();
-                _showMessage('${member.name} removed from team');
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[600],
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Remove'),
-            ),
-          ],
-        );
-      },
     );
   }
 
-  void _showClearAllDialog(TeamMembersProvider provider) {
-    showDialog(
+  Future<bool?> _showClearAllDialog() {
+    return showDialog<bool>(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.red[400]),
-              const SizedBox(width: 12),
-              const Text(
-                'Clear All Members',
-                style: TextStyle(color: Colors.white, fontSize: 18),
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: Colors.grey[900],
+            title: const Text(
+              'Clear All Team Members',
+              style: TextStyle(color: Colors.white),
+            ),
+            content: const Text(
+              'Are you sure you want to remove all team members? This action cannot be undone.',
+              style: TextStyle(color: Colors.white70),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text('Clear All'),
               ),
             ],
           ),
-          content: Text(
-            'Are you sure you want to remove all ${provider.teamMemberCount} team members? This action cannot be undone.',
-            style: TextStyle(color: Colors.grey[300]),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel', style: TextStyle(color: Colors.grey[400])),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                provider.clearAllTeamMembers();
-                Navigator.of(context).pop();
-                _showMessage('All team members removed');
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[600],
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Clear All'),
-            ),
-          ],
-        );
-      },
     );
   }
 }
