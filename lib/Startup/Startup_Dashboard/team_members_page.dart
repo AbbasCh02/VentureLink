@@ -937,7 +937,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
                 onPressed: () async {
                   Navigator.of(context).pop();
                   final success = await provider.removeTeamMember(member.id);
-                  if (mounted) {
+                  if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(

@@ -289,11 +289,16 @@ class StartupAuthProvider with ChangeNotifier {
               .maybeSingle();
 
       if (existingUser == null) {
-        // Create new user record
+        // Create new user record with FULL NAME as username
         await _supabase.from('users').insert({
           'id': user.id,
           'email': user.email,
-          'username': user.email.split('@')[0], // Default username from email
+          'username':
+              user.fullName.isNotEmpty
+                  ? user.fullName
+                  : user.email.split(
+                    '@',
+                  )[0], // Fallback to email prefix if no full name
           'user_status': 'startup', // Default to startup
           'created_at': user.createdAt.toIso8601String(),
           'updated_at': DateTime.now().toIso8601String(),
@@ -301,17 +306,23 @@ class StartupAuthProvider with ChangeNotifier {
           'is_verified': user.isVerified,
         });
 
-        _logger.i('Created new user record for: ${user.email}');
+        _logger.i(
+          'Created new user record for: ${user.email} with username: ${user.fullName}',
+        );
       } else {
-        // Update existing user record
-        await _supabase
-            .from('users')
-            .update({
-              'last_login_at': user.lastLoginAt.toIso8601String(),
-              'is_verified': user.isVerified,
-              'updated_at': DateTime.now().toIso8601String(),
-            })
-            .eq('id', user.id);
+        // Update existing user record (and fix username if it's currently email prefix)
+        final updateData = {
+          'last_login_at': user.lastLoginAt.toIso8601String(),
+          'is_verified': user.isVerified,
+          'updated_at': DateTime.now().toIso8601String(),
+        };
+
+        // Also update username if it's currently the email prefix and we have a full name
+        if (user.fullName.isNotEmpty) {
+          updateData['username'] = user.fullName;
+        }
+
+        await _supabase.from('users').update(updateData).eq('id', user.id);
 
         _logger.i('Updated user record for: ${user.email}');
       }

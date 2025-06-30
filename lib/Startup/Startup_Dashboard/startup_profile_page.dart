@@ -415,8 +415,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
           ),
     );
 
-    if (confirmed != true) return;
-
+    if (confirmed != true || !mounted) return;
     try {
       // Get auth provider and sign out
       final authProvider = context.read<StartupAuthProvider>();

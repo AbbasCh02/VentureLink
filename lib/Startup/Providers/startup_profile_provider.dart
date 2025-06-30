@@ -1,8 +1,9 @@
-// lib/Providers/startup_profile_provider.dart
+// lib/Startup/Providers/startup_profile_provider.dart
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io';
 import 'dart:async';
+import '../services/storage_service.dart'; // Import our storage service
 
 class StartupProfileProvider with ChangeNotifier {
   // Text controllers
@@ -44,7 +45,6 @@ class StartupProfileProvider with ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   StartupProfileProvider() {
-    // Initialize automatically when provider is created
     initialize();
   }
 
@@ -63,16 +63,12 @@ class StartupProfileProvider with ChangeNotifier {
   }
 
   void _onFieldChanged(String fieldName) {
-    // Don't mark as dirty during initialization
     if (_isInitializing) return;
 
     _dirtyFields.add(fieldName);
     notifyListeners();
 
-    // Cancel previous timer
     _saveTimer?.cancel();
-
-    // Set new timer - saves 1 second after user stops typing
     _saveTimer = Timer(Duration(seconds: 1), () {
       if (_dirtyFields.contains(fieldName)) {
         saveField(fieldName);
@@ -98,7 +94,7 @@ class StartupProfileProvider with ChangeNotifier {
 
   // Initialize and load data from Supabase
   Future<void> initialize() async {
-    if (_isInitialized) return; // Prevent multiple initializations
+    if (_isInitialized) return;
 
     _isLoading = true;
     _isInitializing = true;
@@ -106,10 +102,8 @@ class StartupProfileProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Remove listeners temporarily
       _removeListeners();
 
-      // Get current user
       final User? currentUser = _supabase.auth.currentUser;
       if (currentUser == null) {
         throw Exception('User not authenticated');
@@ -126,7 +120,6 @@ class StartupProfileProvider with ChangeNotifier {
               .maybeSingle();
 
       if (userResponse != null) {
-        // Populate controllers and variables with loaded data
         _ideaDescriptionController.text =
             userResponse['idea_description'] ?? '';
         _fundingGoalAmount = userResponse['funding_goal'];
@@ -134,24 +127,20 @@ class StartupProfileProvider with ChangeNotifier {
         _profileImageUrl = userResponse['avatar_url'];
         _pitchDeckId = userResponse['pitch_deck_id'];
 
-        // Update funding goal controller
         _fundingGoalController.text = _fundingGoalAmount?.toString() ?? '';
 
-        // Load pitch deck data if exists
         if (_pitchDeckId != null) {
           await _loadPitchDeckData(_pitchDeckId!);
         }
       }
 
-      // Re-add listeners
       _addListeners();
-
-      _dirtyFields.clear(); // Clear dirty state after loading
+      _dirtyFields.clear();
       _isInitialized = true;
-      debugPrint('Startup profile data loaded successfully');
+      debugPrint('✅ Startup profile data loaded successfully');
     } catch (e) {
       _error = 'Failed to load startup profile data: $e';
-      debugPrint('Error loading startup profile data: $e');
+      debugPrint('❌ Error loading startup profile data: $e');
     } finally {
       _isInitializing = false;
       _isLoading = false;
@@ -176,19 +165,12 @@ class StartupProfileProvider with ChangeNotifier {
                 ? DateTime.parse(pitchDeckResponse['submission_date'])
                 : null;
 
-        // Note: File objects can't be reconstructed from URLs,
-        // so we'll only track the metadata for now
-        debugPrint('Pitch deck metadata loaded');
+        // Note: We don't restore File objects from URLs as they represent local files
+        // The UI should show existing files via URLs instead
       }
     } catch (e) {
-      debugPrint('Error loading pitch deck data: $e');
+      debugPrint('❌ Error loading pitch deck data: $e');
     }
-  }
-
-  // Force re-sync data (useful for debugging or manual refresh)
-  Future<void> refreshData() async {
-    _isInitialized = false;
-    await initialize();
   }
 
   // Save specific field to Supabase
@@ -200,13 +182,11 @@ class StartupProfileProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Get current user
       final User? currentUser = _supabase.auth.currentUser;
       if (currentUser == null) {
         throw Exception('User not authenticated');
       }
 
-      // Handle different field types
       switch (fieldName) {
         case 'ideaDescription':
           await _saveIdeaDescription(currentUser.id);
@@ -235,11 +215,11 @@ class StartupProfileProvider with ChangeNotifier {
       }
 
       _dirtyFields.remove(fieldName);
-      debugPrint('Successfully saved $fieldName to Supabase');
+      debugPrint('✅ Successfully saved $fieldName to Supabase');
       return true;
     } catch (e) {
       _error = 'Failed to save $fieldName: $e';
-      debugPrint('Error saving $fieldName: $e');
+      debugPrint('❌ Error saving $fieldName: $e');
       return false;
     } finally {
       _isSaving = false;
@@ -296,29 +276,27 @@ class StartupProfileProvider with ChangeNotifier {
         .eq('id', userId);
   }
 
-  // Save profile image
+  // Enhanced profile image upload using StorageService
   Future<void> _saveProfileImage(String userId) async {
     String? imageUrl;
 
     if (_profileImage != null) {
-      // Upload image to Supabase storage
-      final fileName = 'profile_$userId.${_profileImage!.path.split('.').last}';
-      final bytes = await _profileImage!.readAsBytes();
+      try {
+        // Upload using our enhanced storage service
+        imageUrl = await StorageService.uploadAvatar(
+          file: _profileImage!,
+          userId: userId,
+        );
 
-      await _supabase.storage
-          .from('avatars')
-          .uploadBinary(
-            fileName,
-            bytes,
-            fileOptions: FileOptions(upsert: true, contentType: 'image/*'),
-          );
-
-      // Get public URL
-      imageUrl = _supabase.storage.from('avatars').getPublicUrl(fileName);
-
-      _profileImageUrl = imageUrl;
+        _profileImageUrl = imageUrl;
+        debugPrint('✅ Profile image uploaded successfully');
+      } catch (e) {
+        debugPrint('❌ Error uploading profile image: $e');
+        throw Exception('Failed to upload profile image: $e');
+      }
     }
 
+    // Update user record with new avatar URL
     await _supabase
         .from('users')
         .update({
@@ -328,75 +306,60 @@ class StartupProfileProvider with ChangeNotifier {
         .eq('id', userId);
   }
 
-  // Save pitch deck files
+  // Enhanced pitch deck files upload using StorageService
   Future<void> _savePitchDeckFiles(String userId) async {
     if (_pitchDeckFiles.isEmpty) return;
 
-    // Create or update pitch deck record
-    if (_pitchDeckId == null) {
-      // Create new pitch deck record
-      final pitchDeckResponse =
-          await _supabase
-              .from('pitch_decks')
-              .insert({
-                'file_count': _pitchDeckFiles.length,
-                'is_submitted': false,
-                'created_at': DateTime.now().toIso8601String(),
-                'updated_at': DateTime.now().toIso8601String(),
-              })
-              .select('id')
-              .single();
+    try {
+      // Create or update pitch deck record
+      if (_pitchDeckId == null) {
+        final pitchDeckResponse =
+            await _supabase
+                .from('pitch_decks')
+                .insert({
+                  'file_count': _pitchDeckFiles.length,
+                  'is_submitted': false,
+                  'created_at': DateTime.now().toIso8601String(),
+                  'updated_at': DateTime.now().toIso8601String(),
+                })
+                .select('id')
+                .single();
 
-      _pitchDeckId = pitchDeckResponse['id'];
+        _pitchDeckId = pitchDeckResponse['id'];
 
-      // Update user record with pitch deck reference
+        // Update user record with pitch deck reference
+        await _supabase
+            .from('users')
+            .update({
+              'pitch_deck_id': _pitchDeckId,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', userId);
+      }
+
+      // Upload files using our enhanced storage service
+      final uploadResult = await StorageService.uploadPitchDeckFiles(
+        files: _pitchDeckFiles,
+        userId: userId,
+        pitchDeckId: _pitchDeckId,
+      );
+
+      // Update pitch deck record with file info
       await _supabase
-          .from('users')
+          .from('pitch_decks')
           .update({
-            'pitch_deck_id': _pitchDeckId,
+            'file_urls': uploadResult['file_urls'],
+            'file_names': uploadResult['file_names'],
+            'file_count': uploadResult['file_count'],
             'updated_at': DateTime.now().toIso8601String(),
           })
-          .eq('id', userId);
+          .eq('id', _pitchDeckId!);
+
+      debugPrint('✅ Pitch deck files uploaded successfully');
+    } catch (e) {
+      debugPrint('❌ Error uploading pitch deck files: $e');
+      throw Exception('Failed to upload pitch deck files: $e');
     }
-
-    // Upload files to storage
-    List<String> fileUrls = [];
-    List<String> fileNames = [];
-
-    for (int i = 0; i < _pitchDeckFiles.length; i++) {
-      final file = _pitchDeckFiles[i];
-      final fileName =
-          'pitch_deck_${userId}_${i}_${DateTime.now().millisecondsSinceEpoch}.${file.path.split('.').last}';
-      final bytes = await file.readAsBytes();
-
-      await _supabase.storage
-          .from('pitch-decks')
-          .uploadBinary(
-            fileName,
-            bytes,
-            fileOptions: FileOptions(
-              upsert: true,
-              contentType:
-                  file.path.endsWith('.pdf') ? 'application/pdf' : 'video/*',
-            ),
-          );
-
-      final url = _supabase.storage.from('pitch-decks').getPublicUrl(fileName);
-
-      fileUrls.add(url);
-      fileNames.add(file.path.split('/').last);
-    }
-
-    // Update pitch deck record with file info
-    await _supabase
-        .from('pitch_decks')
-        .update({
-          'file_urls': fileUrls,
-          'file_names': fileNames,
-          'file_count': _pitchDeckFiles.length,
-          'updated_at': DateTime.now().toIso8601String(),
-        })
-        .eq('id', _pitchDeckId!);
   }
 
   // Save pitch deck submission status
@@ -411,21 +374,6 @@ class StartupProfileProvider with ChangeNotifier {
           'updated_at': DateTime.now().toIso8601String(),
         })
         .eq('id', _pitchDeckId!);
-  }
-
-  // Save all dirty fields
-  Future<bool> saveAllChanges() async {
-    if (_dirtyFields.isEmpty) return true;
-
-    final fieldsToSave = List<String>.from(_dirtyFields);
-    bool allSuccess = true;
-
-    for (String field in fieldsToSave) {
-      final success = await saveField(field);
-      if (!success) allSuccess = false;
-    }
-
-    return allSuccess;
   }
 
   // Getters for controllers
@@ -449,187 +397,263 @@ class StartupProfileProvider with ChangeNotifier {
           ? null
           : _ideaDescriptionController.text;
 
-  // Setters with auto-save for immediate actions
+  // Enhanced setters with better error handling
   void setProfileImage(File? image) {
     _profileImage = image;
     _dirtyFields.add('profileImage');
     notifyListeners();
+
     // Save immediately for file operations
-    saveField('profileImage');
+    saveField('profileImage').catchError((error) {
+      _error = 'Failed to upload profile image: $error';
+      notifyListeners();
+      return false; // Add this return statement
+    });
+  }
+
+  void setPitchDeckFiles(List<File> files, List<Widget> thumbnails) {
+    _pitchDeckFiles = files;
+    _pitchDeckThumbnails = thumbnails;
+    _dirtyFields.add('pitchDeckFiles');
+    notifyListeners();
+
+    // Save immediately for file operations
+    saveField('pitchDeckFiles').catchError((error) {
+      _error = 'Failed to upload pitch deck files: $error';
+      notifyListeners();
+      return false; // Add this return statement
+    });
   }
 
   void setFundingGoalAmount(int? amount) {
     _fundingGoalAmount = amount;
     _dirtyFields.add('fundingGoalAmount');
 
-    // Keep controller in sync but avoid infinite loops
     final currentText = _fundingGoalController.text;
     final newText = amount?.toString() ?? '';
     if (currentText != newText) {
-      _removeListeners();
       _fundingGoalController.text = newText;
-      _addListeners();
     }
+
     notifyListeners();
-    // Save immediately for dropdowns/selectors
-    saveField('fundingGoalAmount');
   }
 
   void setSelectedFundingPhase(String? phase) {
     _selectedFundingPhase = phase;
     _dirtyFields.add('selectedFundingPhase');
     notifyListeners();
-    // Save immediately for dropdowns/selectors
-    saveField('selectedFundingPhase');
   }
 
-  // Pitch deck methods with auto-save
-  void setPitchDeckFiles(List<File> files, List<Widget> thumbnails) {
-    _pitchDeckFiles = List.from(files);
-    _pitchDeckThumbnails = List.from(thumbnails);
-    _dirtyFields.add('pitchDeckFiles');
-
-    // Reset submission status when files change
-    if (_isPitchDeckSubmitted) {
-      _isPitchDeckSubmitted = false;
-      _pitchDeckSubmissionDate = null;
-      _dirtyFields.add('pitchDeckSubmission');
-    }
-    notifyListeners();
-
-    // Save immediately for file operations
-    saveField('pitchDeckFiles');
-    if (_dirtyFields.contains('pitchDeckSubmission')) {
-      saveField('pitchDeckSubmission');
-    }
-  }
-
-  void addPitchDeckFiles(List<File> files, List<Widget> thumbnails) {
-    _pitchDeckFiles.addAll(files);
-    _pitchDeckThumbnails.addAll(thumbnails);
-    _dirtyFields.add('pitchDeckFiles');
-
-    // Reset submission status when files change
-    if (_isPitchDeckSubmitted) {
-      _isPitchDeckSubmitted = false;
-      _pitchDeckSubmissionDate = null;
-      _dirtyFields.add('pitchDeckSubmission');
-    }
-    notifyListeners();
-
-    // Save immediately for file operations
-    saveField('pitchDeckFiles');
-    if (_dirtyFields.contains('pitchDeckSubmission')) {
-      saveField('pitchDeckSubmission');
-    }
-  }
-
-  void removePitchDeckFile(int index) {
-    if (index >= 0 && index < _pitchDeckFiles.length) {
-      _pitchDeckFiles.removeAt(index);
-      _pitchDeckThumbnails.removeAt(index);
-      _dirtyFields.add('pitchDeckFiles');
-
-      // Reset submission status when files change
-      if (_isPitchDeckSubmitted) {
-        _isPitchDeckSubmitted = false;
-        _pitchDeckSubmissionDate = null;
-        _dirtyFields.add('pitchDeckSubmission');
-      }
-      notifyListeners();
-
-      // Save immediately for file operations
-      saveField('pitchDeckFiles');
-      if (_dirtyFields.contains('pitchDeckSubmission')) {
-        saveField('pitchDeckSubmission');
-      }
-    }
-  }
-
-  void clearPitchDeckFiles() {
-    _pitchDeckFiles.clear();
-    _pitchDeckThumbnails.clear();
-    _isPitchDeckSubmitted = false;
-    _pitchDeckSubmissionDate = null;
-    _dirtyFields.add('pitchDeckFiles');
-    _dirtyFields.add('pitchDeckSubmission');
-    notifyListeners();
-
-    // Save immediately for clear operations
-    saveField('pitchDeckFiles');
-    saveField('pitchDeckSubmission');
-  }
-
-  // Submit pitch deck files
+  // Submit pitch deck files (MANUAL SUBMISSION ONLY)
   Future<void> submitPitchDeckFiles() async {
     if (_pitchDeckFiles.isEmpty) {
-      throw Exception('No files to submit');
+      throw Exception('No pitch deck files to submit');
     }
 
+    if (_isPitchDeckSubmitted) {
+      throw Exception('Pitch deck has already been submitted');
+    }
+
+    _isSaving = true;
+    _error = null;
+    notifyListeners();
+
     try {
-      // Set submission status
       _isPitchDeckSubmitted = true;
       _pitchDeckSubmissionDate = DateTime.now();
       _dirtyFields.add('pitchDeckSubmission');
 
-      // Save to database
       await saveField('pitchDeckSubmission');
-
-      notifyListeners();
+      debugPrint('✅ Pitch deck submitted successfully');
     } catch (e) {
-      // Reset on error
+      // Revert submission state on error
       _isPitchDeckSubmitted = false;
       _pitchDeckSubmissionDate = null;
-      rethrow;
+      _error = 'Failed to submit pitch deck: $e';
+      debugPrint('❌ Error submitting pitch deck: $e');
+      throw Exception('Failed to submit pitch deck: $e');
+    } finally {
+      _isSaving = false;
+      notifyListeners();
     }
   }
 
-  // Get submission status info
+  // Add this method to your StartupProfileProvider class
+
+  /// Delete individual pitch deck file from storage, database, and UI
+  Future<void> deleteIndividualPitchDeckFile(File fileToDelete) async {
+    _isSaving = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final User? currentUser = _supabase.auth.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Find the index of the file to delete
+      final fileIndex = _pitchDeckFiles.indexWhere(
+        (file) => file.path == fileToDelete.path,
+      );
+
+      if (fileIndex == -1) {
+        throw Exception('File not found in local list');
+      }
+
+      String? fileUrlToDelete;
+      String? fileNameToDelete;
+
+      // If we have a pitch deck ID, get the file URL from database
+      if (_pitchDeckId != null) {
+        try {
+          final pitchDeckResponse =
+              await _supabase
+                  .from('pitch_decks')
+                  .select('file_urls, file_names')
+                  .eq('id', _pitchDeckId!)
+                  .maybeSingle();
+
+          if (pitchDeckResponse != null) {
+            final fileUrls = List<String>.from(
+              pitchDeckResponse['file_urls'] ?? [],
+            );
+            final fileNames = List<String>.from(
+              pitchDeckResponse['file_names'] ?? [],
+            );
+
+            // Find the corresponding URL for this file index
+            if (fileIndex < fileUrls.length) {
+              fileUrlToDelete = fileUrls[fileIndex];
+
+              // Extract file name from URL for storage deletion
+              fileNameToDelete = StorageService.extractFileNameFromUrl(
+                fileUrlToDelete,
+              );
+
+              // Remove from the arrays
+              fileUrls.removeAt(fileIndex);
+              fileNames.removeAt(fileIndex);
+
+              // Update database with new arrays
+              await _supabase
+                  .from('pitch_decks')
+                  .update({
+                    'file_urls': fileUrls,
+                    'file_names': fileNames,
+                    'file_count': fileUrls.length,
+                    'updated_at': DateTime.now().toIso8601String(),
+                  })
+                  .eq('id', _pitchDeckId!);
+
+              debugPrint('✅ Updated pitch deck record in database');
+            }
+          }
+        } catch (e) {
+          debugPrint('Warning: Could not update database record: $e');
+        }
+      }
+
+      // Delete file from Supabase storage
+      if (fileNameToDelete != null) {
+        try {
+          await StorageService.deletePitchDeckFiles(
+            fileNames: [fileNameToDelete],
+          );
+          debugPrint('✅ Deleted file from storage: $fileNameToDelete');
+        } catch (e) {
+          debugPrint('Warning: Could not delete file from storage: $e');
+          // Continue with local cleanup even if storage deletion fails
+        }
+      }
+
+      // Remove from local arrays
+      _pitchDeckFiles.removeAt(fileIndex);
+      if (fileIndex < _pitchDeckThumbnails.length) {
+        _pitchDeckThumbnails.removeAt(fileIndex);
+      }
+
+      // If no files left, clean up completely
+      if (_pitchDeckFiles.isEmpty) {
+        await _cleanupEmptyPitchDeck(currentUser.id);
+      }
+
+      debugPrint('✅ Individual file deleted successfully');
+    } catch (e) {
+      _error = 'Failed to delete file: $e';
+      debugPrint('❌ Error deleting individual file: $e');
+      throw Exception('Failed to delete file: $e');
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
+  }
+
+  /// Clean up when no files are left
+  Future<void> _cleanupEmptyPitchDeck(String userId) async {
+    try {
+      // Delete pitch deck record if it exists
+      if (_pitchDeckId != null) {
+        await _supabase.from('pitch_decks').delete().eq('id', _pitchDeckId!);
+
+        debugPrint('✅ Deleted empty pitch deck record');
+      }
+
+      // Update user record to remove pitch deck reference
+      await _supabase
+          .from('users')
+          .update({
+            'pitch_deck_id': null,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', userId);
+
+      // Reset local state
+      _isPitchDeckSubmitted = false;
+      _pitchDeckSubmissionDate = null;
+      _pitchDeckId = null;
+      _dirtyFields.remove('pitchDeckFiles');
+      _dirtyFields.remove('pitchDeckSubmission');
+
+      debugPrint('✅ Cleaned up empty pitch deck state');
+    } catch (e) {
+      debugPrint('Warning: Error during cleanup: $e');
+    }
+  }
+
+  // Get pitch deck submission info
   Map<String, dynamic> getPitchDeckSubmissionInfo() {
     return {
+      'filesCount': _pitchDeckFiles.length,
       'isSubmitted': _isPitchDeckSubmitted,
       'submissionDate': _pitchDeckSubmissionDate?.toIso8601String(),
-      'fileCount': _pitchDeckFiles.length,
-      'files':
-          _pitchDeckFiles
-              .map(
-                (file) => {
-                  'name': file.path.split('/').last,
-                  'path': file.path,
-                  'size': file.lengthSync(),
-                },
-              )
-              .toList(),
+      'hasFiles': _pitchDeckFiles.isNotEmpty,
     };
   }
 
   // Validation methods
   String? validateIdeaDescription(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Please describe your idea';
+      return 'Please describe your startup idea';
     }
     if (value.trim().length < 10) {
-      return 'Description must be at least 10 characters';
+      return 'Please provide a more detailed description (at least 10 characters)';
     }
     return null;
   }
 
   String? validateFundingGoal(String? value) {
-    if (value == null || value.isEmpty) {
+    if (value == null || value.trim().isEmpty) {
       return 'Please enter your funding goal';
     }
 
     final amount = int.tryParse(value.replaceAll(',', ''));
-    if (amount == null) {
-      return 'Please enter a valid number';
+    if (amount == null || amount <= 0) {
+      return 'Please enter a valid funding amount';
     }
 
     if (amount < 1000) {
-      return 'Funding goal must be at least \$1,000';
-    }
-
-    if (amount > 100000000) {
-      return 'Funding goal cannot exceed \$100,000,000';
+      return 'Funding goal should be at least \$1,000';
     }
 
     return null;
@@ -699,6 +723,21 @@ class StartupProfileProvider with ChangeNotifier {
     };
   }
 
+  // Save all dirty fields
+  Future<bool> saveAllChanges() async {
+    if (_dirtyFields.isEmpty) return true;
+
+    final fieldsToSave = List<String>.from(_dirtyFields);
+    bool allSuccess = true;
+
+    for (String field in fieldsToSave) {
+      final success = await saveField(field);
+      if (!success) allSuccess = false;
+    }
+
+    return allSuccess;
+  }
+
   // Clear all data
   Future<void> clearAllData() async {
     _removeListeners();
@@ -726,24 +765,44 @@ class StartupProfileProvider with ChangeNotifier {
         await _supabase
             .from('users')
             .update({
+              'idea_description': null,
               'funding_goal': null,
               'funding_stage': null,
               'avatar_url': null,
-              'idea_description': null,
               'pitch_deck_id': null,
               'updated_at': DateTime.now().toIso8601String(),
             })
             .eq('id', currentUser.id);
+
+        // Delete storage files if they exist
+        if (_profileImageUrl != null) {
+          try {
+            final fileName = StorageService.extractFileNameFromUrl(
+              _profileImageUrl!,
+            );
+            await StorageService.deleteAvatar(fileName: fileName);
+          } catch (e) {
+            debugPrint('Warning: Could not delete avatar file: $e');
+          }
+        }
       }
+
+      debugPrint('✅ All startup profile data cleared successfully');
     } catch (e) {
-      _error = 'Failed to clear startup profile data: $e';
-      debugPrint('Error clearing startup profile data: $e');
+      _error = 'Failed to clear all data: $e';
+      debugPrint('❌ Error clearing startup profile data: $e');
     }
+  }
+
+  // Refresh data from database
+  Future<void> refreshFromDatabase() async {
+    _isInitialized = false;
+    await initialize();
   }
 
   @override
   void dispose() {
-    _saveTimer?.cancel(); // Clean up auto-save timer
+    _saveTimer?.cancel();
     _removeListeners();
     _ideaDescriptionController.dispose();
     _fundingGoalController.dispose();

@@ -32,8 +32,8 @@ Future<void> main() async {
     );
   }
 
-  print('✅ Environment variables loaded successfully');
-  print('📍 Supabase URL: ${supabaseUrl.substring(0, 30)}...');
+  debugPrint('✅ Environment variables loaded successfully');
+  debugPrint('📍 Supabase URL: ${supabaseUrl.substring(0, 30)}...');
 
   // Initialize Supabase with loaded environment variables
   await Supabase.initialize(
@@ -42,7 +42,7 @@ Future<void> main() async {
     debug: true, // Set to false in production
   );
 
-  print('✅ Supabase initialized successfully');
+  debugPrint('✅ Supabase initialized successfully');
 
   runApp(const MyApp());
 }
