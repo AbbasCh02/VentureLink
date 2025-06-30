@@ -14,10 +14,8 @@ import 'Startup/Startup_Dashboard/startup_dashboard.dart';
 import 'Startup/Providers/user_type_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:logger/logger.dart';
 
 Future<void> main() async {
-  Logger logger = Logger();
   // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -34,8 +32,8 @@ Future<void> main() async {
     );
   }
 
-  logger.i('✅ Environment variables loaded successfully');
-  logger.i('📍 Supabase URL: ${supabaseUrl.substring(0, 30)}...');
+  print('✅ Environment variables loaded successfully');
+  print('📍 Supabase URL: ${supabaseUrl.substring(0, 30)}...');
 
   // Initialize Supabase with loaded environment variables
   await Supabase.initialize(
@@ -44,7 +42,7 @@ Future<void> main() async {
     debug: true, // Set to false in production
   );
 
-  logger.i('✅ Supabase initialized successfully');
+  print('✅ Supabase initialized successfully');
 
   runApp(const MyApp());
 }

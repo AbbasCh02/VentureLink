@@ -10,6 +10,7 @@ import 'funding_progress.dart';
 import 'package:venturelink/Startup/Startup_Dashboard/profile_overview.dart';
 import 'pitch_deck.dart';
 import '../Providers/startup_authentication_provider.dart';
+import '../../homepage.dart';
 
 class StartupProfilePage extends StatefulWidget {
   final Function(int?, String?)? onDataSaved;
@@ -381,114 +382,62 @@ class _StartupProfilePageState extends State<StartupProfilePage>
   // Add this method to your _StartupProfilePageState class in startup_profile_page.dart
 
   Future<void> _handleLogout() async {
-    // Show confirmation dialog first
-    final shouldLogout = await showDialog<bool>(
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Row(
-            children: [
-              Icon(Icons.logout, color: Color(0xFFffa500)),
-              SizedBox(width: 12),
-              Text('Logout', style: TextStyle(color: Colors.white)),
-            ],
-          ),
-          content: const Text(
-            'Are you sure you want to logout?',
-            style: TextStyle(color: Colors.grey),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: Colors.grey[900],
+            title: const Text('Logout', style: TextStyle(color: Colors.white)),
+            content: const Text(
+              'Are you sure you want to logout?',
+              style: TextStyle(color: Colors.grey),
             ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFffa500),
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.grey),
                 ),
               ),
-              child: const Text('Logout'),
-            ),
-          ],
-        );
-      },
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFffa500),
+                ),
+                child: const Text(
+                  'Logout',
+                  style: TextStyle(color: Colors.black),
+                ),
+              ),
+            ],
+          ),
     );
 
-    if (shouldLogout == true) {
-      final authProvider = Provider.of<StartupAuthProvider>(
-        context,
-        listen: false,
-      );
+    if (confirmed != true) return;
 
-      // Show loading indicator
+    try {
+      // Get auth provider and sign out
+      final authProvider = context.read<StartupAuthProvider>();
+      await authProvider.signOut();
+
+      // Navigate to the home page (first page) if still mounted
       if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder:
-              (context) => const Center(
-                child: CircularProgressIndicator(color: Color(0xFFffa500)),
-              ),
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const WelcomePage()),
+          (route) => false, // This clears the entire navigation stack
         );
       }
-
-      try {
-        await authProvider.signOut();
-
-        if (mounted) {
-          // Hide loading indicator
-          Navigator.of(context).pop();
-
-          // Show logout success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text(
-                'Logged out successfully!',
-                style: TextStyle(color: Colors.black),
-              ),
-              backgroundColor: const Color(0xFFffa500),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              margin: const EdgeInsets.all(16),
-            ),
-          );
-
-          // Navigate to welcome page and clear navigation stack
-          Navigator.of(
-            context,
-          ).pushNamedAndRemoveUntil('/welcome', (route) => false);
-        }
-      } catch (e) {
-        if (mounted) {
-          // Hide loading indicator
-          Navigator.of(context).pop();
-
-          // Show error message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text(
-                'Logout failed. Please try again.',
-                style: TextStyle(color: Colors.white),
-              ),
-              backgroundColor: Colors.red[600],
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              margin: const EdgeInsets.all(16),
-            ),
-          );
-        }
+    } catch (e) {
+      // Show error if still mounted
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Logout failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
