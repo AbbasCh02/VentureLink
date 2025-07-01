@@ -644,81 +644,69 @@ class PitchDeck extends StatelessWidget {
               text: 'Upload Files',
               icon: Icons.upload_file,
               onPressed: () => _uploadPitchDeckFiles(context),
-              isFullWidth: false, // Changed to false
+              isFullWidth: false,
             ),
 
-            // Only show file-related UI when files exist
-            if (provider.pitchDeckFiles.isNotEmpty) ...[
+            // FILES DISPLAY SECTION - ENHANCED VERSION
+            // Files grid/list
+            if (provider.hasPitchDeckFiles) ...[
               const SizedBox(height: 16),
 
-              // File count badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color:
-                      provider.isPitchDeckSubmitted
-                          ? Colors.green.withValues(alpha: 0.2)
-                          : const Color(0xFFffa500).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color:
-                        provider.isPitchDeckSubmitted
-                            ? Colors.green.withValues(alpha: 0.5)
-                            : const Color(0xFFffa500).withValues(alpha: 0.5),
+              // Section header
+              Row(
+                children: [
+                  const Text(
+                    'Uploaded Files',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                child: Text(
-                  '${provider.pitchDeckFiles.length} files uploaded',
-                  style: TextStyle(
-                    color:
-                        provider.isPitchDeckSubmitted
-                            ? Colors.green
-                            : const Color(0xFFffa500),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFffa500).withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${provider.totalPitchDeckFilesCount} files',
+                      style: const TextStyle(
+                        color: Color(0xFFffa500),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
 
-              const SizedBox(height: 16),
-
-              // Files list label
-              Text(
-                'Uploaded Files:',
-                style: TextStyle(
-                  color: Colors.grey[300],
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
               const SizedBox(height: 12),
 
-              // Files preview container
-              Container(
-                width: double.infinity,
-                constraints: const BoxConstraints(maxHeight: 200),
-                child: SingleChildScrollView(
+              // Files display
+              SizedBox(
+                height: 160,
+                child: ListView(
                   scrollDirection: Axis.horizontal,
-                  child: Row(children: provider.pitchDeckThumbnails),
+                  children: [
+                    // Show all thumbnails (both new uploads and stored files)
+                    ...provider.pitchDeckThumbnails,
+
+                    // Add more files button
+                    if (!provider.isPitchDeckSubmitted)
+                      _buildAddMoreFilesCard(context),
+                  ],
                 ),
               ),
 
               const SizedBox(height: 16),
 
-              // Submit button (only show when files exist)
-              _buildStyledButton(
-                text: 'Submit Pitch Deck',
-                icon: Icons.send,
-                onPressed: () => _submitPitchDeckFiles(context),
-                isSubmitted: provider.isPitchDeckSubmitted,
-              ),
-
-              // Submission date (only show when submitted)
-              if (provider.isPitchDeckSubmitted) ...[
-                const SizedBox(height: 16),
+              // Status indicators
+              if (provider.hasStoredPitchDeckFiles) ...[
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -731,28 +719,73 @@ class PitchDeck extends StatelessWidget {
                   child: Row(
                     children: [
                       Icon(
-                        Icons.check_circle,
+                        Icons.cloud_done,
                         color: Colors.green[400],
                         size: 20,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Submitted on ${provider.pitchDeckSubmissionDate?.toString().split(' ')[0] ?? 'Unknown date'}',
+                          'Files successfully stored in cloud storage',
                           style: TextStyle(
                             color: Colors.green[400],
-                            fontWeight: FontWeight.w500,
+                            fontSize: 12,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(height: 12),
               ],
-            ],
 
-            // Show "no files" message when no files uploaded
-            if (provider.pitchDeckFiles.isEmpty) ...[
+              // Submission status
+              if (provider.isPitchDeckSubmitted) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.green.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: Colors.green[400],
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Pitch Deck Submitted',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (provider.pitchDeckSubmissionDate != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Submitted on: ${_formatDate(provider.pitchDeckSubmissionDate!)}',
+                          style: TextStyle(
+                            color: Colors.green[400],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ] else ...[
+              // No files message
               const SizedBox(height: 24),
               Container(
                 width: double.infinity,
@@ -784,6 +817,18 @@ class PitchDeck extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
+            ],
+
+            // Submit button (only show if files exist and not submitted)
+            if (provider.hasPitchDeckFiles &&
+                !provider.isPitchDeckSubmitted) ...[
+              const SizedBox(height: 24),
+              _buildStyledButton(
+                text: 'Submit Pitch Deck',
+                icon: Icons.send,
+                onPressed: () => _submitPitchDeckFiles(context),
+                isFullWidth: true,
               ),
             ],
 
@@ -819,5 +864,45 @@ class PitchDeck extends StatelessWidget {
         );
       },
     );
+  }
+
+  Widget _buildAddMoreFilesCard(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _uploadPitchDeckFiles(context),
+      child: Container(
+        width: 120,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: Colors.grey[800]!.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: const Color(0xFFffa500).withValues(alpha: 0.5),
+            style: BorderStyle.solid,
+            width: 2,
+          ),
+        ),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add, color: Color(0xFFffa500), size: 30),
+            SizedBox(height: 8),
+            Text(
+              'Add More\nFiles',
+              style: TextStyle(
+                color: Color(0xFFffa500),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 3. Add date formatting helper:
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year} at ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 }

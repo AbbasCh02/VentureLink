@@ -182,20 +182,58 @@ class _StartupDashboardState extends State<StartupDashboard>
 
   Widget _buildDefaultProfileIcon() {
     return Container(
-      width: double.infinity,
-      height: double.infinity,
+      width: 100,
+      height: 100,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            const Color(0xFFffa500).withValues(alpha: 0.3),
-            const Color(0xFFff8c00).withValues(alpha: 0.2),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          colors: [Colors.grey[800]!, Colors.grey[900]!],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-        borderRadius: BorderRadius.circular(48),
+        borderRadius: BorderRadius.circular(50),
       ),
-      child: const Icon(Icons.business, color: Color(0xFFffa500), size: 40),
+      child: Stack(
+        children: [
+          // Background pattern
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(50),
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFFffa500).withValues(alpha: 0.1),
+                    Colors.transparent,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+          ),
+          // Main icon
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.person,
+                  color: const Color(0xFFffa500).withValues(alpha: 0.7),
+                  size: 40,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'No Photo',
+                  style: TextStyle(
+                    color: Colors.grey[500],
+                    fontSize: 8,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -294,22 +332,33 @@ class _StartupDashboardState extends State<StartupDashboard>
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(48),
-                            child:
-                                startupProvider.profileImage != null
-                                    ? Image.file(
-                                      startupProvider.profileImage!,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (
-                                        context,
-                                        error,
-                                        stackTrace,
-                                      ) {
-                                        return _buildDefaultProfileIcon();
-                                      },
-                                    )
-                                    : _buildDefaultProfileIcon(),
+                            child: _buildDashboardProfileImage(startupProvider),
                           ),
                         ),
+
+                        // Status indicator
+                        if (startupProvider.hasProfileImage)
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: Colors.green,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.black,
+                                  width: 2,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 12,
+                              ),
+                            ),
+                          ),
                       ],
                     );
                   },
@@ -533,6 +582,9 @@ class _StartupDashboardState extends State<StartupDashboard>
   }
 
   // New Pitch Deck Files Card
+  // FIX FOR PITCH DECK CARD BOTTOM OVERFLOW
+  // Replace the existing _buildPitchDeckFilesCard() method with this version that has proper spacing:
+
   Widget _buildPitchDeckFilesCard() {
     return Consumer<StartupProfileProvider>(
       builder: (context, provider, child) {
@@ -547,193 +599,130 @@ class _StartupDashboardState extends State<StartupDashboard>
             ),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: const Color(0xFFA556B3).withValues(alpha: 0.3),
+              color:
+                  provider.hasPitchDeckFiles
+                      ? const Color(0xFFffa500).withValues(alpha: 0.5)
+                      : Colors.grey[700]!.withValues(alpha: 0.5),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFA556B3).withValues(alpha: 0.2),
-                blurRadius: 15,
-                offset: const Offset(0, 8),
+                color:
+                    provider.hasPitchDeckFiles
+                        ? const Color(0xFFffa500).withValues(alpha: 0.1)
+                        : Colors.black.withValues(alpha: 0.2),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
+              // Header with status
               Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFA556B3).withValues(alpha: 0.2),
+                      gradient: LinearGradient(
+                        colors:
+                            provider.hasPitchDeckFiles
+                                ? [
+                                  const Color(0xFFffa500),
+                                  const Color(0xFFff8c00),
+                                ]
+                                : [Colors.grey[600]!, Colors.grey[700]!],
+                      ),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
-                      Icons.picture_as_pdf,
-                      color: Color(0xFFA556B3),
+                    child: Icon(
+                      Icons.upload_file,
+                      color:
+                          provider.hasPitchDeckFiles
+                              ? Colors.black
+                              : Colors.white,
                       size: 24,
                     ),
                   ),
                   const SizedBox(width: 16),
-                  const Expanded(
-                    child: Text(
-                      'Pitch Deck Files',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFA556B3),
-                      ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Pitch Deck Files',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color:
+                                provider.hasPitchDeckFiles
+                                    ? const Color(0xFFffa500)
+                                    : Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        _buildPitchDeckStatus(provider),
+                      ],
                     ),
                   ),
-                  // Status indicator
-                  if (provider.isPitchDeckSubmitted)
+
+                  // File count badge
+                  if (provider.hasPitchDeckFiles)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 8,
+                        horizontal: 12,
+                        vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
+                        color: const Color(0xFFffa500).withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: Colors.green.withValues(alpha: 0.5),
+                          color: const Color(0xFFffa500).withValues(alpha: 0.5),
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.check_circle,
-                            color: Colors.green[400],
-                            size: 16,
-                          ),
-                          const SizedBox(width: 4),
-                        ],
+                      child: Text(
+                        '${provider.totalPitchDeckFilesCount} files',
+                        style: const TextStyle(
+                          color: Color(0xFFffa500),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                 ],
               ),
+
               const SizedBox(height: 20),
 
-              if (provider.pitchDeckFiles.isNotEmpty) ...[
-                // Files count and info
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFA556B3).withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: const Color(0xFFA556B3).withValues(alpha: 0.5),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.folder,
-                            color: Color(0xFFA556B3),
-                            size: 16,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${provider.pitchDeckFiles.length} files uploaded',
-                            style: const TextStyle(
-                              color: Color(0xFFA556B3),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Files preview
-                Container(
-                  width: double.infinity,
-                  constraints: const BoxConstraints(maxHeight: 120),
-                  child: SingleChildScrollView(
+              // Files display or empty state
+              if (provider.hasPitchDeckFiles) ...[
+                // Files preview with increased height and better spacing
+                SizedBox(
+                  height: 160, // INCREASED HEIGHT from 120 to 160
+                  child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children:
-                          provider.pitchDeckFiles.asMap().entries.map((entry) {
-                            var file = entry.value;
-                            String fileName = file.path.split('/').last;
-                            String extension =
-                                file.path.split('.').last.toLowerCase();
-
-                            return Container(
-                              width: 80,
-                              height: 100,
-                              margin: const EdgeInsets.only(right: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[800],
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: const Color(
-                                    0xFFA556B3,
-                                  ).withValues(alpha: 0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    extension == 'pdf'
-                                        ? Icons.picture_as_pdf
-                                        : Icons.videocam,
-                                    color:
-                                        extension == 'pdf'
-                                            ? Colors.red
-                                            : const Color(0xFFffa500),
-                                    size: 32,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                    ),
-                                    child: Text(
-                                      fileName.length > 10
-                                          ? '${fileName.substring(0, 7)}...'
-                                          : fileName,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                    ),
+                    padding: const EdgeInsets.only(
+                      bottom: 8,
+                    ), // ADDED BOTTOM PADDING
+                    itemCount: provider.pitchDeckThumbnails.length,
+                    itemBuilder: (context, index) {
+                      return Container(
+                        margin: const EdgeInsets.only(right: 12),
+                        child: provider.pitchDeckThumbnails[index],
+                      );
+                    },
                   ),
                 ),
 
-                // Submission info if submitted
-                if (provider.isPitchDeckSubmitted &&
-                    provider.pitchDeckSubmissionDate != null) ...[
-                  const SizedBox(height: 12),
+                const SizedBox(height: 20), // INCREASED SPACING from 16 to 20
+                // Submission status
+                if (provider.isPitchDeckSubmitted) ...[
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.green.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: Colors.green.withValues(alpha: 0.3),
                       ),
@@ -741,25 +730,75 @@ class _StartupDashboardState extends State<StartupDashboard>
                     child: Row(
                       children: [
                         Icon(
-                          Icons.calendar_today,
+                          Icons.check_circle,
                           color: Colors.green[400],
-                          size: 16,
+                          size: 20,
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          'Submitted on ${provider.pitchDeckSubmissionDate!.day}/${provider.pitchDeckSubmissionDate!.month}/${provider.pitchDeckSubmissionDate!.year}',
-                          style: TextStyle(
-                            color: Colors.green[400],
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Pitch Deck Submitted',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              if (provider.pitchDeckSubmissionDate != null)
+                                Text(
+                                  'Submitted: ${_formatDate(provider.pitchDeckSubmissionDate!)}',
+                                  style: TextStyle(
+                                    color: Colors.green[400],
+                                    fontSize: 12,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(
+                    height: 8,
+                  ), // ADDED SPACING AFTER SUBMISSION STATUS
+                ] else ...[
+                  // Upload more files option
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.blue.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: Colors.blue[400],
+                          size: 16,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Ready to upload? Go to Pitch Deck section to add more files.',
+                            style: TextStyle(
+                              color: Colors.blue[400],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8), // ADDED SPACING AFTER INFO MESSAGE
                 ],
               ] else ...[
-                // No files uploaded state
+                // Empty state
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(24),
@@ -785,6 +824,12 @@ class _StartupDashboardState extends State<StartupDashboard>
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
                         ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Upload your pitch deck to showcase your startup',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
@@ -851,6 +896,105 @@ class _StartupDashboardState extends State<StartupDashboard>
         ],
       ),
     );
+  }
+
+  Widget _buildDashboardProfileImage(StartupProfileProvider provider) {
+    // Priority: Local file > Network URL > Placeholder
+    if (provider.profileImage != null) {
+      // Show local file (newly picked)
+      return Image.file(
+        provider.profileImage!,
+        fit: BoxFit.cover,
+        width: 100,
+        height: 100,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildDefaultProfileIcon();
+        },
+      );
+    } else if (provider.profileImageUrl != null &&
+        provider.profileImageUrl!.isNotEmpty) {
+      // Show network image (loaded from database)
+      return Image.network(
+        provider.profileImageUrl!,
+        fit: BoxFit.cover,
+        width: 100,
+        height: 100,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Center(
+            child: CircularProgressIndicator(
+              value:
+                  loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
+              color: const Color(0xFFffa500),
+              strokeWidth: 2,
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return _buildDefaultProfileIcon();
+        },
+      );
+    } else {
+      // Show placeholder
+      return _buildDefaultProfileIcon();
+    }
+  }
+
+  // Helper method for pitch deck status
+  Widget _buildPitchDeckStatus(StartupProfileProvider provider) {
+    if (!provider.hasPitchDeckFiles) {
+      return Row(
+        children: [
+          Icon(Icons.pending, color: Colors.grey[400], size: 12),
+          const SizedBox(width: 4),
+          Text(
+            'No files uploaded',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[400],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    } else if (provider.isPitchDeckSubmitted) {
+      return Row(
+        children: [
+          Icon(Icons.check_circle, color: Colors.green[400], size: 12),
+          const SizedBox(width: 4),
+          Text(
+            'Submitted',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.green[400],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    } else {
+      return Row(
+        children: [
+          Icon(Icons.upload, color: Colors.orange[400], size: 12),
+          const SizedBox(width: 4),
+          Text(
+            'Ready to submit',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.orange[400],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
   }
 
   Widget _buildMetricCard({

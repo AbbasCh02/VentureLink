@@ -11,6 +11,7 @@ import 'package:venturelink/Startup/Startup_Dashboard/profile_overview.dart';
 import 'pitch_deck.dart';
 import '../Providers/startup_authentication_provider.dart';
 import '../../homepage.dart';
+import '../services/storage_service.dart';
 
 class StartupProfilePage extends StatefulWidget {
   final Function(int?, String?)? onDataSaved;
@@ -71,11 +72,54 @@ class _StartupProfilePageState extends State<StartupProfilePage>
       context,
       listen: false,
     );
-    final pickedFile = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-    );
-    if (pickedFile != null) {
-      provider.setProfileImage(File(pickedFile.path));
+
+    try {
+      final pickedFile = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        final File imageFile = File(pickedFile.path);
+
+        // Validate the file first
+        try {
+          StorageService.validateAvatarFile(imageFile);
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Invalid image: ${e.toString()}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        // Set the profile image - this will trigger auto-save
+        provider.setProfileImage(imageFile);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile picture updated successfully!'),
+              backgroundColor: Color(0xFFffa500),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to pick image: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -485,54 +529,40 @@ class _StartupProfilePageState extends State<StartupProfilePage>
                         key: _formKey,
                         child: Column(
                           children: [
-                            // Profile Image Section
                             Container(
                               margin: const EdgeInsets.only(bottom: 32),
                               child: Center(
-                                child: GestureDetector(
-                                  onTap: _pickImage,
-                                  child: Container(
-                                    width: 140,
-                                    height: 140,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient:
-                                          provider.profileImage == null
-                                              ? LinearGradient(
-                                                colors: [
-                                                  Colors.grey[800]!,
-                                                  Colors.grey[700]!,
-                                                ],
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                              )
-                                              : null,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: const Color(
-                                            0xFFffa500,
-                                          ).withValues(alpha: 0.3),
-                                          blurRadius: 20,
-                                          offset: const Offset(0, 10),
-                                        ),
-                                      ],
-                                    ),
-                                    child:
-                                        provider.profileImage != null
-                                            ? ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(70),
-                                              child: Image.file(
-                                                provider.profileImage!,
-                                                fit: BoxFit.cover,
-                                              ),
-                                            )
-                                            : const Icon(
-                                              Icons.add_a_photo_outlined,
-                                              size: 40,
-                                              color: Color(0xFFffa500),
+                                child: Consumer<StartupProfileProvider>(
+                                  builder: (context, provider, child) {
+                                    return GestureDetector(
+                                      onTap: _pickImage,
+                                      child: Container(
+                                        width: 140,
+                                        height: 140,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: const Color(0xFFffa500),
+                                            width: 3,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(
+                                                0xFFffa500,
+                                              ).withValues(alpha: 0.3),
+                                              blurRadius: 20,
+                                              offset: const Offset(0, 10),
                                             ),
-                                  ),
+                                          ],
+                                        ),
+                                        child: ClipOval(
+                                          child: _buildProfileImageContent(
+                                            provider,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ),
                             ),
@@ -646,4 +676,64 @@ class _StartupProfilePageState extends State<StartupProfilePage>
       },
     );
   }
+}
+
+Widget _buildProfileImageContent(StartupProfileProvider provider) {
+  // Priority: Local file > Network URL > Placeholder
+  if (provider.profileImage != null) {
+    // Show local file (newly picked)
+    return Image.file(
+      provider.profileImage!,
+      fit: BoxFit.cover,
+      width: 140,
+      height: 140,
+    );
+  } else if (provider.profileImageUrl != null &&
+      provider.profileImageUrl!.isNotEmpty) {
+    // Show network image (loaded from database)
+    return Image.network(
+      provider.profileImageUrl!,
+      fit: BoxFit.cover,
+      width: 140,
+      height: 140,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Center(
+          child: CircularProgressIndicator(
+            value:
+                loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+            color: const Color(0xFFffa500),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        return _buildProfileImagePlaceholder();
+      },
+    );
+  } else {
+    // Show placeholder
+    return _buildProfileImagePlaceholder();
+  }
+}
+
+Widget _buildProfileImagePlaceholder() {
+  return Container(
+    width: 140,
+    height: 140,
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [Colors.grey[800]!, Colors.grey[900]!],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ),
+    ),
+    child: const Icon(
+      Icons.add_a_photo_outlined,
+      size: 40,
+      color: Color(0xFFffa500),
+    ),
+  );
 }

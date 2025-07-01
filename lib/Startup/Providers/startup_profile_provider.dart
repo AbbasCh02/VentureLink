@@ -113,6 +113,34 @@ class StartupProfileProvider with ChangeNotifier {
   bool hasUnsavedChanges(String field) => _dirtyFields.contains(field);
   bool get hasAnyUnsavedChanges => _dirtyFields.isNotEmpty;
 
+  // Enhanced getters for UI
+  int get totalPitchDeckFilesCount {
+    // Count both new uploads and stored files
+    return _pitchDeckFiles.length + _getStoredFilesCount();
+  }
+
+  int _getStoredFilesCount() {
+    // Count thumbnails that represent stored files (not new uploads)
+    // This assumes thumbnails beyond the file count are stored files
+    return _pitchDeckThumbnails.length > _pitchDeckFiles.length
+        ? _pitchDeckThumbnails.length - _pitchDeckFiles.length
+        : 0;
+  }
+
+  bool get hasPitchDeckFiles {
+    return totalPitchDeckFilesCount > 0 || _pitchDeckThumbnails.isNotEmpty;
+  }
+
+  bool get hasStoredPitchDeckFiles {
+    return _pitchDeckId != null && _getStoredFilesCount() > 0;
+  }
+
+  // Better profile image handling
+  bool get hasProfileImage {
+    return _profileImage != null ||
+        (_profileImageUrl != null && _profileImageUrl!.isNotEmpty);
+  }
+
   // Clear error method
   void clearError() {
     _error = null;
@@ -221,6 +249,8 @@ class StartupProfileProvider with ChangeNotifier {
   // Load pitch deck data from database
   Future<void> _loadPitchDeckData(String pitchDeckId) async {
     try {
+      debugPrint('🔄 Loading pitch deck data for ID: $pitchDeckId');
+
       final pitchDeckResponse =
           await _supabase
               .from('pitch_decks')
@@ -235,11 +265,185 @@ class StartupProfileProvider with ChangeNotifier {
                 ? DateTime.parse(pitchDeckResponse['submission_date'])
                 : null;
 
-        // Note: We don't restore File objects from URLs as they represent local files
-        // The UI should show existing files via URLs instead
+        // CRITICAL FIX: Load stored files and recreate thumbnails
+        final List<dynamic>? fileUrls = pitchDeckResponse['file_urls'];
+        final List<dynamic>? originalNames =
+            pitchDeckResponse['original_names'];
+        final List<dynamic>? fileNames = pitchDeckResponse['file_names'];
+
+        if (fileUrls != null && fileUrls.isNotEmpty) {
+          debugPrint('📁 Found ${fileUrls.length} stored pitch deck files');
+
+          // Clear existing thumbnails to avoid duplicates
+          _pitchDeckThumbnails.clear();
+
+          // Create thumbnails for each stored file
+          for (int i = 0; i < fileUrls.length; i++) {
+            final String url = fileUrls[i].toString();
+            final String displayName =
+                originalNames != null && i < originalNames.length
+                    ? originalNames[i].toString()
+                    : (fileNames != null && i < fileNames.length
+                        ? fileNames[i].toString()
+                        : 'File ${i + 1}');
+
+            // Create a thumbnail widget for this stored file
+            final thumbnail = _buildStoredFileCard(url, displayName, i);
+            _pitchDeckThumbnails.add(thumbnail);
+          }
+
+          debugPrint(
+            '✅ Created ${_pitchDeckThumbnails.length} thumbnails for stored files',
+          );
+        } else {
+          debugPrint('📂 No stored files found for pitch deck');
+        }
+
+        debugPrint('✅ Pitch deck data loaded successfully');
+        debugPrint('   - Submitted: $_isPitchDeckSubmitted');
+        debugPrint('   - Files loaded: ${fileUrls?.length ?? 0}');
+        debugPrint('   - Thumbnails created: ${_pitchDeckThumbnails.length}');
+      } else {
+        debugPrint('❌ No pitch deck data found for ID: $pitchDeckId');
       }
     } catch (e) {
       debugPrint('❌ Error loading pitch deck data: $e');
+      // Don't rethrow to avoid breaking app initialization
+    }
+  }
+
+  // Build thumbnail card for stored files (from database)
+  Widget _buildStoredFileCard(String fileUrl, String fileName, int index) {
+    final extension = fileName.split('.').last.toLowerCase();
+
+    return Container(
+      width: 120,
+      margin: const EdgeInsets.only(right: 12, bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey[850],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: const Color(0xFFffa500).withValues(alpha: 0.3),
+        ),
+      ),
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // File icon based on type
+                Container(
+                  height: 60,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[800],
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Center(child: _getFileIcon(extension)),
+                ),
+
+                const SizedBox(height: 8),
+
+                // File name
+                Text(
+                  fileName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+
+                const SizedBox(height: 4),
+
+                // "Stored" indicator
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'STORED',
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // File type badge
+          Positioned(
+            top: 4,
+            right: 4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFFffa500),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                extension.toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 8,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+
+          // Submitted indicator
+          if (_isPitchDeckSubmitted)
+            Positioned(
+              top: 4,
+              left: 4,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  color: Colors.green,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check, color: Colors.white, size: 10),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Add method to refresh pitch deck data
+  Future<void> refreshPitchDeckDisplay() async {
+    if (_pitchDeckId != null) {
+      await _loadPitchDeckData(_pitchDeckId!);
+      notifyListeners();
+    }
+  }
+
+  Widget _getFileIcon(String extension) {
+    switch (extension.toLowerCase()) {
+      case 'pdf':
+        return Icon(Icons.picture_as_pdf, size: 30, color: Colors.red[400]);
+      case 'mp4':
+      case 'avi':
+      case 'mov':
+      case 'mkv':
+      case 'wmv':
+        return Icon(Icons.video_file, size: 30, color: Colors.blue[400]);
+      default:
+        return Icon(Icons.file_present, size: 30, color: Colors.grey[400]);
     }
   }
 
