@@ -48,6 +48,33 @@ class StartupProfileProvider with ChangeNotifier {
     initialize();
   }
 
+  String? get ideaDescription =>
+      _ideaDescriptionController.text.isEmpty
+          ? null
+          : _ideaDescriptionController.text;
+
+  int? get fundingGoalAmount => _fundingGoalAmount;
+
+  String? get selectedFundingPhase => _selectedFundingPhase;
+
+  File? get profileImage => _profileImage;
+
+  String? get profileImageUrl => _profileImageUrl;
+
+  List<File> get pitchDeckFiles => List.unmodifiable(_pitchDeckFiles);
+
+  bool get isPitchDeckSubmitted => _isPitchDeckSubmitted;
+
+  DateTime? get pitchDeckSubmissionDate => _pitchDeckSubmissionDate;
+
+  List<Widget> get pitchDeckThumbnails =>
+      List.unmodifiable(_pitchDeckThumbnails);
+
+  // Add controllers getters
+  TextEditingController get ideaDescriptionController =>
+      _ideaDescriptionController;
+  TextEditingController get fundingGoalController => _fundingGoalController;
+
   void _addListeners() {
     _ideaDescriptionController.addListener(
       () => _onFieldChanged('ideaDescription'),
@@ -94,7 +121,11 @@ class StartupProfileProvider with ChangeNotifier {
 
   // Initialize and load data from Supabase
   Future<void> initialize() async {
-    if (_isInitialized) return;
+    if (_isInitialized) {
+      // If already initialized, just refresh data
+      await _loadProfileData();
+      return;
+    }
 
     _isLoading = true;
     _isInitializing = true;
@@ -102,14 +133,32 @@ class StartupProfileProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      await _loadProfileData();
+      _isInitialized = true;
+      debugPrint('✅ Startup profile initialized successfully');
+    } catch (e) {
+      _error = 'Failed to initialize startup profile: $e';
+      debugPrint('❌ Error initializing startup profile: $e');
+    } finally {
+      _isInitializing = false;
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _loadProfileData() async {
+    try {
+      // Remove listeners temporarily to prevent triggering dirty state
       _removeListeners();
 
+      // Get current user
       final User? currentUser = _supabase.auth.currentUser;
       if (currentUser == null) {
-        throw Exception('User not authenticated');
+        debugPrint('No authenticated user found');
+        return;
       }
 
-      // Load user data from Supabase
+      // Load user data from Supabase with ALL required fields
       final userResponse =
           await _supabase
               .from('users')
@@ -120,31 +169,52 @@ class StartupProfileProvider with ChangeNotifier {
               .maybeSingle();
 
       if (userResponse != null) {
+        // Load idea description
         _ideaDescriptionController.text =
             userResponse['idea_description'] ?? '';
-        _fundingGoalAmount = userResponse['funding_goal'];
-        _selectedFundingPhase = userResponse['funding_stage'];
-        _profileImageUrl = userResponse['avatar_url'];
-        _pitchDeckId = userResponse['pitch_deck_id'];
 
+        // Load funding goal
+        _fundingGoalAmount = userResponse['funding_goal'];
         _fundingGoalController.text = _fundingGoalAmount?.toString() ?? '';
 
+        // Load funding phase (this was missing proper loading!)
+        _selectedFundingPhase = userResponse['funding_stage'];
+
+        // Load profile image URL
+        _profileImageUrl = userResponse['avatar_url'];
+
+        // Load pitch deck ID
+        _pitchDeckId = userResponse['pitch_deck_id'];
+
+        // If there's a pitch deck ID, load pitch deck data
         if (_pitchDeckId != null) {
           await _loadPitchDeckData(_pitchDeckId!);
         }
+
+        debugPrint('✅ Startup profile data loaded successfully');
+        debugPrint(
+          '   - Idea: ${_ideaDescriptionController.text.isNotEmpty ? "✓" : "✗"}',
+        );
+        debugPrint('   - Funding Goal: ${_fundingGoalAmount ?? "Not Set"}');
+        debugPrint('   - Funding Phase: ${_selectedFundingPhase ?? "Not Set"}');
+        debugPrint(
+          '   - Profile Image: ${_profileImageUrl != null ? "✓" : "✗"}',
+        );
+        debugPrint('   - Pitch Deck: ${_pitchDeckId != null ? "✓" : "✗"}');
+      } else {
+        debugPrint('No startup profile data found for user');
       }
 
+      // Re-add listeners
       _addListeners();
-      _dirtyFields.clear();
-      _isInitialized = true;
-      debugPrint('✅ Startup profile data loaded successfully');
+      _dirtyFields.clear(); // Clear dirty state after loading
     } catch (e) {
       _error = 'Failed to load startup profile data: $e';
       debugPrint('❌ Error loading startup profile data: $e');
-    } finally {
-      _isInitializing = false;
-      _isLoading = false;
-      notifyListeners();
+
+      // Re-add listeners even on error
+      _addListeners();
+      rethrow;
     }
   }
 
@@ -376,39 +446,16 @@ class StartupProfileProvider with ChangeNotifier {
         .eq('id', _pitchDeckId!);
   }
 
-  // Getters for controllers
-  TextEditingController get ideaDescriptionController =>
-      _ideaDescriptionController;
-  TextEditingController get fundingGoalController => _fundingGoalController;
-
-  // Getters for data
-  File? get profileImage => _profileImage;
-  String? get profileImageUrl => _profileImageUrl;
-  List<File> get pitchDeckFiles => _pitchDeckFiles;
-  List<Widget> get pitchDeckThumbnails => _pitchDeckThumbnails;
-  bool get isPitchDeckSubmitted => _isPitchDeckSubmitted;
-  DateTime? get pitchDeckSubmissionDate => _pitchDeckSubmissionDate;
-  int? get fundingGoalAmount => _fundingGoalAmount;
-  String? get selectedFundingPhase => _selectedFundingPhase;
-
-  // Getters for text values
-  String? get ideaDescription =>
-      _ideaDescriptionController.text.isEmpty
-          ? null
-          : _ideaDescriptionController.text;
-
   // Enhanced setters with better error handling
   void setProfileImage(File? image) {
     _profileImage = image;
     _dirtyFields.add('profileImage');
     notifyListeners();
 
-    // Save immediately for file operations
-    saveField('profileImage').catchError((error) {
-      _error = 'Failed to upload profile image: $error';
-      notifyListeners();
-      return false; // Add this return statement
-    });
+    // Auto-save profile image immediately
+    if (image != null) {
+      saveField('profileImage');
+    }
   }
 
   void setPitchDeckFiles(List<File> files, List<Widget> thumbnails) {
@@ -426,22 +473,42 @@ class StartupProfileProvider with ChangeNotifier {
   }
 
   void setFundingGoalAmount(int? amount) {
-    _fundingGoalAmount = amount;
-    _dirtyFields.add('fundingGoalAmount');
+    if (_fundingGoalAmount != amount) {
+      _fundingGoalAmount = amount;
+      _dirtyFields.add('fundingGoalAmount');
 
-    final currentText = _fundingGoalController.text;
-    final newText = amount?.toString() ?? '';
-    if (currentText != newText) {
-      _fundingGoalController.text = newText;
+      final currentText = _fundingGoalController.text;
+      final newText = amount?.toString() ?? '';
+      if (currentText != newText) {
+        _fundingGoalController.text = newText;
+      }
+
+      notifyListeners();
+
+      // Auto-save after 2 seconds
+      _saveTimer?.cancel();
+      _saveTimer = Timer(const Duration(seconds: 2), () {
+        if (_dirtyFields.contains('fundingGoalAmount')) {
+          saveField('fundingGoalAmount');
+        }
+      });
     }
-
-    notifyListeners();
   }
 
   void setSelectedFundingPhase(String? phase) {
-    _selectedFundingPhase = phase;
-    _dirtyFields.add('selectedFundingPhase');
-    notifyListeners();
+    if (_selectedFundingPhase != phase) {
+      _selectedFundingPhase = phase;
+      _dirtyFields.add('selectedFundingPhase');
+      notifyListeners();
+
+      // Auto-save after 2 seconds
+      _saveTimer?.cancel();
+      _saveTimer = Timer(const Duration(seconds: 2), () {
+        if (_dirtyFields.contains('selectedFundingPhase')) {
+          saveField('selectedFundingPhase');
+        }
+      });
+    }
   }
 
   // Submit pitch deck files (MANUAL SUBMISSION ONLY)

@@ -71,7 +71,7 @@ class TeamMembersProvider with ChangeNotifier {
   final TextEditingController _linkedinController = TextEditingController();
 
   // Team members list
-  List<TeamMember> _teamMembers = [];
+  final List<TeamMember> _teamMembers = [];
 
   // Auto-save timer
   Timer? _saveTimer;
@@ -92,8 +92,44 @@ class TeamMembersProvider with ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   TeamMembersProvider() {
-    // Initialize automatically when provider is created
+    // Initialize automatically when provider is created and user is authenticated
+    _initializeWhenReady();
+  }
+
+  // Check if user is authenticated and initialize
+  void _initializeWhenReady() {
+    // Check if there's an authenticated user
+    final currentUser = _supabase.auth.currentUser;
+    if (currentUser != null && !_isInitialized) {
+      // User is already authenticated, initialize immediately
+      initialize();
+    } else {
+      // Listen for auth state changes
+      _supabase.auth.onAuthStateChange.listen((data) {
+        final AuthChangeEvent event = data.event;
+        if (event == AuthChangeEvent.signedIn && !_isInitialized) {
+          // User just signed in, initialize
+          initialize();
+        } else if (event == AuthChangeEvent.signedOut) {
+          // User signed out, reset state
+          _resetProviderState();
+        }
+      });
+    }
+
     _addListeners();
+  }
+
+  // Reset provider state on logout
+  void _resetProviderState() {
+    _isInitialized = false;
+    _teamMembers.clear();
+    _nameController.clear();
+    _roleController.clear();
+    _linkedinController.clear();
+    _dirtyFields.clear();
+    _error = null;
+    notifyListeners();
   }
 
   void _addListeners() {
@@ -147,10 +183,10 @@ class TeamMembersProvider with ChangeNotifier {
     try {
       await _loadTeamMembers();
       _isInitialized = true;
-      debugPrint('Team members initialized successfully');
+      debugPrint('✅ Team members initialized successfully');
     } catch (e) {
       _error = 'Failed to initialize team members: $e';
-      debugPrint('Error initializing team members: $e');
+      debugPrint('❌ Error initializing team members: $e');
     } finally {
       _isInitializing = false;
       _isLoading = false;
@@ -163,50 +199,64 @@ class TeamMembersProvider with ChangeNotifier {
       // Get current user
       final User? currentUser = _supabase.auth.currentUser;
       if (currentUser == null) {
-        debugPrint('No authenticated user found');
-        _teamMembers = [];
+        debugPrint('No authenticated user found for team members');
         return;
       }
 
-      // Load all team members from the database
-      final teamMembersResponse = await _supabase
+      // Load team members from Supabase
+      final response = await _supabase
           .from('team_members')
           .select('*')
-          .order('created_at', ascending: false);
+          .eq('user_id', currentUser.id)
+          .order('created_at', ascending: true);
 
-      if (teamMembersResponse.isNotEmpty) {
-        _teamMembers =
-            (teamMembersResponse as List)
-                .map((memberData) => TeamMember.fromSupabaseMap(memberData))
-                .toList();
+      // Clear existing team members
+      _teamMembers.clear();
 
-        debugPrint('Loaded ${_teamMembers.length} team members');
-      } else {
-        _teamMembers = [];
-        debugPrint('No team members found');
+      // Parse and add team members
+      for (final memberData in response) {
+        final teamMember = TeamMember(
+          id: memberData['id'],
+          name: memberData['name'] ?? '',
+          role: memberData['role'] ?? '',
+          linkedin: memberData['linkedin_url'] ?? '', // Changed from 'linkedin'
+          avatar: memberData['avatar_url'] ?? '', // Changed from 'avatar'
+          dateAdded:
+              memberData['created_at'] != null
+                  ? DateTime.parse(memberData['created_at'])
+                  : DateTime.now(),
+        );
+        _teamMembers.add(teamMember);
       }
 
-      _dirtyFields.clear(); // Clear dirty state after loading
+      debugPrint('✅ Loaded ${_teamMembers.length} team members');
     } catch (e) {
       _error = 'Failed to load team members: $e';
-      debugPrint('Error loading team members: $e');
-      _teamMembers = [];
+      debugPrint('❌ Error loading team members: $e');
       rethrow;
     }
+  }
+
+  // Add getter for team members list
+  List<TeamMember> get teamMembers => List.unmodifiable(_teamMembers);
+
+  // Add getter for team members count
+  int get teamMembersCount => _teamMembers.length;
+
+  // Check if team has members
+  bool get hasTeamMembers => _teamMembers.isNotEmpty;
+
+  // Get completion percentage for team setup
+  double get completionPercentage {
+    if (_teamMembers.isEmpty) return 0.0;
+    if (_teamMembers.length >= 3) return 100.0;
+    return (_teamMembers.length / 3) * 100; // Assuming ideal team size is 3
   }
 
   // Getters for controllers
   TextEditingController get nameController => _nameController;
   TextEditingController get roleController => _roleController;
   TextEditingController get linkedinController => _linkedinController;
-
-  // Getters for data
-  List<TeamMember> get teamMembers => List.unmodifiable(_teamMembers);
-  int get teamMemberCount => _teamMembers.length;
-
-  // Computed getters
-  bool get hasTeamMembers => _teamMembers.isNotEmpty;
-  bool get canSave => _teamMembers.isNotEmpty || hasAnyUnsavedChanges;
 
   // Form validation
   bool get isFormValid =>
@@ -251,25 +301,29 @@ class TeamMembersProvider with ChangeNotifier {
   }
 
   // Add a new team member with Supabase save
-  Future<bool> addTeamMember({
-    String? customName,
-    String? customRole,
-    String? customLinkedin,
-    String? customAvatar,
-  }) async {
-    final name = customName ?? _nameController.text.trim();
-    final role = customRole ?? _roleController.text.trim();
-    final linkedin = customLinkedin ?? _linkedinController.text.trim();
+  Future<bool> addTeamMember() async {
+    final name = _nameController.text.trim();
+    final role = _roleController.text.trim();
+    final linkedin = _linkedinController.text.trim();
 
-    if (name.isEmpty || role.isEmpty) {
-      _error = 'Name and role are required';
+    // Validate required fields
+    if (name.isEmpty) {
+      _error = 'Name is required';
       notifyListeners();
       return false;
     }
 
-    // Check if team member already exists
-    if (isTeamMemberExists(name, role)) {
-      _error = 'A team member with this name and role already exists';
+    if (role.isEmpty) {
+      _error = 'Role is required';
+      notifyListeners();
+      return false;
+    }
+
+    // Check for duplicate names
+    if (_teamMembers.any(
+      (member) => member.name.toLowerCase() == name.toLowerCase(),
+    )) {
+      _error = 'A team member with this name already exists';
       notifyListeners();
       return false;
     }
@@ -279,33 +333,49 @@ class TeamMembersProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Create team member in Supabase
-      final memberData = {
-        'name': name,
-        'role': role,
-        'linkedin_url': linkedin.isEmpty ? null : linkedin,
-        'avatar_url': customAvatar ?? 'https://via.placeholder.com/150',
-        'created_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
-      };
+      final User? currentUser = _supabase.auth.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
 
+      // Save to Supabase
       final response =
           await _supabase
               .from('team_members')
-              .insert(memberData)
-              .select('*')
+              .insert({
+                'user_id': currentUser.id,
+                'name': name,
+                'role': role,
+                'linkedin': linkedin.isEmpty ? null : linkedin,
+                'created_at': DateTime.now().toIso8601String(),
+              })
+              .select()
               .single();
 
-      // Create TeamMember object and add to local list
-      final newMember = TeamMember.fromSupabaseMap(response);
-      _teamMembers.insert(0, newMember); // Add at beginning for newest first
+      // Create local team member object
+      // Create local team member object
+      final newMember = TeamMember(
+        id: response['id'],
+        name: name,
+        role: role,
+        linkedin: linkedin.isEmpty ? '' : linkedin,
+        dateAdded: DateTime.parse(response['created_at']),
+      );
 
-      _markTeamMembersDirtyAndSave();
-      debugPrint('Team member added successfully: ${newMember.name}');
+      // Add to local list
+      _teamMembers.add(newMember);
+
+      // Clear form
+      _nameController.clear();
+      _roleController.clear();
+      _linkedinController.clear();
+      _dirtyFields.clear();
+
+      debugPrint('✅ Team member added successfully: $name');
       return true;
     } catch (e) {
       _error = 'Failed to add team member: $e';
-      debugPrint('Error adding team member: $e');
+      debugPrint('❌ Error adding team member: $e');
       return false;
     } finally {
       _isSaving = false;
@@ -314,31 +384,23 @@ class TeamMembersProvider with ChangeNotifier {
   }
 
   // Remove a team member
-  Future<bool> removeTeamMember(String id) async {
-    final memberIndex = _teamMembers.indexWhere((member) => member.id == id);
-    if (memberIndex == -1) {
-      _error = 'Team member not found';
-      notifyListeners();
-      return false;
-    }
-
+  Future<bool> removeTeamMember(String memberId) async {
     _isSaving = true;
     _error = null;
     notifyListeners();
 
     try {
       // Remove from Supabase
-      await _supabase.from('team_members').delete().eq('id', id);
+      await _supabase.from('team_members').delete().eq('id', memberId);
 
       // Remove from local list
-      final removedMember = _teamMembers.removeAt(memberIndex);
+      _teamMembers.removeWhere((member) => member.id == memberId);
 
-      _markTeamMembersDirtyAndSave();
-      debugPrint('Team member removed successfully: ${removedMember.name}');
+      debugPrint('✅ Team member removed successfully');
       return true;
     } catch (e) {
       _error = 'Failed to remove team member: $e';
-      debugPrint('Error removing team member: $e');
+      debugPrint('❌ Error removing team member: $e');
       return false;
     } finally {
       _isSaving = false;
@@ -621,8 +683,7 @@ class TeamMembersProvider with ChangeNotifier {
 
   // Refresh data from database
   Future<void> refreshFromDatabase() async {
-    _isInitialized = false;
-    await initialize();
+    await _loadTeamMembers();
   }
 
   @override

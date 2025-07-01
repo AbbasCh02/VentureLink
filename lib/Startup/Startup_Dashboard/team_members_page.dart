@@ -244,7 +244,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
           const SizedBox(height: 12),
           Text(
             provider.hasTeamMembers
-                ? 'Manage your ${provider.teamMemberCount} team members and build your dream team.'
+                ? 'Manage your ${provider.teamMembersCount} team members and build your dream team.'
                 : 'Build your dream team by adding talented individuals who share your vision.',
             style: const TextStyle(
               fontSize: 14,
@@ -258,7 +258,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
   }
 
   Widget _buildProgressSection(TeamMembersProvider provider) {
-    final teamCount = provider.teamMemberCount;
+    final teamCount = provider.teamMembersCount;
     final leadershipCount = provider.leadershipTeam.length;
 
     return Container(
@@ -815,7 +815,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
                         ],
                       )
                       : Text(
-                        'Save Team (${provider.teamMemberCount} members)',
+                        'Save Team (${provider.teamMembersCount} members)',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
