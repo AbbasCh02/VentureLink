@@ -338,7 +338,7 @@ class TeamMembersProvider with ChangeNotifier {
         throw Exception('User not authenticated');
       }
 
-      // Save to Supabase
+      // Save to Supabase - FIXED: Use 'linkedin_url' instead of 'linkedin'
       final response =
           await _supabase
               .from('team_members')
@@ -346,13 +346,12 @@ class TeamMembersProvider with ChangeNotifier {
                 'user_id': currentUser.id,
                 'name': name,
                 'role': role,
-                'linkedin': linkedin.isEmpty ? null : linkedin,
+                'linkedin_url': linkedin.isEmpty ? null : linkedin, // ✅ FIXED
                 'created_at': DateTime.now().toIso8601String(),
               })
               .select()
               .single();
 
-      // Create local team member object
       // Create local team member object
       final newMember = TeamMember(
         id: response['id'],
