@@ -717,7 +717,7 @@ class _StartupLoginPageState extends State<StartupLoginPage>
         );
 
         // Clear password on error
-        authProvider.clearPasswords();
+        authProvider.clearForm();
       }
     }
   }

@@ -95,9 +95,9 @@ class _FundingState extends State<Funding> {
                   // Parse and store the funding goal as integer
                   if (value.isNotEmpty) {
                     final amount = int.tryParse(value.replaceAll(',', ''));
-                    provider.setFundingGoalAmount(amount);
+                    provider.updateFundingGoalAmount(amount);
                   } else {
-                    provider.setFundingGoalAmount(null);
+                    provider.updateFundingGoalAmount(null);
                   }
                 },
                 validator: provider.validateFundingGoal,
@@ -200,7 +200,7 @@ class _FundingState extends State<Funding> {
                     ),
                   ),
                 ],
-                onChanged: provider.setSelectedFundingPhase,
+                onChanged: provider.updateSelectedFundingPhase,
                 validator: provider.validateFundingPhase,
               ),
             ),

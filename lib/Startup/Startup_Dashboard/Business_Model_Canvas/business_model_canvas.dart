@@ -258,7 +258,6 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
   }
 
   Widget _buildProgressSection(BusinessModelCanvasProvider provider) {
-    final completionPercentage = provider.completionPercentage;
     final completedSections = provider.completedSectionsCount;
 
     return Container(
@@ -283,7 +282,7 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
                 ),
               ),
               Text(
-                '${(completionPercentage * 100).toInt()}% Complete',
+                '${provider.completionPercentage.toStringAsFixed(0)}% Complete',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
@@ -292,13 +291,7 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          LinearProgressIndicator(
-            value: completionPercentage,
-            backgroundColor: Colors.grey[800],
-            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFffa500)),
-            minHeight: 8,
-          ),
+
           const SizedBox(height: 12),
           Text(
             '$completedSections of 9 sections completed',

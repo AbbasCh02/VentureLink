@@ -315,7 +315,7 @@ class AvatarUploadWidget extends StatelessWidget {
         }
 
         // Set the image (this will trigger upload automatically)
-        provider.setProfileImage(imageFile);
+        provider.updateProfileImage(imageFile);
 
         // Call callback if provided
         onImageChanged?.call();
@@ -351,7 +351,7 @@ class AvatarUploadWidget extends StatelessWidget {
 
       if (confirmed == true && context.mounted) {
         // Remove the image (this will trigger database update)
-        provider.setProfileImage(null);
+        provider.updateProfileImage(null);
 
         // Call callback if provided
         onImageChanged?.call();

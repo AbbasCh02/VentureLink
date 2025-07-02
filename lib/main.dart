@@ -1,5 +1,3 @@
-// lib/main.dart - Replace your main.dart with this updated version:
-
 import "package:flutter/material.dart";
 import "package:provider/provider.dart";
 import "homepage.dart";
@@ -16,6 +14,9 @@ import 'Startup/Startup_Dashboard/startup_dashboard.dart';
 import 'Startup/Providers/user_type_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'Startup/startup_page.dart';
+import 'Startup/signup_startup.dart';
+import 'Startup/login_startup.dart';
 
 Future<void> main() async {
   // Ensure Flutter is initialized
@@ -34,17 +35,11 @@ Future<void> main() async {
     );
   }
 
-  debugPrint('✅ Environment variables loaded successfully');
-  debugPrint('📍 Supabase URL: ${supabaseUrl.substring(0, 30)}...');
-
-  // Initialize Supabase with loaded environment variables
-  await Supabase.initialize(
-    url: supabaseUrl,
-    anonKey: supabaseAnonKey,
-    debug: true, // Set to false in production
-  );
+  // Initialize Supabase
+  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
 
   debugPrint('✅ Supabase initialized successfully');
+  debugPrint('✅ Environment variables loaded');
 
   runApp(const MyApp());
 }
@@ -56,9 +51,16 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // Authentication Provider - MUST be first as others depend on it
+        // CRITICAL: Authentication Provider MUST be first
+        // All other providers depend on user authentication state
         ChangeNotifierProvider(
           create: (context) => StartupAuthProvider(),
+          lazy: false, // Initialize immediately
+        ),
+
+        // User Type Provider (startup vs investor selection)
+        ChangeNotifierProvider(
+          create: (context) => UserTypeProvider(),
           lazy: false,
         ),
 
@@ -85,12 +87,6 @@ class MyApp extends StatelessWidget {
           create: (context) => BusinessModelCanvasProvider(),
           lazy: false,
         ),
-
-        // User Type Provider
-        ChangeNotifierProvider(
-          create: (context) => UserTypeProvider(),
-          lazy: false,
-        ),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -101,14 +97,17 @@ class MyApp extends StatelessWidget {
           primaryColor: Colors.blueGrey,
           scaffoldBackgroundColor: Colors.black,
         ),
-        // Use AuthWrapper to handle authentication state
+        // Use AuthWrapper instead of directly going to WelcomePage
         home: const AuthWrapper(),
         routes: {
           '/profile-overview': (context) => const ProfileOverview(),
           '/startup-profile': (context) => const StartupProfilePage(),
           '/team-members': (context) => const TeamMembersPage(),
           '/business_model': (context) => const BusinessModelCanvas(),
-          '/startup-dashboard': (context) => const StartupDashboard(),
+          '/choose_profile': (context) => const StartupPage(),
+          '/signup_startup': (context) => const StartupSignupPage(),
+          '/login_startup': (context) => const StartupLoginPage(),
+          '/dashboard': (context) => const StartupDashboard(),
           '/welcome': (context) => const WelcomePage(),
         },
       ),
@@ -116,7 +115,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// AuthWrapper to handle authentication state and provider initialization
+// CRITICAL: AuthWrapper widget to handle user isolation and auto-login logic
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
@@ -124,11 +123,9 @@ class AuthWrapper extends StatefulWidget {
   State<AuthWrapper> createState() => _AuthWrapperState();
 }
 
-// Replace your existing _AuthWrapperState class in main.dart with this:
-
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _hasInitializedProviders = false;
-  String? _lastUserId; // Add this to track user changes
+  String? _lastUserId; // CRITICAL: Track user changes for proper isolation
 
   @override
   void initState() {
@@ -144,7 +141,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     final authProvider = context.read<StartupAuthProvider>();
     final currentUserId = authProvider.currentUser?.id;
 
-    // Check if user changed or logged out
+    // CRITICAL: Check if user changed or logged out
     if (_lastUserId != currentUserId) {
       if (currentUserId == null) {
         // User logged out - clear all providers
@@ -152,15 +149,25 @@ class _AuthWrapperState extends State<AuthWrapper> {
         _clearAllProviders();
       } else if (_lastUserId != null) {
         // User changed - reset providers for new user
-        debugPrint('🔄 User changed - resetting providers for new user');
+        debugPrint(
+          '🔄 User changed from $_lastUserId to $currentUserId - resetting providers',
+        );
         _resetProvidersForNewUser();
+      } else {
+        // First time login - initialize providers
+        debugPrint(
+          '🔄 First time login for user $currentUserId - initializing providers',
+        );
+        _initializeProviders();
       }
       _lastUserId = currentUserId;
     }
 
     // Initialize providers for newly logged in user
     if (authProvider.isLoggedIn && !_hasInitializedProviders) {
-      debugPrint('🔄 Initializing providers for logged-in user');
+      debugPrint(
+        '🔄 Initializing providers for logged-in user: $currentUserId',
+      );
       _initializeProviders();
     }
   }
@@ -218,113 +225,36 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
         // Show loading screen while checking authentication
         if (authProvider.isLoading) {
-          return const AuthLoadingScreen();
+          return const Scaffold(
+            backgroundColor: Colors.black,
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: Color(0xFFffa500)),
+                  SizedBox(height: 16),
+                  Text(
+                    'Checking authentication...',
+                    style: TextStyle(color: Colors.white70, fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
 
-        // If user is logged in, show dashboard
+        // If user is logged in, go to dashboard
         if (authProvider.isLoggedIn && authProvider.currentUser != null) {
+          debugPrint(
+            '✅ User is authenticated: ${authProvider.currentUser!.id}',
+          );
           return const StartupDashboard();
         }
 
-        // Reset provider initialization flag when user logs out
-        if (!authProvider.isLoggedIn && _hasInitializedProviders) {
-          setState(() {
-            _hasInitializedProviders = false;
-          });
-        }
-
-        // If not logged in, show welcome page
+        // If not logged in, go to welcome page
+        debugPrint('❌ User is not authenticated - showing welcome page');
         return const WelcomePage();
       },
-    );
-  }
-}
-
-// Loading screen while checking authentication
-class AuthLoadingScreen extends StatelessWidget {
-  const AuthLoadingScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0a0a0a),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment.topCenter,
-            radius: 1.2,
-            colors: [Color(0xFF1a1a1a), Color(0xFF0a0a0a)],
-          ),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Animated logo
-              Container(
-                width: 120,
-                height: 120,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.grey[900]!, Colors.grey[850]!],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: const Color(0xFFffa500).withValues(alpha: 0.3),
-                    width: 2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFffa500).withValues(alpha: 0.2),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.rocket_launch,
-                  color: Color(0xFFffa500),
-                  size: 60,
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Loading indicator
-              const CircularProgressIndicator(
-                color: Color(0xFFffa500),
-                strokeWidth: 3,
-              ),
-              const SizedBox(height: 24),
-
-              // Loading text
-              ShaderMask(
-                shaderCallback:
-                    (bounds) => const LinearGradient(
-                      colors: [Color(0xFFffa500), Color(0xFFff8c00)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ).createShader(bounds),
-                child: const Text(
-                  'VentureLink',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Loading your startup profile...',
-                style: TextStyle(color: Colors.grey[400], fontSize: 16),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

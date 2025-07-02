@@ -817,7 +817,7 @@ class _StartupSignupPageState extends State<StartupSignupPage>
                                       label: "Full Name",
                                       controller: authProvider.nameController,
                                       focusNode: authProvider.nameFocusNode,
-                                      validator: authProvider.validateName,
+                                      validator: authProvider.validateFullName,
                                       icon: Icons.person_outline,
                                       keyboardType: TextInputType.name,
                                     ),

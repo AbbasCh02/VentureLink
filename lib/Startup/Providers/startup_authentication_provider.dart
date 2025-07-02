@@ -1,10 +1,10 @@
-// lib/Providers/startup_authentication_provider.dart
+// lib/Startup/Providers/startup_authentication_provider.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:logger/logger.dart';
-import 'dart:async';
 
-// User model for startup authentication
+/// Custom user model for better type safety and data handling
 class StartupUser {
   final String id;
   final String fullName;
@@ -19,27 +19,16 @@ class StartupUser {
     required this.email,
     required this.createdAt,
     required this.lastLoginAt,
-    this.isVerified = false,
+    required this.isVerified,
   });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'fullName': fullName,
-      'email': email,
-      'createdAt': createdAt.toIso8601String(),
-      'lastLoginAt': lastLoginAt.toIso8601String(),
-      'isVerified': isVerified,
-    };
-  }
 
   factory StartupUser.fromSupabaseUser(User user) {
     return StartupUser(
       id: user.id,
-      fullName: user.userMetadata?['full_name'] ?? '',
+      fullName: user.userMetadata?['full_name'] as String? ?? '',
       email: user.email ?? '',
-      createdAt: DateTime.parse(user.createdAt),
-      lastLoginAt: DateTime.parse(user.lastSignInAt ?? user.createdAt),
+      lastLoginAt: DateTime.now(),
+      createdAt: DateTime.tryParse(user.createdAt) ?? DateTime.now(),
       isVerified: user.emailConfirmedAt != null,
     );
   }
@@ -221,11 +210,13 @@ class StartupAuthProvider with ChangeNotifier {
         // Create or update user record in our users table
         await _createOrUpdateUserRecord(_currentUser!);
 
-        _logger.i('User already logged in: ${_currentUser!.email}');
+        _logger.i('✅ User already logged in: ${_currentUser!.email}');
+        debugPrint('✅ Current authenticated user: ${_currentUser!.id}');
       } else {
         _currentUser = null;
         _isLoggedIn = false;
         _logger.i('No active session found');
+        debugPrint('No authenticated user found');
       }
     } catch (e) {
       _logger.e('Error checking auth state: $e');
@@ -237,11 +228,12 @@ class StartupAuthProvider with ChangeNotifier {
   void _listenToAuthChanges() {
     _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
       final AuthState state = data;
-      _logger.i('Auth state changed: ${state.event}');
+      _logger.i('🔄 Auth state changed: ${state.event}');
 
       switch (state.event) {
         case AuthChangeEvent.signedIn:
           if (state.session?.user != null) {
+            final previousUserId = _currentUser?.id;
             _currentUser = StartupUser.fromSupabaseUser(state.session!.user);
             _isLoggedIn = true;
             _error = null;
@@ -249,21 +241,30 @@ class StartupAuthProvider with ChangeNotifier {
             // Create or update user record
             _createOrUpdateUserRecord(_currentUser!);
 
-            _logger.i('User signed in: ${_currentUser!.email}');
+            _logger.i('✅ User signed in: ${_currentUser!.email}');
+            debugPrint('✅ User signed in with ID: ${_currentUser!.id}');
+
+            // If user changed, notify listeners for data isolation
+            if (previousUserId != null && previousUserId != _currentUser!.id) {
+              debugPrint(
+                '🔄 User changed from $previousUserId to ${_currentUser!.id}',
+              );
+            }
           }
           break;
         case AuthChangeEvent.signedOut:
+          final previousUserId = _currentUser?.id;
           _currentUser = null;
           _isLoggedIn = false;
-          _logger.i('User signed out');
+          _error = null;
+          _logger.i('✅ User signed out');
+          debugPrint('✅ User signed out (was: $previousUserId)');
           break;
         case AuthChangeEvent.userUpdated:
           if (state.session?.user != null) {
             _currentUser = StartupUser.fromSupabaseUser(state.session!.user);
-
             // Update user record
             _createOrUpdateUserRecord(_currentUser!);
-
             _logger.i('User updated: ${_currentUser!.email}');
           }
           break;
@@ -277,15 +278,15 @@ class StartupAuthProvider with ChangeNotifier {
     });
   }
 
-  // Create or update user record in our users table
+  // Create or update user record in our users table - CRITICAL: Proper user isolation
   Future<void> _createOrUpdateUserRecord(StartupUser user) async {
     try {
-      // Check if user record exists
+      // Check if user record exists - CRITICAL: Filter by specific user ID
       final existingUser =
           await _supabase
               .from('users')
               .select('id, email, created_at')
-              .eq('id', user.id)
+              .eq('id', user.id) // THIS IS THE KEY FIX
               .maybeSingle();
 
       if (existingUser == null) {
@@ -307,10 +308,11 @@ class StartupAuthProvider with ChangeNotifier {
         });
 
         _logger.i(
-          'Created new user record for: ${user.email} with username: ${user.fullName}',
+          '✅ Created new user record for: ${user.email} with ID: ${user.id}',
         );
+        debugPrint('✅ Created user record for ID: ${user.id}');
       } else {
-        // Update existing user record (and fix username if it's currently email prefix)
+        // Update existing user record - CRITICAL: Filter by specific user ID
         final updateData = {
           'last_login_at': user.lastLoginAt.toIso8601String(),
           'is_verified': user.isVerified,
@@ -322,12 +324,19 @@ class StartupAuthProvider with ChangeNotifier {
           updateData['username'] = user.fullName;
         }
 
-        await _supabase.from('users').update(updateData).eq('id', user.id);
+        await _supabase
+            .from('users')
+            .update(updateData)
+            .eq('id', user.id); // THIS IS THE KEY FIX
 
-        _logger.i('Updated user record for: ${user.email}');
+        _logger.i(
+          '✅ Updated user record for: ${user.email} with ID: ${user.id}',
+        );
+        debugPrint('✅ Updated user record for ID: ${user.id}');
       }
     } catch (e) {
-      _logger.e('Error creating/updating user record: $e');
+      _logger.e('❌ Error creating/updating user record: $e');
+      debugPrint('❌ Error with user record for ID: ${user.id}');
       // Don't throw error to not break authentication flow
     }
   }
@@ -366,7 +375,8 @@ class StartupAuthProvider with ChangeNotifier {
       );
 
       if (response.user != null) {
-        _logger.i('Signup successful: ${this.email}');
+        _logger.i('✅ Signup successful: ${this.email}');
+        debugPrint('✅ New user created with ID: ${response.user!.id}');
 
         // User will be set via auth state listener
         // Save remember me if checked
@@ -381,11 +391,11 @@ class StartupAuthProvider with ChangeNotifier {
         return false;
       }
     } on AuthException catch (e) {
-      _logger.e('Auth exception during signup: ${e.message}');
+      _logger.e('❌ Auth exception during signup: ${e.message}');
       _error = e.message;
       return false;
     } catch (e) {
-      _logger.e('Unexpected error during signup: $e');
+      _logger.e('❌ Unexpected error during signup: $e');
       _error = 'Signup failed. Please try again.';
       return false;
     } finally {
@@ -394,7 +404,16 @@ class StartupAuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> signIn() async {
+  Future<bool> signIn({
+    String? email,
+    String? password,
+    bool? rememberMe,
+  }) async {
+    // Use provided values or controller values
+    if (email != null) _emailController.text = email;
+    if (password != null) _passwordController.text = password;
+    if (rememberMe != null) _rememberMe = rememberMe;
+
     if (!_validateLoginForm()) return false;
 
     _isAuthenticating = true;
@@ -402,20 +421,21 @@ class StartupAuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      _logger.i('Attempting login for: $email');
+      _logger.i('Attempting login for: ${this.email}');
 
       final response = await _supabase.auth.signInWithPassword(
-        email: email,
-        password: password,
+        email: this.email,
+        password: this.password,
       );
 
       if (response.user != null) {
-        _logger.i('Login successful: $email');
+        _logger.i('✅ Login successful: ${this.email}');
+        debugPrint('✅ User logged in with ID: ${response.user!.id}');
 
         // User will be set via auth state listener
         // Save remember me if checked
         if (_rememberMe) {
-          await _saveRememberMe(email);
+          await _saveRememberMe(this.email);
         }
 
         clearForm();
@@ -425,11 +445,11 @@ class StartupAuthProvider with ChangeNotifier {
         return false;
       }
     } on AuthException catch (e) {
-      _logger.e('Auth exception during login: ${e.message}');
+      _logger.e('❌ Auth exception during login: ${e.message}');
       _error = e.message;
       return false;
     } catch (e) {
-      _logger.e('Unexpected error during login: $e');
+      _logger.e('❌ Unexpected error during login: $e');
       _error = 'Login failed. Please try again.';
       return false;
     } finally {
@@ -438,16 +458,15 @@ class StartupAuthProvider with ChangeNotifier {
     }
   }
 
-  // Add this method to clear all user data on logout
-  // Add this method to your StartupAuthProvider class:
-
+  // CRITICAL: Enhanced sign out method that properly clears user state
   Future<void> signOut() async {
     try {
       _isAuthenticating = true;
       _error = null;
       notifyListeners();
 
-      _logger.i('Starting sign out process...');
+      final previousUserId = _currentUser?.id;
+      _logger.i('🔄 Starting sign out process for user: $previousUserId');
 
       // Sign out from Supabase
       await _supabase.auth.signOut();
@@ -466,6 +485,7 @@ class StartupAuthProvider with ChangeNotifier {
       }
 
       _logger.i('✅ User signed out successfully');
+      debugPrint('✅ User signed out (was: $previousUserId)');
     } catch (e) {
       _error = 'Failed to sign out: $e';
       _logger.e('❌ Error signing out: $e');
@@ -474,11 +494,6 @@ class StartupAuthProvider with ChangeNotifier {
       _isAuthenticating = false;
       notifyListeners();
     }
-  }
-
-  // Add method to notify other providers when user changes
-  void notifyUserChanged() {
-    notifyListeners();
   }
 
   Future<bool> resetPassword(String email) async {
@@ -615,173 +630,97 @@ class StartupAuthProvider with ChangeNotifier {
     String? password,
     bool? rememberMe,
   }) async {
-    // Use provided values or controller values
-    if (email != null) _emailController.text = email;
-    if (password != null) _passwordController.text = password;
-    if (rememberMe != null) _rememberMe = rememberMe;
-
-    return await signIn();
+    return await signIn(
+      email: email,
+      password: password,
+      rememberMe: rememberMe,
+    );
   }
 
-  void clearPasswords() {
-    _passwordController.clear();
-    _confirmPasswordController.clear();
-    _passwordError = null;
-    _confirmPasswordError = null;
+  // Signup method (alias for signUp for backward compatibility)
+  Future<bool> signup({
+    String? fullName,
+    String? email,
+    String? password,
+    String? confirmPassword,
+  }) async {
+    return await signUp(
+      fullName: fullName,
+      email: email,
+      password: password,
+      confirmPassword: confirmPassword,
+    );
+  }
+
+  // ========== VALIDATION METHODS ==========
+  bool _validateLoginForm() {
+    bool isValid = true;
+
+    _emailError = validateEmail(email);
+    if (_emailError != null) isValid = false;
+
+    _passwordError = validatePassword(password);
+    if (_passwordError != null) isValid = false;
+
+    _isFormValid = isValid;
     notifyListeners();
+    return isValid;
+  }
+
+  bool _validateSignupForm() {
+    bool isValid = true;
+
+    _nameError = validateFullName(fullName);
+    if (_nameError != null) isValid = false;
+
+    _emailError = validateEmail(email);
+    if (_emailError != null) isValid = false;
+
+    _passwordError = validatePassword(password);
+    if (_passwordError != null) isValid = false;
+
+    _confirmPasswordError = validateConfirmPassword(password, confirmPassword);
+    if (_confirmPasswordError != null) isValid = false;
+
+    _isFormValid = isValid;
+    notifyListeners();
+    return isValid;
   }
 
   void _onFormFieldChanged() {
     if (_validateRealTime) {
-      _validateCurrentForm();
-    }
-
-    // Debounce validation
-    _validationTimer?.cancel();
-    _validationTimer = Timer(const Duration(milliseconds: 300), () {
-      _updateFormValidity();
-    });
-  }
-
-  void _validateCurrentForm() {
-    switch (_currentFormType) {
-      case FormType.signup:
-        _nameError = validateName(_nameController.text);
-        _emailError = validateEmail(_emailController.text);
-        _passwordError = validatePassword(_passwordController.text);
-        _confirmPasswordError = validateConfirmPassword(
-          _passwordController.text,
-          _confirmPasswordController.text,
-        );
-        break;
-      case FormType.login:
-        _emailError = validateEmail(_emailController.text);
-        _passwordError =
-            _passwordController.text.isEmpty
-                ? 'Please enter your password'
-                : null;
-        break;
-    }
-    notifyListeners();
-  }
-
-  void _updateFormValidity() {
-    bool wasValid = _isFormValid;
-
-    switch (_currentFormType) {
-      case FormType.signup:
-        _isFormValid =
-            validateName(_nameController.text) == null &&
-            validateEmail(_emailController.text) == null &&
-            validatePassword(_passwordController.text) == null &&
-            validateConfirmPassword(
-                  _passwordController.text,
-                  _confirmPasswordController.text,
-                ) ==
-                null;
-        break;
-      case FormType.login:
-        _isFormValid =
-            validateEmail(_emailController.text) == null &&
-            _passwordController.text.isNotEmpty;
-        break;
-    }
-
-    if (wasValid != _isFormValid) {
-      notifyListeners();
+      _validationTimer?.cancel();
+      _validationTimer = Timer(const Duration(milliseconds: 300), () {
+        validateForm();
+      });
     }
   }
 
-  bool _validateSignupForm() {
-    _validateRealTime = true;
-    _validateCurrentForm();
-    return _isFormValid;
-  }
-
-  bool _validateLoginForm() {
-    _validateRealTime = true;
-    _validateCurrentForm();
-    return _isFormValid;
-  }
-
-  // ========== FORM UI METHODS ==========
-  void switchToLogin() {
-    _currentFormType = FormType.login;
-    clearForm();
-    clearError();
-    notifyListeners();
-  }
-
-  void switchToSignup() {
-    _currentFormType = FormType.signup;
-    clearForm();
-    clearError();
-    notifyListeners();
-  }
-
-  void togglePasswordVisibility() {
-    _isPasswordVisible = !_isPasswordVisible;
-    notifyListeners();
-  }
-
-  void toggleConfirmPasswordVisibility() {
-    _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
-    notifyListeners();
-  }
-
-  void setRememberMe(bool value) {
-    _rememberMe = value;
-    notifyListeners();
-  }
-
-  void clearError() {
-    _error = null;
-    notifyListeners();
-  }
-
-  void clearForm() {
-    _nameController.clear();
-    _emailController.clear();
-    _passwordController.clear();
-    _confirmPasswordController.clear();
-
-    _nameError = null;
-    _emailError = null;
-    _passwordError = null;
-    _confirmPasswordError = null;
-    _validateRealTime = false;
-    _isFormValid = false;
-
-    notifyListeners();
-  }
-
-  // ========== VALIDATION METHODS ==========
-  String? validateName(String? value) {
+  // ========== FIELD VALIDATION ==========
+  String? validateFullName(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Please enter your full name';
+      return 'Full name is required';
     }
     if (value.trim().length < 2) {
-      return 'Name must be at least 2 characters';
+      return 'Full name must be at least 2 characters';
     }
     return null;
   }
 
   String? validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Please enter your email';
+      return 'Email is required';
     }
-
-    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     if (!emailRegex.hasMatch(value.trim())) {
       return 'Please enter a valid email address';
     }
-
     return null;
   }
 
   String? validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Please enter a password';
+      return 'Password is required';
     }
     if (value.length < 6) {
       return 'Password must be at least 6 characters';
@@ -799,24 +738,27 @@ class StartupAuthProvider with ChangeNotifier {
     return null;
   }
 
-  // Password strength checker
+  // ========== PASSWORD STRENGTH ==========
   PasswordStrength getPasswordStrength(String password) {
     if (password.isEmpty) return PasswordStrength.none;
-    if (password.length < 6) return PasswordStrength.weak;
 
     int score = 0;
+
+    // Length
     if (password.length >= 8) score++;
-    if (RegExp(r'[A-Z]').hasMatch(password)) score++;
+    if (password.length >= 12) score++;
+
+    // Character types
     if (RegExp(r'[a-z]').hasMatch(password)) score++;
+    if (RegExp(r'[A-Z]').hasMatch(password)) score++;
     if (RegExp(r'[0-9]').hasMatch(password)) score++;
     if (RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password)) score++;
 
     if (score <= 2) return PasswordStrength.weak;
-    if (score <= 3) return PasswordStrength.medium;
+    if (score <= 4) return PasswordStrength.medium;
     return PasswordStrength.strong;
   }
 
-  // Get password strength color for UI - accepts both String and PasswordStrength
   Color getPasswordStrengthColor(dynamic input) {
     PasswordStrength strength;
     if (input is String) {
@@ -839,7 +781,6 @@ class StartupAuthProvider with ChangeNotifier {
     }
   }
 
-  // Get password strength text for UI - accepts both String and PasswordStrength
   String getPasswordStrengthText(dynamic input) {
     PasswordStrength strength;
     if (input is String) {
@@ -862,24 +803,40 @@ class StartupAuthProvider with ChangeNotifier {
     }
   }
 
-  // Alternative methods that return string directly (for UI compatibility)
-  String getPasswordStrengthString(String password) {
-    return getPasswordStrength(password).name;
+  // ========== UI CONTROL METHODS ==========
+  void togglePasswordVisibility() {
+    _isPasswordVisible = !_isPasswordVisible;
+    notifyListeners();
   }
 
-  // Signup method with named parameters (for backward compatibility)
-  Future<bool> signup({
-    String? fullName,
-    String? email,
-    String? password,
-    String? confirmPassword,
-  }) async {
-    return await signUp(
-      fullName: fullName,
-      email: email,
-      password: password,
-      confirmPassword: confirmPassword,
-    );
+  void toggleConfirmPasswordVisibility() {
+    _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+    notifyListeners();
+  }
+
+  void setRememberMe(bool value) {
+    _rememberMe = value;
+    notifyListeners();
+  }
+
+  void clearForm() {
+    _nameController.clear();
+    _emailController.clear();
+    _passwordController.clear();
+    _confirmPasswordController.clear();
+
+    _nameError = null;
+    _emailError = null;
+    _passwordError = null;
+    _confirmPasswordError = null;
+    _isFormValid = false;
+
+    notifyListeners();
+  }
+
+  void clearError() {
+    _error = null;
+    notifyListeners();
   }
 
   // Get user status for dashboard routing

@@ -27,7 +27,45 @@ class StartupProfileOverviewProvider with ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   StartupProfileOverviewProvider() {
-    // Initialize automatically when provider is created
+    // Initialize automatically when provider is created and user is authenticated
+    _initializeWhenReady();
+  }
+
+  // Check if user is authenticated and initialize
+  void _initializeWhenReady() {
+    // Check if there's an authenticated user
+    final currentUser = _supabase.auth.currentUser;
+    if (currentUser != null && !_isInitialized) {
+      // User is already authenticated, initialize immediately
+      initialize();
+    } else {
+      // Listen for auth state changes
+      _supabase.auth.onAuthStateChange.listen((data) {
+        final AuthChangeEvent event = data.event;
+        if (event == AuthChangeEvent.signedIn && !_isInitialized) {
+          // User just signed in, initialize
+          initialize();
+        } else if (event == AuthChangeEvent.signedOut) {
+          // User signed out, reset state
+          _resetProviderState();
+        }
+      });
+    }
+
+    _addListeners();
+  }
+
+  // Reset provider state on logout
+  void _resetProviderState() {
+    _isInitialized = false;
+    _removeListeners();
+    _companyNameController.clear();
+    _taglineController.clear();
+    _industryController.clear();
+    _regionController.clear();
+    _dirtyFields.clear();
+    _error = null;
+    notifyListeners();
     _addListeners();
   }
 
@@ -121,10 +159,10 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     try {
       await _loadProfileData();
       _isInitialized = true;
-      debugPrint('Profile overview initialized successfully');
+      debugPrint('✅ Profile overview initialized successfully');
     } catch (e) {
       _error = 'Failed to initialize profile: $e';
-      debugPrint('Error initializing profile: $e');
+      debugPrint('❌ Error initializing profile: $e');
     } finally {
       _isInitializing = false;
       _isLoading = false;
@@ -144,12 +182,12 @@ class StartupProfileOverviewProvider with ChangeNotifier {
         return;
       }
 
-      // Load user profile data
+      // Load user profile data - CRITICAL: Filter by current user ID
       final userResponse =
           await _supabase
               .from('users')
               .select('company_name, tagline, industry, region')
-              .eq('id', currentUser.id)
+              .eq('id', currentUser.id) // THIS IS THE KEY FIX
               .maybeSingle();
 
       if (userResponse != null) {
@@ -159,9 +197,17 @@ class StartupProfileOverviewProvider with ChangeNotifier {
         _industryController.text = userResponse['industry'] ?? '';
         _regionController.text = userResponse['region'] ?? '';
 
-        debugPrint('Profile data loaded successfully');
+        debugPrint(
+          '✅ Profile data loaded successfully for user: ${currentUser.id}',
+        );
+        debugPrint(
+          '   - Company: ${userResponse['company_name'] ?? "Not Set"}',
+        );
+        debugPrint('   - Tagline: ${userResponse['tagline'] ?? "Not Set"}');
+        debugPrint('   - Industry: ${userResponse['industry'] ?? "Not Set"}');
+        debugPrint('   - Region: ${userResponse['region'] ?? "Not Set"}');
       } else {
-        debugPrint('No profile data found for user');
+        debugPrint('No profile data found for user: ${currentUser.id}');
       }
 
       // Re-add listeners
@@ -169,7 +215,7 @@ class StartupProfileOverviewProvider with ChangeNotifier {
       _dirtyFields.clear(); // Clear dirty state after loading
     } catch (e) {
       _error = 'Failed to load profile data: $e';
-      debugPrint('Error loading profile data: $e');
+      debugPrint('❌ Error loading profile data: $e');
 
       // Re-add listeners even on error
       _addListeners();
@@ -199,6 +245,16 @@ class StartupProfileOverviewProvider with ChangeNotifier {
         tagline != null &&
         industry != null &&
         region != null;
+  }
+
+  // Get completion percentage
+  double get completionPercentage {
+    int completedFields = 0;
+    if (companyName != null) completedFields++;
+    if (tagline != null) completedFields++;
+    if (industry != null) completedFields++;
+    if (region != null) completedFields++;
+    return (completedFields / 4) * 100;
   }
 
   // Save specific field to Supabase
@@ -239,15 +295,20 @@ class StartupProfileOverviewProvider with ChangeNotifier {
 
       updateData['updated_at'] = DateTime.now().toIso8601String();
 
-      // Update in Supabase
-      await _supabase.from('users').update(updateData).eq('id', currentUser.id);
+      // Update in Supabase - CRITICAL: Filter by current user ID
+      await _supabase
+          .from('users')
+          .update(updateData)
+          .eq('id', currentUser.id); // THIS IS THE KEY FIX
 
       _dirtyFields.remove(fieldName);
-      debugPrint('Successfully saved $fieldName to Supabase');
+      debugPrint(
+        '✅ Successfully saved $fieldName to Supabase for user: ${currentUser.id}',
+      );
       return true;
     } catch (e) {
       _error = 'Failed to save $fieldName: $e';
-      debugPrint('Error saving $fieldName: $e');
+      debugPrint('❌ Error saving $fieldName: $e');
       return false;
     } finally {
       _isSaving = false;
@@ -289,116 +350,25 @@ class StartupProfileOverviewProvider with ChangeNotifier {
       // Always update timestamp
       updateData['updated_at'] = DateTime.now().toIso8601String();
 
-      // Update in Supabase
-      await _supabase.from('users').update(updateData).eq('id', currentUser.id);
+      // Update in Supabase - CRITICAL: Filter by current user ID
+      await _supabase
+          .from('users')
+          .update(updateData)
+          .eq('id', currentUser.id); // THIS IS THE KEY FIX
 
       _dirtyFields.clear();
-      debugPrint('Successfully saved all profile changes to Supabase');
+      debugPrint(
+        '✅ Successfully saved all profile changes to Supabase for user: ${currentUser.id}',
+      );
       return true;
     } catch (e) {
       _error = 'Failed to save profile changes: $e';
-      debugPrint('Error saving profile changes: $e');
+      debugPrint('❌ Error saving profile changes: $e');
       return false;
     } finally {
       _isSaving = false;
       notifyListeners();
     }
-  }
-
-  // Get profile data as map
-  Map<String, String> getProfileData() {
-    return {
-      'companyName': _companyNameController.text.trim(),
-      'tagline': _taglineController.text.trim(),
-      'industry': _industryController.text.trim(),
-      'region': _regionController.text.trim(),
-    };
-  }
-
-  // Clear all profile data
-  Future<void> clearProfileData() async {
-    _isSaving = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      // Remove listeners temporarily
-      _removeListeners();
-
-      // Clear controllers
-      _companyNameController.clear();
-      _taglineController.clear();
-      _industryController.clear();
-      _regionController.clear();
-      _dirtyFields.clear();
-
-      // Re-add listeners
-      _addListeners();
-
-      // Clear data from Supabase
-      final User? currentUser = _supabase.auth.currentUser;
-      if (currentUser != null) {
-        await _supabase
-            .from('users')
-            .update({
-              'company_name': null,
-              'tagline': null,
-              'industry': null,
-              'region': null,
-              'updated_at': DateTime.now().toIso8601String(),
-            })
-            .eq('id', currentUser.id);
-      }
-
-      debugPrint('Profile data cleared successfully');
-    } catch (e) {
-      _error = 'Failed to clear profile data: $e';
-      debugPrint('Error clearing profile data: $e');
-    } finally {
-      _isSaving = false;
-      notifyListeners();
-    }
-  }
-
-  // Method to update profile data programmatically
-  void updateProfileData({
-    String? companyName,
-    String? tagline,
-    String? industry,
-    String? region,
-  }) {
-    _removeListeners();
-
-    if (companyName != null) {
-      _companyNameController.text = companyName;
-      _dirtyFields.add('companyName');
-    }
-    if (tagline != null) {
-      _taglineController.text = tagline;
-      _dirtyFields.add('tagline');
-    }
-    if (industry != null) {
-      _industryController.text = industry;
-      _dirtyFields.add('industry');
-    }
-    if (region != null) {
-      _regionController.text = region;
-      _dirtyFields.add('region');
-    }
-
-    _addListeners();
-    notifyListeners();
-  }
-
-  // Method to force notification (can be called externally)
-  void forceUpdate() {
-    notifyListeners();
-  }
-
-  // Force refresh from database
-  Future<void> refreshFromDatabase() async {
-    _isInitialized = false;
-    await initialize();
   }
 
   // Validation methods
@@ -419,18 +389,12 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     if (value.trim().length < 10) {
       return 'Tagline must be at least 10 characters';
     }
-    if (value.trim().length > 100) {
-      return 'Tagline must be less than 100 characters';
-    }
     return null;
   }
 
   String? validateIndustry(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Industry is required';
-    }
-    if (value.trim().length < 2) {
-      return 'Industry must be at least 2 characters';
     }
     return null;
   }
@@ -439,102 +403,55 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     if (value == null || value.trim().isEmpty) {
       return 'Region is required';
     }
-    if (value.trim().length < 2) {
-      return 'Region must be at least 2 characters';
-    }
     return null;
   }
 
-  // Get profile completion percentage
-  double get completionPercentage {
-    int completedFields = 0;
-    const int totalFields = 4;
-
-    if (companyName != null) completedFields++;
-    if (tagline != null) completedFields++;
-    if (industry != null) completedFields++;
-    if (region != null) completedFields++;
-
-    return completedFields / totalFields;
+  // Get profile data as map
+  Map<String, String> getProfileData() {
+    return {
+      'companyName': _companyNameController.text.trim(),
+      'tagline': _taglineController.text.trim(),
+      'industry': _industryController.text.trim(),
+      'region': _regionController.text.trim(),
+    };
   }
 
-  // Get completed fields count
-  int get completedFieldsCount {
-    int count = 0;
-    if (companyName != null) count++;
-    if (tagline != null) count++;
-    if (industry != null) count++;
-    if (region != null) count++;
-    return count;
+  // Method to update profile data programmatically
+  void updateProfileData({
+    String? companyName,
+    String? tagline,
+    String? industry,
+    String? region,
+  }) {
+    _removeListeners();
+
+    if (companyName != null) _companyNameController.text = companyName;
+    if (tagline != null) _taglineController.text = tagline;
+    if (industry != null) _industryController.text = industry;
+    if (region != null) _regionController.text = region;
+
+    _addListeners();
+    notifyListeners();
   }
 
-  // Get profile summary
-  Map<String, dynamic> getProfileSummary() {
+  // Get profile status summary
+  Map<String, dynamic> getProfileStatus() {
     return {
       'completionPercentage': completionPercentage,
-      'completedFields': completedFieldsCount,
-      'totalFields': 4,
       'isComplete': isProfileComplete,
       'hasUnsavedChanges': hasAnyUnsavedChanges,
       'profileData': getProfileData(),
     };
   }
 
-  // Export profile data for backup/sharing
-  Map<String, dynamic> exportProfileData() {
-    return {
-      'companyName': companyName,
-      'tagline': tagline,
-      'industry': industry,
-      'region': region,
-      'completionPercentage': completionPercentage,
-      'exportedAt': DateTime.now().toIso8601String(),
-    };
+  Future<void> clearProfileData() async {
+    await clearAllData();
   }
 
-  // Import profile data
-  Future<bool> importProfileData(Map<String, String> data) async {
-    try {
-      updateProfileData(
-        companyName: data['companyName'],
-        tagline: data['tagline'],
-        industry: data['industry'],
-        region: data['region'],
-      );
-
-      // Save all changes to Supabase
-      await saveAllFields();
-
-      debugPrint('Profile data imported successfully');
-      return true;
-    } catch (e) {
-      _error = 'Failed to import profile data: $e';
-      debugPrint('Error importing profile data: $e');
-      return false;
-    }
+  Future<void> refreshFromDatabase() async {
+    _isInitialized = false;
+    await initialize();
   }
-
-  // Get profile validation errors
-  List<String> getValidationErrors() {
-    List<String> errors = [];
-
-    final companyNameError = validateCompanyName(_companyNameController.text);
-    if (companyNameError != null) errors.add('Company Name: $companyNameError');
-
-    final taglineError = validateTagline(_taglineController.text);
-    if (taglineError != null) errors.add('Tagline: $taglineError');
-
-    final industryError = validateIndustry(_industryController.text);
-    if (industryError != null) errors.add('Industry: $industryError');
-
-    final regionError = validateRegion(_regionController.text);
-    if (regionError != null) errors.add('Region: $regionError');
-
-    return errors;
-  }
-
-  // Check if form is valid
-  bool get isFormValid => getValidationErrors().isEmpty;
 
   @override
   void dispose() {

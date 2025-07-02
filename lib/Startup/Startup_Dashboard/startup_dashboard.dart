@@ -586,7 +586,7 @@ class _StartupDashboardState extends State<StartupDashboard>
       builder: (context, provider, child) {
         return Container(
           margin: const EdgeInsets.only(bottom: 32),
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(16), // REDUCED from 24 to 16
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [Colors.grey[900]!, Colors.grey[850]!],
@@ -614,6 +614,7 @@ class _StartupDashboardState extends State<StartupDashboard>
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min, // ADDED this line
             children: [
               // Header with status
               Row(
@@ -689,18 +690,17 @@ class _StartupDashboardState extends State<StartupDashboard>
                 ],
               ),
 
-              const SizedBox(height: 20),
-
+              const SizedBox(height: 16), // REDUCED from 20 to 16
               // Files display or empty state
               if (provider.hasPitchDeckFiles) ...[
-                // Files preview with increased height and better spacing
+                // Files preview with constrained height
                 SizedBox(
-                  height: 160, // INCREASED HEIGHT from 120 to 160
+                  height: 140, // REDUCED from 160 to 140
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.only(
-                      bottom: 8,
-                    ), // ADDED BOTTOM PADDING
+                      bottom: 4, // REDUCED from 8 to 4
+                    ),
                     itemCount: provider.pitchDeckThumbnails.length,
                     itemBuilder: (context, index) {
                       return Container(
@@ -711,11 +711,11 @@ class _StartupDashboardState extends State<StartupDashboard>
                   ),
                 ),
 
-                const SizedBox(height: 20), // INCREASED SPACING from 16 to 20
+                const SizedBox(height: 12), // REDUCED from 20 to 12
                 // Submission status
                 if (provider.isPitchDeckSubmitted) ...[
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(10), // REDUCED from 12 to 10
                     decoration: BoxDecoration(
                       color: Colors.green.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
@@ -757,13 +757,10 @@ class _StartupDashboardState extends State<StartupDashboard>
                       ],
                     ),
                   ),
-                  const SizedBox(
-                    height: 8,
-                  ), // ADDED SPACING AFTER SUBMISSION STATUS
                 ] else ...[
                   // Upload more files option
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(10), // REDUCED from 12 to 10
                     decoration: BoxDecoration(
                       color: Colors.blue.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
@@ -791,13 +788,12 @@ class _StartupDashboardState extends State<StartupDashboard>
                       ],
                     ),
                   ),
-                  const SizedBox(height: 8), // ADDED SPACING AFTER INFO MESSAGE
                 ],
               ] else ...[
                 // Empty state
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(20), // REDUCED from 24 to 20
                   decoration: BoxDecoration(
                     color: Colors.grey[800]!.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(12),
@@ -806,13 +802,14 @@ class _StartupDashboardState extends State<StartupDashboard>
                     ),
                   ),
                   child: Column(
+                    mainAxisSize: MainAxisSize.min, // ADDED this line
                     children: [
                       Icon(
                         Icons.upload_file,
-                        size: 48,
+                        size: 40, // REDUCED from 48 to 40
                         color: Colors.grey[500],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8), // REDUCED from 12 to 8
                       Text(
                         'No pitch deck files uploaded yet',
                         style: TextStyle(
@@ -821,7 +818,7 @@ class _StartupDashboardState extends State<StartupDashboard>
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6), // REDUCED from 8 to 6
                       Text(
                         'Upload your pitch deck to showcase your startup',
                         style: TextStyle(color: Colors.grey[500], fontSize: 12),
@@ -1262,7 +1259,7 @@ class _StartupDashboardState extends State<StartupDashboard>
                         Text(
                           provider.completionPercentage == 1.0
                               ? 'Complete'
-                              : '${(provider.completionPercentage * 100).toInt()}%',
+                              : '${provider.completionPercentage.toStringAsFixed(0)}%',
                           style: TextStyle(
                             color:
                                 provider.completionPercentage == 1.0
@@ -1312,42 +1309,6 @@ class _StartupDashboardState extends State<StartupDashboard>
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Progress bar
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Overall Progress',
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[800],
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: provider.completionPercentage,
-                        backgroundColor: Colors.transparent,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          provider.completionPercentage == 1.0
-                              ? Colors.green
-                              : const Color(0xFF4CAF50),
-                        ),
-                      ),
                     ),
                   ),
                 ],
@@ -1504,7 +1465,7 @@ class _StartupDashboardState extends State<StartupDashboard>
         child: SlideTransition(
           position: _slideAnimation,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

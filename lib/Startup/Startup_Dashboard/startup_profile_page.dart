@@ -99,7 +99,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
         }
 
         // Set the profile image - this will trigger auto-save
-        provider.setProfileImage(imageFile);
+        provider.updateProfileImage(imageFile);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -130,7 +130,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
 
     // Use both form validation and provider validation
     bool isFormValid = _formKey.currentState!.validate();
-    bool isProviderValid = provider.isProfileValid();
+    bool isProviderValid = provider.isProfileComplete;
 
     if (isFormValid && isProviderValid) {
       final profileData = provider.getProfileData();
@@ -175,7 +175,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
       String errorMessage = 'Please fix the following issues:';
 
       if (validationErrors.isNotEmpty) {
-        errorMessage += '\n${validationErrors.values.join('\n')}';
+        errorMessage += '\n${validationErrors.join('\n')}';
       } else {
         errorMessage = 'Please fill all required fields correctly';
       }

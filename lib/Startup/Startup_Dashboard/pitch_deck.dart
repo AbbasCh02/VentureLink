@@ -188,7 +188,7 @@ class PitchDeck extends StatelessWidget {
       }
 
       // Call provider method to handle submission
-      await provider.submitPitchDeckFiles();
+      await provider.submitPitchDeck();
 
       // Hide loading dialog
       if (context.mounted) Navigator.pop(context);
@@ -239,7 +239,10 @@ class PitchDeck extends StatelessWidget {
       }
 
       // Call provider method to delete individual file
-      await provider.deleteIndividualPitchDeckFile(file);
+      final fileIndex = provider.pitchDeckFiles.indexOf(file);
+      if (fileIndex != -1) {
+        provider.removePitchDeckFile(fileIndex);
+      }
 
       // Hide loading dialog
       if (context.mounted) Navigator.pop(context);
