@@ -109,6 +109,7 @@ class MyApp extends StatelessWidget {
           '/team-members': (context) => const TeamMembersPage(),
           '/business_model': (context) => const BusinessModelCanvas(),
           '/startup-dashboard': (context) => const StartupDashboard(),
+          '/welcome': (context) => const WelcomePage(),
         },
       ),
     );
@@ -123,8 +124,11 @@ class AuthWrapper extends StatefulWidget {
   State<AuthWrapper> createState() => _AuthWrapperState();
 }
 
+// Replace your existing _AuthWrapperState class in main.dart with this:
+
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _hasInitializedProviders = false;
+  String? _lastUserId; // Add this to track user changes
 
   @override
   void initState() {
@@ -138,47 +142,68 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   void _checkAuthenticationState() {
     final authProvider = context.read<StartupAuthProvider>();
+    final currentUserId = authProvider.currentUser?.id;
 
-    // If user is logged in but providers haven't been initialized
+    // Check if user changed or logged out
+    if (_lastUserId != currentUserId) {
+      if (currentUserId == null) {
+        // User logged out - clear all providers
+        debugPrint('🔄 User logged out - clearing all providers');
+        _clearAllProviders();
+      } else if (_lastUserId != null) {
+        // User changed - reset providers for new user
+        debugPrint('🔄 User changed - resetting providers for new user');
+        _resetProvidersForNewUser();
+      }
+      _lastUserId = currentUserId;
+    }
+
+    // Initialize providers for newly logged in user
     if (authProvider.isLoggedIn && !_hasInitializedProviders) {
-      _initializeUserProviders();
+      debugPrint('🔄 Initializing providers for logged-in user');
+      _initializeProviders();
     }
   }
 
-  Future<void> _initializeUserProviders() async {
-    if (_hasInitializedProviders) return;
-
-    setState(() {
-      _hasInitializedProviders = true;
-    });
-
+  void _clearAllProviders() {
     try {
-      debugPrint(
-        '🔄 AuthWrapper: Initializing providers for logged-in user...',
-      );
-
-      // Get all providers
-      final profileOverviewProvider =
-          context.read<StartupProfileOverviewProvider>();
-      final startupProfileProvider = context.read<StartupProfileProvider>();
-      final businessModelProvider = context.read<BusinessModelCanvasProvider>();
-      final teamMembersProvider = context.read<TeamMembersProvider>();
-
-      // Initialize providers that need manual initialization
-      // Note: Some providers auto-initialize, others need explicit initialization
-      await Future.wait([
-        profileOverviewProvider.initialize(),
-        startupProfileProvider.initialize(),
-        businessModelProvider.initialize(),
-        teamMembersProvider.initialize(),
-      ]);
-
-      debugPrint('✅ AuthWrapper: All providers initialized successfully');
+      context.read<StartupProfileOverviewProvider>().clearAllData();
+      context.read<StartupProfileProvider>().clearAllData();
+      context.read<BusinessModelCanvasProvider>().clearAllData();
+      context.read<TeamMembersProvider>().clearAllData();
+      _hasInitializedProviders = false;
+      debugPrint('✅ All providers cleared successfully');
     } catch (e) {
-      debugPrint('❌ AuthWrapper: Error initializing providers: $e');
-      setState(() {
-        _hasInitializedProviders = false; // Allow retry
-      });
+      debugPrint('❌ Error clearing providers: $e');
+    }
+  }
+
+  void _resetProvidersForNewUser() {
+    try {
+      context.read<StartupProfileOverviewProvider>().resetForNewUser();
+      context.read<StartupProfileProvider>().resetForNewUser();
+      context.read<BusinessModelCanvasProvider>().resetForNewUser();
+      context.read<TeamMembersProvider>().resetForNewUser();
+      _hasInitializedProviders = true;
+      debugPrint('✅ Providers reset for new user');
+    } catch (e) {
+      debugPrint('❌ Error resetting providers: $e');
+      _hasInitializedProviders = false;
+    }
+  }
+
+  void _initializeProviders() {
+    if (!_hasInitializedProviders) {
+      try {
+        context.read<StartupProfileOverviewProvider>().initialize();
+        context.read<StartupProfileProvider>().initialize();
+        context.read<BusinessModelCanvasProvider>().initialize();
+        context.read<TeamMembersProvider>().initialize();
+        _hasInitializedProviders = true;
+        debugPrint('✅ Providers initialized successfully');
+      } catch (e) {
+        debugPrint('❌ Error initializing providers: $e');
+      }
     }
   }
 
@@ -186,20 +211,18 @@ class _AuthWrapperState extends State<AuthWrapper> {
   Widget build(BuildContext context) {
     return Consumer<StartupAuthProvider>(
       builder: (context, authProvider, child) {
+        // Check for authentication state changes
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _checkAuthenticationState();
+        });
+
         // Show loading screen while checking authentication
         if (authProvider.isLoading) {
           return const AuthLoadingScreen();
         }
 
-        // If user is logged in
+        // If user is logged in, show dashboard
         if (authProvider.isLoggedIn && authProvider.currentUser != null) {
-          // Initialize providers if not done yet
-          if (!_hasInitializedProviders) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _initializeUserProviders();
-            });
-          }
-
           return const StartupDashboard();
         }
 

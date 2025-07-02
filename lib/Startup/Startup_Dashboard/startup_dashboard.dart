@@ -581,10 +581,6 @@ class _StartupDashboardState extends State<StartupDashboard>
     );
   }
 
-  // New Pitch Deck Files Card
-  // FIX FOR PITCH DECK CARD BOTTOM OVERFLOW
-  // Replace the existing _buildPitchDeckFilesCard() method with this version that has proper spacing:
-
   Widget _buildPitchDeckFilesCard() {
     return Consumer<StartupProfileProvider>(
       builder: (context, provider, child) {

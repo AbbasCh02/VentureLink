@@ -45,6 +45,29 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     _regionController.removeListener(() => _onFieldChanged('region'));
   }
 
+  // Add this method to clear all data
+  Future<void> clearAllData() async {
+    _removeListeners();
+
+    _companyNameController.clear();
+    _taglineController.clear();
+    _industryController.clear();
+    _regionController.clear();
+
+    _dirtyFields.clear();
+    _error = null;
+    _isInitialized = false;
+
+    notifyListeners();
+    _addListeners();
+  }
+
+  // Add method to reset for new user
+  Future<void> resetForNewUser() async {
+    clearAllData();
+    await initialize();
+  }
+
   void _onFieldChanged(String fieldName) {
     // Don't mark as dirty during initialization
     if (_isInitializing) return;
@@ -78,6 +101,12 @@ class StartupProfileOverviewProvider with ChangeNotifier {
 
   // Initialize and load data from Supabase
   Future<void> initialize() async {
+    final User? currentUser = _supabase.auth.currentUser;
+    if (currentUser == null) {
+      clearAllData();
+      return;
+    }
+
     if (_isInitialized) {
       // If already initialized, just refresh data
       await _loadProfileData();

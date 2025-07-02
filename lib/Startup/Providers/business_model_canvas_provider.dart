@@ -67,6 +67,12 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
 
   // Initialize and load data from Supabase
   Future<void> initialize() async {
+    final User? currentUser = _supabase.auth.currentUser;
+    if (currentUser == null) {
+      clearAllData();
+      return;
+    }
+
     if (_isInitialized) return; // Prevent multiple initializations
 
     _isLoading = true;
@@ -525,48 +531,18 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
     _costStructure = '';
     _revenueStreams = '';
 
-    // Mark all fields as dirty for saving
-    _dirtyFields.addAll([
-      'keyPartners',
-      'keyActivities',
-      'keyResources',
-      'valuePropositions',
-      'customerRelationships',
-      'customerSegments',
-      'channels',
-      'costStructure',
-      'revenueStreams',
-    ]);
+    _dirtyFields.clear();
+    _error = null;
+    _isInitialized = false;
+    _bmcId = null;
 
     notifyListeners();
+  }
 
-    try {
-      // Clear data in Supabase
-      if (_bmcId != null) {
-        await _supabase
-            .from('business_model_canvas')
-            .update({
-              'key_partners': '',
-              'key_activities': '',
-              'key_resources': '',
-              'value_propositions': '',
-              'customer_relationships': '',
-              'customer_segments': '',
-              'channels': '',
-              'cost_structure': '',
-              'revenue_streams': '',
-              'completion_percentage': 0.0,
-              'updated_at': DateTime.now().toIso8601String(),
-            })
-            .eq('id', _bmcId!);
-
-        _dirtyFields.clear();
-        debugPrint('BMC data cleared successfully');
-      }
-    } catch (e) {
-      _error = 'Failed to clear BMC data: $e';
-      debugPrint('Error clearing BMC data: $e');
-    }
+  // Add method to reset for new user
+  Future<void> resetForNewUser() async {
+    clearAllData();
+    await initialize();
   }
 
   // Refresh data from database

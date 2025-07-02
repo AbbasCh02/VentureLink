@@ -149,6 +149,12 @@ class StartupProfileProvider with ChangeNotifier {
 
   // Initialize and load data from Supabase
   Future<void> initialize() async {
+    final User? currentUser = _supabase.auth.currentUser;
+    if (currentUser == null) {
+      clearAllData();
+      return;
+    }
+
     if (_isInitialized) {
       // If already initialized, just refresh data
       await _loadProfileData();
@@ -1015,54 +1021,29 @@ class StartupProfileProvider with ChangeNotifier {
 
     _ideaDescriptionController.clear();
     _fundingGoalController.clear();
+
     _profileImage = null;
     _profileImageUrl = null;
     _pitchDeckFiles.clear();
     _pitchDeckThumbnails.clear();
     _isPitchDeckSubmitted = false;
     _pitchDeckSubmissionDate = null;
+    _pitchDeckId = null;
     _fundingGoalAmount = null;
     _selectedFundingPhase = null;
-    _pitchDeckId = null;
+
     _dirtyFields.clear();
+    _error = null;
+    _isInitialized = false;
 
-    _addListeners();
     notifyListeners();
+    _addListeners();
+  }
 
-    try {
-      // Clear data from Supabase
-      final User? currentUser = _supabase.auth.currentUser;
-      if (currentUser != null) {
-        await _supabase
-            .from('users')
-            .update({
-              'idea_description': null,
-              'funding_goal': null,
-              'funding_stage': null,
-              'avatar_url': null,
-              'pitch_deck_id': null,
-              'updated_at': DateTime.now().toIso8601String(),
-            })
-            .eq('id', currentUser.id);
-
-        // Delete storage files if they exist
-        if (_profileImageUrl != null) {
-          try {
-            final fileName = StorageService.extractFileNameFromUrl(
-              _profileImageUrl!,
-            );
-            await StorageService.deleteAvatar(fileName: fileName);
-          } catch (e) {
-            debugPrint('Warning: Could not delete avatar file: $e');
-          }
-        }
-      }
-
-      debugPrint('✅ All startup profile data cleared successfully');
-    } catch (e) {
-      _error = 'Failed to clear all data: $e';
-      debugPrint('❌ Error clearing startup profile data: $e');
-    }
+  // Add method to reset for new user
+  Future<void> resetForNewUser() async {
+    clearAllData();
+    await initialize();
   }
 
   // Refresh data from database

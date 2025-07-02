@@ -10,7 +10,6 @@ import 'funding_progress.dart';
 import 'package:venturelink/Startup/Startup_Dashboard/profile_overview.dart';
 import 'pitch_deck.dart';
 import '../Providers/startup_authentication_provider.dart';
-import '../../homepage.dart';
 import '../services/storage_service.dart';
 
 class StartupProfilePage extends StatefulWidget {
@@ -465,10 +464,10 @@ class _StartupProfilePageState extends State<StartupProfilePage>
       final authProvider = context.read<StartupAuthProvider>();
       await authProvider.signOut();
 
-      // Navigate to the home page (first page) if still mounted
+      // Navigate to the welcome page and clear all routes
       if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const WelcomePage()),
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/welcome',
           (route) => false, // This clears the entire navigation stack
         );
       }

@@ -169,6 +169,12 @@ class TeamMembersProvider with ChangeNotifier {
 
   // Initialize and load team members from Supabase
   Future<void> initialize() async {
+    final User? currentUser = _supabase.auth.currentUser;
+    if (currentUser == null) {
+      clearAllData();
+      return;
+    }
+
     if (_isInitialized) {
       // If already initialized, just refresh data
       await _loadTeamMembers();
@@ -568,6 +574,24 @@ class TeamMembersProvider with ChangeNotifier {
       _isSaving = false;
       notifyListeners();
     }
+  }
+
+  Future<void> clearAllData() async {
+    _nameController.clear();
+    _roleController.clear();
+    _linkedinController.clear();
+
+    _teamMembers.clear();
+    _error = null;
+    _isInitialized = false;
+
+    notifyListeners();
+  }
+
+  // Add method to reset for new user
+  Future<void> resetForNewUser() async {
+    clearAllData();
+    await initialize();
   }
 
   // Mark team members as dirty

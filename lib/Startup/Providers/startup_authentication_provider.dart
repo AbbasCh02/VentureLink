@@ -438,30 +438,47 @@ class StartupAuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> signOut() async {
-    _isAuthenticating = true;
-    notifyListeners();
+  // Add this method to clear all user data on logout
+  // Add this method to your StartupAuthProvider class:
 
+  Future<void> signOut() async {
     try {
-      _logger.i('Signing out user');
+      _isAuthenticating = true;
+      _error = null;
+      notifyListeners();
+
+      _logger.i('Starting sign out process...');
+
+      // Sign out from Supabase
       await _supabase.auth.signOut();
 
-      // Clear remember me if not set
-      if (!_rememberMe) {
-        await _clearRememberMe();
-      }
+      // Clear local state
+      _currentUser = null;
+      _isLoggedIn = false;
+      _error = null;
 
-      // Clear form
+      // Clear form data
       clearForm();
 
-      // Note: User will be automatically cleared via auth state listener
+      // Clear saved preferences if remember me was not checked
+      if (!_rememberMe) {
+        _savedEmail = null;
+      }
+
+      _logger.i('✅ User signed out successfully');
     } catch (e) {
-      _logger.e('Error during signout: $e');
-      _error = 'Failed to sign out. Please try again.';
+      _error = 'Failed to sign out: $e';
+      _logger.e('❌ Error signing out: $e');
+      rethrow; // Re-throw so UI can handle the error
     } finally {
       _isAuthenticating = false;
       notifyListeners();
     }
+  }
+
+  // Add method to notify other providers when user changes
+  void notifyUserChanged() {
+    notifyListeners();
   }
 
   Future<bool> resetPassword(String email) async {
@@ -567,16 +584,6 @@ class StartupAuthProvider with ChangeNotifier {
       _logger.i('Remember me saved for: $email');
     } catch (e) {
       _logger.w('Error saving remember me: $e');
-    }
-  }
-
-  Future<void> _clearRememberMe() async {
-    try {
-      _savedEmail = null;
-      _rememberMe = false;
-      _logger.i('Remember me cleared');
-    } catch (e) {
-      _logger.w('Error clearing remember me: $e');
     }
   }
 
