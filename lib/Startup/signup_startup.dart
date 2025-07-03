@@ -203,15 +203,15 @@ class _StartupSignupPageState extends State<StartupSignupPage>
           children: [
             // Outer glow
             Container(
-              width: 150,
-              height: 150,
+              width: 170,
+              height: 170,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
                     color: _colorAnimation.value!.withValues(alpha: 0.3),
                     blurRadius: 25,
-                    spreadRadius: 5,
+                    spreadRadius: 6,
                   ),
                 ],
               ),
@@ -220,8 +220,8 @@ class _StartupSignupPageState extends State<StartupSignupPage>
             ScaleTransition(
               scale: _pulseAnimation,
               child: Container(
-                width: 150,
-                height: 150,
+                width: 140,
+                height: 140,
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -255,75 +255,56 @@ class _StartupSignupPageState extends State<StartupSignupPage>
   }
 
   Widget _buildCompactHeaderText() {
-    return Consumer<StartupAuthProvider>(
-      builder: (context, authProvider, child) {
-        // Calculate form completion percentage
-        double completionPercentage = 0.0;
-        int filledFields = 0;
-        int totalFields = 4;
-
-        if (authProvider.nameController.text.trim().isNotEmpty) filledFields++;
-        if (authProvider.emailController.text.trim().isNotEmpty) filledFields++;
-        if (authProvider.passwordController.text.isNotEmpty) filledFields++;
-        if (authProvider.confirmPasswordController.text.isNotEmpty) {
-          filledFields++;
-        }
-
-        completionPercentage = filledFields / totalFields;
-
-        return Column(
-          children: [
-            ShaderMask(
-              shaderCallback:
-                  (bounds) => const LinearGradient(
-                    colors: [Color(0xFFffa500), Color(0xFFff8c00)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ).createShader(bounds),
-              child: const Text(
-                'Create Account',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 0.8,
-                ),
-              ),
+    return Column(
+      children: [
+        ShaderMask(
+          shaderCallback:
+              (bounds) => const LinearGradient(
+                colors: [Color(0xFFffa500), Color(0xFFff8c00)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ).createShader(bounds),
+          child: const Text(
+            'Create Account',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              letterSpacing: 0.8,
             ),
-            const SizedBox(height: 6),
-            Text(
-              'Start your entrepreneurial journey',
-              style: TextStyle(
-                fontSize: 15,
-                color: Colors.grey[400],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Progress indicator
-            Container(
-              width: 200,
-              height: 4,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Start your entrepreneurial journey',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[400],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Progress indicator
+        Container(
+          width: 200,
+          height: 4,
+          decoration: BoxDecoration(
+            color: Colors.grey[800],
+            borderRadius: BorderRadius.circular(2),
+          ),
+          child: FractionallySizedBox(
+            alignment: Alignment.centerLeft,
+            child: Container(
               decoration: BoxDecoration(
-                color: Colors.grey[800],
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFffa500), Color(0xFFff8c00)],
+                ),
                 borderRadius: BorderRadius.circular(2),
               ),
-              child: FractionallySizedBox(
-                alignment: Alignment.centerLeft,
-                widthFactor: completionPercentage,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFffa500), Color(0xFFff8c00)],
-                    ),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
             ),
-          ],
-        );
-      },
+          ),
+        ),
+      ],
     );
   }
 
@@ -370,7 +351,7 @@ class _StartupSignupPageState extends State<StartupSignupPage>
             cursorColor: const Color(0xFFffa500),
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
             onSubmitted: (_) {
@@ -394,7 +375,7 @@ class _StartupSignupPageState extends State<StartupSignupPage>
                         : hasFocus
                         ? const Color(0xFFffa500)
                         : Colors.grey[400],
-                fontSize: 15,
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
               errorText: hasError ? validator(controller.text) : null,
@@ -411,7 +392,7 @@ class _StartupSignupPageState extends State<StartupSignupPage>
                                   : const Color(
                                     0xFFffa500,
                                   ).withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(7),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
                           icon,
@@ -551,8 +532,8 @@ class _StartupSignupPageState extends State<StartupSignupPage>
             boxShadow: [
               BoxShadow(
                 color: const Color(0xFFffa500).withValues(alpha: 0.3),
-                blurRadius: 15,
-                offset: const Offset(0, 6),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -563,7 +544,7 @@ class _StartupSignupPageState extends State<StartupSignupPage>
               backgroundColor: const Color(0xFFffa500),
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
             child:
@@ -585,7 +566,7 @@ class _StartupSignupPageState extends State<StartupSignupPage>
                         Text(
                           'Creating Account...',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                             color: Colors.black,
                           ),
@@ -596,13 +577,13 @@ class _StartupSignupPageState extends State<StartupSignupPage>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(6),
+                          padding: const EdgeInsets.all(5),
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(5),
                           ),
                           child: const Icon(
-                            Icons.rocket_launch,
+                            Icons.person_add,
                             color: Colors.black,
                             size: 16,
                           ),
@@ -611,9 +592,10 @@ class _StartupSignupPageState extends State<StartupSignupPage>
                         Text(
                           'Create Account',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
-                            color: Colors.black,
+                            color:
+                                isFormValid ? Colors.black : Colors.grey[400],
                             letterSpacing: 0.3,
                           ),
                         ),
@@ -749,7 +731,7 @@ class _StartupSignupPageState extends State<StartupSignupPage>
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const SizedBox(height: 30),
+                          const SizedBox(height: 20),
                           // Compact Logo
                           _buildCompactLogo(),
                           const SizedBox(height: 16),

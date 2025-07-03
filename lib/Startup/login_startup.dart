@@ -208,15 +208,15 @@ class _StartupLoginPageState extends State<StartupLoginPage>
           children: [
             // Outer glow
             Container(
-              width: 150,
-              height: 150,
+              width: 180,
+              height: 180,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
                     color: _colorAnimation.value!.withValues(alpha: 0.4),
-                    blurRadius: 30,
-                    spreadRadius: 8,
+                    blurRadius: 25,
+                    spreadRadius: 6,
                   ),
                 ],
               ),
@@ -227,14 +227,14 @@ class _StartupLoginPageState extends State<StartupLoginPage>
               child: Container(
                 width: 150,
                 height: 150,
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Colors.grey[900]!, Colors.grey[850]!],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(15),
                   border: Border.all(
                     color: _colorAnimation.value!.withValues(alpha: 0.3),
                     width: 1,
@@ -243,7 +243,7 @@ class _StartupLoginPageState extends State<StartupLoginPage>
                     BoxShadow(
                       color: _colorAnimation.value!.withValues(alpha: 0.2),
                       blurRadius: 20,
-                      offset: const Offset(0, 8),
+                      offset: const Offset(0, 6),
                     ),
                   ],
                 ),
@@ -272,7 +272,7 @@ class _StartupLoginPageState extends State<StartupLoginPage>
           child: const Text(
             'Welcome Back',
             style: TextStyle(
-              fontSize: 28,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
               color: Colors.white,
               letterSpacing: 0.8,
@@ -283,15 +283,15 @@ class _StartupLoginPageState extends State<StartupLoginPage>
         Text(
           'Continue your startup journey',
           style: TextStyle(
-            fontSize: 15,
+            fontSize: 14,
             color: Colors.grey[400],
             fontWeight: FontWeight.w500,
             letterSpacing: 0.3,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Container(
-          width: 50,
+          width: 40,
           height: 2,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
@@ -373,16 +373,22 @@ class _StartupLoginPageState extends State<StartupLoginPage>
                         decoration: BoxDecoration(
                           color:
                               hasError
-                                  ? Colors.red.withValues(alpha: 0.2)
-                                  : const Color(
+                                  ? Colors.red.withValues(alpha: 0.1)
+                                  : hasFocus
+                                  ? const Color(
                                     0xFFffa500,
-                                  ).withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(7),
+                                  ).withValues(alpha: 0.15)
+                                  : Colors.grey[800]!.withValues(alpha: 0.8),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
                           icon,
                           color:
-                              hasError ? Colors.red : const Color(0xFFffa500),
+                              hasError
+                                  ? Colors.red
+                                  : hasFocus
+                                  ? const Color(0xFFffa500)
+                                  : Colors.grey[400],
                           size: 18,
                         ),
                       )
@@ -483,28 +489,28 @@ class _StartupLoginPageState extends State<StartupLoginPage>
         return Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
                 color: const Color(0xFFffa500).withValues(alpha: 0.3),
-                blurRadius: 15,
-                offset: const Offset(0, 6),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.2),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
           child: ElevatedButton(
             onPressed: (isFormValid && !isLoading) ? _handleLogin : null,
             style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 14),
               backgroundColor: const Color(0xFFffa500),
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 side: BorderSide(
                   color: const Color(0xFFff8c00).withValues(alpha: 0.3),
                   width: 1,
@@ -541,22 +547,22 @@ class _StartupLoginPageState extends State<StartupLoginPage>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(6),
+                          padding: const EdgeInsets.all(5),
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(5),
                           ),
                           child: const Icon(
                             Icons.login,
                             color: Colors.black,
-                            size: 18,
+                            size: 16,
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         Text(
                           'Login to Dashboard',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                             color:
                                 isFormValid ? Colors.black : Colors.grey[400],
@@ -580,7 +586,7 @@ class _StartupLoginPageState extends State<StartupLoginPage>
             'Forgot Password?',
             style: TextStyle(
               color: const Color(0xFFffa500),
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
               decoration: TextDecoration.underline,
               decorationColor: const Color(0xFFffa500),
@@ -860,13 +866,21 @@ class _StartupLoginPageState extends State<StartupLoginPage>
                               return Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 16,
-                                  vertical: 10,
+                                  vertical: 12,
                                 ),
                                 decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
                                     color: Colors.grey[800]!,
                                     width: 1,
+                                  ),
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.grey[900]!.withValues(alpha: 0.3),
+                                      Colors.grey[800]!.withValues(alpha: 0.1),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
                                   ),
                                 ),
                                 child: TextButton(
@@ -881,6 +895,12 @@ class _StartupLoginPageState extends State<StartupLoginPage>
                                       ),
                                     );
                                   },
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: Size.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
                                   child: RichText(
                                     text: TextSpan(
                                       text: "Don't have an account? ",

@@ -170,60 +170,50 @@ class _StartupPageState extends State<StartupPage>
     required String text,
     required Color backgroundColor,
     required Color accentColor,
-    required VoidCallback onPressed,
     required IconData icon,
+    required VoidCallback onPressed,
   }) {
     return Container(
-      width: 240,
-      margin: const EdgeInsets.symmetric(vertical: 12),
+      width: double.infinity,
+      height: 60,
+      margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: backgroundColor.withValues(alpha: 0.4),
+            color: backgroundColor.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
           backgroundColor: backgroundColor,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
-            side: BorderSide(
-              color: accentColor.withValues(alpha: 0.3),
-              width: 1,
-            ),
           ),
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: Colors.black, size: 20),
-            ),
+            Icon(icon, color: Colors.black, size: 24),
             const SizedBox(width: 12),
             Text(
               text,
               style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
                 color: Colors.black,
-                letterSpacing: 0.5,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                letterSpacing: 0.8,
               ),
             ),
           ],
