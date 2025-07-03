@@ -6,6 +6,7 @@ import "Startup/Providers/startup_profile_provider.dart";
 import "Startup/Providers/team_members_provider.dart";
 import 'Startup/Providers/business_model_canvas_provider.dart';
 import 'Startup/Providers/startup_authentication_provider.dart';
+import 'Investor/Providers/investor_authentication_provider.dart';
 import 'Startup/Startup_Dashboard/profile_overview.dart';
 import 'Startup/Startup_Dashboard/startup_profile_page.dart';
 import 'Startup/Startup_Dashboard/team_members_page.dart';
@@ -54,6 +55,12 @@ class MyApp extends StatelessWidget {
         // All other providers depend on user authentication state
         ChangeNotifierProvider(
           create: (context) => StartupAuthProvider(),
+          lazy: false, // Initialize immediately
+        ),
+
+        // This provider handles investor-specific authentication
+        ChangeNotifierProvider(
+          create: (context) => InvestorAuthProvider(),
           lazy: false, // Initialize immediately
         ),
 
