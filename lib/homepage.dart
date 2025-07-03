@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'Startup/startup_page.dart';
 import 'Investor/investor_page.dart';
-import 'package:provider/provider.dart';
-import 'Startup/Providers/user_type_provider.dart';
 
 class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});
@@ -383,10 +381,6 @@ class _WelcomePageState extends State<WelcomePage>
                                       accentColor: const Color(0xFFff8c00),
                                       icon: Icons.rocket_launch,
                                       onPressed: () {
-                                        Provider.of<UserTypeProvider>(
-                                          context,
-                                          listen: false,
-                                        ).setUserType('Startup');
                                         Navigator.of(context).push(
                                           MaterialPageRoute(
                                             builder:
@@ -402,10 +396,6 @@ class _WelcomePageState extends State<WelcomePage>
                                       accentColor: const Color(0xFF2196F3),
                                       icon: Icons.trending_up,
                                       onPressed: () {
-                                        Provider.of<UserTypeProvider>(
-                                          context,
-                                          listen: false,
-                                        ).setUserType('Investor');
                                         Navigator.of(context).push(
                                           MaterialPageRoute(
                                             builder:

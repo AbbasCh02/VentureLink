@@ -300,7 +300,6 @@ class StartupAuthProvider with ChangeNotifier {
                   : user.email.split(
                     '@',
                   )[0], // Fallback to email prefix if no full name
-          'user_status': 'startup', // Default to startup
           'created_at': user.createdAt.toIso8601String(),
           'updated_at': DateTime.now().toIso8601String(),
           'last_login_at': user.lastLoginAt.toIso8601String(),

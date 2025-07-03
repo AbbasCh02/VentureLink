@@ -11,7 +11,6 @@ import 'Startup/Startup_Dashboard/startup_profile_page.dart';
 import 'Startup/Startup_Dashboard/team_members_page.dart';
 import 'Startup/Startup_Dashboard/Business_Model_Canvas/business_model_canvas.dart';
 import 'Startup/Startup_Dashboard/startup_dashboard.dart';
-import 'Startup/Providers/user_type_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'Startup/startup_page.dart';
@@ -56,12 +55,6 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (context) => StartupAuthProvider(),
           lazy: false, // Initialize immediately
-        ),
-
-        // User Type Provider (startup vs investor selection)
-        ChangeNotifierProvider(
-          create: (context) => UserTypeProvider(),
-          lazy: false,
         ),
 
         // Profile Overview Provider (company details: name, tagline, industry, region)
