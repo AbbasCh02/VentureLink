@@ -1,8 +1,8 @@
-// lib/Investor/investor_page.dart
 import 'package:flutter/material.dart';
 import 'signup_investor.dart';
 import 'login_investor.dart';
-// import 'Providers/investor_authentication_provider.dart'; // You'll create this later
+import 'Providers/investor_authentication_provider.dart';
+import 'package:provider/provider.dart';
 
 class InvestorPage extends StatefulWidget {
   const InvestorPage({super.key});
@@ -80,12 +80,11 @@ class _InvestorPageState extends State<InvestorPage>
   }
 
   void _checkLoginStatus() {
-    // TODO: Implement with InvestorAuthProvider when created
-    // final authProvider = context.read<InvestorAuthProvider>();
-    // if (authProvider.isLoggedIn) {
-    //   Navigate to dashboard if already logged in
-    //   Navigator.pushReplacementNamed(context, '/investor-dashboard');
-    // }
+    final authProvider = context.read<InvestorAuthProvider>();
+    if (authProvider.isLoggedIn) {
+      //Navigate to dashboard if already logged in
+      Navigator.pushReplacementNamed(context, '/investor-dashboard');
+    }
   }
 
   @override
@@ -411,10 +410,9 @@ class _InvestorPageState extends State<InvestorPage>
   }
 
   void _navigateToSignup() {
-    // TODO: Use unified provider for both form and auth management
-    // final authProvider = context.read<InvestorAuthProvider>();
-    // authProvider.setFormType(FormType.signup);
-    // authProvider.clearForm();
+    final authProvider = context.read<InvestorAuthProvider>();
+    authProvider.setFormType(FormType.signup);
+    authProvider.clearForm();
 
     Navigator.of(
       context,
@@ -422,15 +420,14 @@ class _InvestorPageState extends State<InvestorPage>
   }
 
   void _navigateToLogin() {
-    // TODO: Use unified provider for both form and auth management
-    // final authProvider = context.read<InvestorAuthProvider>();
-    // authProvider.setFormType(FormType.login);
-    // authProvider.clearForm();
+    final authProvider = context.read<InvestorAuthProvider>();
+    authProvider.setFormType(FormType.login);
+    authProvider.clearForm();
 
-    // Pre-fill email if remembered
-    // if (authProvider.savedEmail != null) {
-    //   authProvider.emailController.text = authProvider.savedEmail!;
-    // }
+    //Pre-fill email if remembered
+    if (authProvider.savedEmail != null) {
+      authProvider.emailController.text = authProvider.savedEmail!;
+    }
 
     Navigator.of(
       context,

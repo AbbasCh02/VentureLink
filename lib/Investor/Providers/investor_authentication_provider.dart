@@ -1,195 +1,54 @@
-// lib/Investor/Providers/investor_authentication_provider.dart
+// lib/Startup/Providers/startup_authentication_provider.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:logger/logger.dart';
 
-/// Custom investor user model for the split table structure
+/// Custom user model for better type safety and data handling
 class InvestorUser {
-  // Basic info from investors table
   final String id;
+  final String fullName;
   final String email;
-  final String? username;
-  final String? avatarUrl;
-  final int portfolioSize;
-  final bool isVerified;
-  final DateTime? lastLoginAt;
   final DateTime createdAt;
-
-  // Professional info from investor_profiles table
-  final String? companyName;
-  final String? title;
-  final String? bio;
-  final String? linkedinUrl;
-  final String? websiteUrl;
-  final List<String> industries;
-  final List<String> geographicFocus;
-
-  // Additional computed fields
-  final String displayName;
-  final bool hasProfile;
+  final DateTime lastLoginAt;
+  final bool isVerified;
 
   InvestorUser({
     required this.id,
+    required this.fullName,
     required this.email,
-    this.username,
-    this.avatarUrl,
-    this.portfolioSize = 0,
-    this.isVerified = false,
-    this.lastLoginAt,
     required this.createdAt,
-    this.companyName,
-    this.title,
-    this.bio,
-    this.linkedinUrl,
-    this.websiteUrl,
-    this.industries = const [],
-    this.geographicFocus = const [],
-  }) : displayName = username ?? email.split('@')[0],
-       hasProfile = companyName != null || title != null || bio != null;
+    required this.lastLoginAt,
+    required this.isVerified,
+  });
 
   factory InvestorUser.fromSupabaseUser(User user) {
     return InvestorUser(
       id: user.id,
+      fullName: user.userMetadata?['full_name'] as String? ?? '',
       email: user.email ?? '',
-      username: user.userMetadata?['full_name'] as String?,
-      createdAt: DateTime.tryParse(user.createdAt) ?? DateTime.now(),
       lastLoginAt: DateTime.now(),
-    );
-  }
-
-  factory InvestorUser.fromDatabase(
-    Map<String, dynamic> basicData, [
-    Map<String, dynamic>? profileData,
-  ]) {
-    return InvestorUser(
-      // Basic investor data
-      id: basicData['id'] as String,
-      email: basicData['email'] as String,
-      username: basicData['username'] as String?,
-      avatarUrl: basicData['avatar_url'] as String?,
-      portfolioSize: basicData['portfolio_size'] as int? ?? 0,
-      isVerified: basicData['is_verified'] as bool? ?? false,
-      lastLoginAt:
-          basicData['last_login_at'] != null
-              ? DateTime.tryParse(basicData['last_login_at'] as String)
-              : null,
-      createdAt:
-          DateTime.tryParse(basicData['created_at'] as String? ?? '') ??
-          DateTime.now(),
-
-      // Professional profile data (may be null)
-      companyName: profileData?['company_name'] as String?,
-      title: profileData?['title'] as String?,
-      bio: profileData?['bio'] as String?,
-      linkedinUrl: profileData?['linkedin_url'] as String?,
-      websiteUrl: profileData?['website_url'] as String?,
-      industries:
-          profileData?['industries'] != null
-              ? List<String>.from(profileData!['industries'] as List)
-              : [],
-      geographicFocus:
-          profileData?['geographic_focus'] != null
-              ? List<String>.from(profileData!['geographic_focus'] as List)
-              : [],
-    );
-  }
-
-  factory InvestorUser.fromJoinedData(Map<String, dynamic> data) {
-    return InvestorUser(
-      // Basic investor data
-      id: data['id'] as String,
-      email: data['email'] as String,
-      username: data['username'] as String?,
-      avatarUrl: data['avatar_url'] as String?,
-      portfolioSize: data['portfolio_size'] as int? ?? 0,
-      isVerified: data['is_verified'] as bool? ?? false,
-      lastLoginAt:
-          data['last_login_at'] != null
-              ? DateTime.tryParse(data['last_login_at'] as String)
-              : null,
-      createdAt:
-          DateTime.tryParse(data['created_at'] as String? ?? '') ??
-          DateTime.now(),
-
-      // Professional profile data (from join)
-      companyName: data['company_name'] as String?,
-      title: data['title'] as String?,
-      bio: data['bio'] as String?,
-      linkedinUrl: data['linkedin_url'] as String?,
-      websiteUrl: data['website_url'] as String?,
-      industries:
-          data['industries'] != null
-              ? List<String>.from(data['industries'] as List)
-              : [],
-      geographicFocus:
-          data['geographic_focus'] != null
-              ? List<String>.from(data['geographic_focus'] as List)
-              : [],
+      createdAt: DateTime.tryParse(user.createdAt) ?? DateTime.now(),
+      isVerified: user.emailConfirmedAt != null,
     );
   }
 
   InvestorUser copyWith({
     String? id,
+    String? fullName,
     String? email,
-    String? username,
-    String? avatarUrl,
-    int? portfolioSize,
-    bool? isVerified,
-    DateTime? lastLoginAt,
     DateTime? createdAt,
-    String? companyName,
-    String? title,
-    String? bio,
-    String? linkedinUrl,
-    String? websiteUrl,
-    List<String>? industries,
-    List<String>? geographicFocus,
+    DateTime? lastLoginAt,
+    bool? isVerified,
   }) {
     return InvestorUser(
       id: id ?? this.id,
+      fullName: fullName ?? this.fullName,
       email: email ?? this.email,
-      username: username ?? this.username,
-      avatarUrl: avatarUrl ?? this.avatarUrl,
-      portfolioSize: portfolioSize ?? this.portfolioSize,
-      isVerified: isVerified ?? this.isVerified,
-      lastLoginAt: lastLoginAt ?? this.lastLoginAt,
       createdAt: createdAt ?? this.createdAt,
-      companyName: companyName ?? this.companyName,
-      title: title ?? this.title,
-      bio: bio ?? this.bio,
-      linkedinUrl: linkedinUrl ?? this.linkedinUrl,
-      websiteUrl: websiteUrl ?? this.websiteUrl,
-      industries: industries ?? this.industries,
-      geographicFocus: geographicFocus ?? this.geographicFocus,
+      lastLoginAt: lastLoginAt ?? this.lastLoginAt,
+      isVerified: isVerified ?? this.isVerified,
     );
-  }
-
-  Map<String, dynamic> toBasicDatabase() {
-    return {
-      'id': id,
-      'email': email,
-      'username': username,
-      'avatar_url': avatarUrl,
-      'portfolio_size': portfolioSize,
-      'is_verified': isVerified,
-      'last_login_at': lastLoginAt?.toIso8601String(),
-      'updated_at': DateTime.now().toIso8601String(),
-    };
-  }
-
-  Map<String, dynamic> toProfileDatabase() {
-    return {
-      'investor_id': id,
-      'company_name': companyName,
-      'title': title,
-      'bio': bio,
-      'linkedin_url': linkedinUrl,
-      'website_url': websiteUrl,
-      'industries': industries,
-      'geographic_focus': geographicFocus,
-      'updated_at': DateTime.now().toIso8601String(),
-    };
   }
 }
 
@@ -197,7 +56,7 @@ enum FormType { login, signup }
 
 enum PasswordStrength { none, weak, medium, strong }
 
-/// Unified provider that handles authentication with split table structure
+/// Unified provider that handles both authentication logic and form management using Supabase
 class InvestorAuthProvider with ChangeNotifier {
   final Logger _logger = Logger();
 
@@ -303,11 +162,16 @@ class InvestorAuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      // Load saved preferences
       await _loadPreferences();
+
+      // Check current auth state
       await _checkAuthState();
+
+      // Listen to auth changes
       _listenToAuthChanges();
     } catch (e) {
-      _logger.e('Error initializing investor auth: $e');
+      _logger.e('Error initializing auth: $e');
       _error = 'Failed to initialize authentication';
     } finally {
       _isLoading = false;
@@ -316,6 +180,7 @@ class InvestorAuthProvider with ChangeNotifier {
   }
 
   void _initializeListeners() {
+    // Add text controllers listeners for real-time validation
     _nameController.addListener(_onFormFieldChanged);
     _emailController.addListener(_onFormFieldChanged);
     _passwordController.addListener(_onFormFieldChanged);
@@ -324,13 +189,14 @@ class InvestorAuthProvider with ChangeNotifier {
 
   Future<void> _loadPreferences() async {
     try {
+      // Load saved email if remember me was checked
       final currentSession = _supabase.auth.currentSession;
       if (currentSession?.user != null) {
         _savedEmail = currentSession!.user.email;
         _rememberMe = true;
       }
     } catch (e) {
-      _logger.w('Error loading investor preferences: $e');
+      _logger.w('Error loading preferences: $e');
     }
   }
 
@@ -338,17 +204,22 @@ class InvestorAuthProvider with ChangeNotifier {
     try {
       final session = _supabase.auth.currentSession;
       if (session?.user != null) {
-        await _loadCompleteInvestorProfile(session!.user.id);
+        _currentUser = InvestorUser.fromSupabaseUser(session!.user);
         _isLoggedIn = true;
-        _logger.i('✅ Investor already logged in: ${_currentUser!.email}');
-        debugPrint('✅ Current authenticated investor: ${_currentUser!.id}');
+
+        // Create or update user record in our users table
+        await _createOrUpdateUserRecord(_currentUser!);
+
+        _logger.i('✅ User already logged in: ${_currentUser!.email}');
+        debugPrint('✅ Current authenticated user: ${_currentUser!.id}');
       } else {
         _currentUser = null;
         _isLoggedIn = false;
-        _logger.i('No active investor session found');
+        _logger.i('No active session found');
+        debugPrint('No authenticated user found');
       }
     } catch (e) {
-      _logger.e('Error checking investor auth state: $e');
+      _logger.e('Error checking auth state: $e');
       _currentUser = null;
       _isLoggedIn = false;
     }
@@ -357,15 +228,28 @@ class InvestorAuthProvider with ChangeNotifier {
   void _listenToAuthChanges() {
     _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
       final AuthState state = data;
-      _logger.i('🔄 Investor auth state changed: ${state.event}');
+      _logger.i('🔄 Auth state changed: ${state.event}');
 
       switch (state.event) {
         case AuthChangeEvent.signedIn:
           if (state.session?.user != null) {
-            _handleSignIn(state.session!.user);
+            final previousUserId = _currentUser?.id;
+            _currentUser = InvestorUser.fromSupabaseUser(state.session!.user);
             _isLoggedIn = true;
             _error = null;
-            _logger.i('✅ Investor signed in: ${state.session!.user.email}');
+
+            // Create or update user record
+            _createOrUpdateUserRecord(_currentUser!);
+
+            _logger.i('✅ User signed in: ${_currentUser!.email}');
+            debugPrint('✅ User signed in with ID: ${_currentUser!.id}');
+
+            // If user changed, notify listeners for data isolation
+            if (previousUserId != null && previousUserId != _currentUser!.id) {
+              debugPrint(
+                '🔄 User changed from $previousUserId to ${_currentUser!.id}',
+              );
+            }
           }
           break;
         case AuthChangeEvent.signedOut:
@@ -373,210 +257,86 @@ class InvestorAuthProvider with ChangeNotifier {
           _currentUser = null;
           _isLoggedIn = false;
           _error = null;
-          _logger.i('✅ Investor signed out (was: $previousUserId)');
+          _logger.i('✅ User signed out');
+          debugPrint('✅ User signed out (was: $previousUserId)');
           break;
         case AuthChangeEvent.userUpdated:
           if (state.session?.user != null) {
-            _handleUserUpdate(state.session!.user);
+            _currentUser = InvestorUser.fromSupabaseUser(state.session!.user);
+            // Update user record
+            _createOrUpdateUserRecord(_currentUser!);
+            _logger.i('User updated: ${_currentUser!.email}');
           }
           break;
+        case AuthChangeEvent.passwordRecovery:
+          _logger.i('Password recovery initiated');
+          break;
         default:
-          _logger.i('Investor auth event: ${state.event}');
+          _logger.i('Auth event: ${state.event}');
       }
       notifyListeners();
     });
   }
 
-  // ========== DATABASE OPERATIONS ==========
-
-  // Load complete investor profile using helper function
-  Future<void> _loadCompleteInvestorProfile(String userId) async {
+  // Create or update user record in our users table - CRITICAL: Proper user isolation
+  Future<void> _createOrUpdateUserRecord(InvestorUser user) async {
     try {
-      final response = await _supabase.rpc(
-        'get_complete_investor_profile',
-        params: {'investor_user_id': userId},
-      );
-
-      if (response != null && response.isNotEmpty) {
-        _currentUser = InvestorUser.fromJoinedData(response[0]);
-        debugPrint(
-          '✅ Loaded complete investor profile for: ${_currentUser!.email}',
-        );
-      } else {
-        // Fallback: load basic investor data only
-        await _loadBasicInvestorProfile(userId);
-      }
-    } catch (e) {
-      _logger.e('Error loading complete investor profile: $e');
-      // Fallback to basic profile
-      await _loadBasicInvestorProfile(userId);
-    }
-  }
-
-  // Load basic investor profile from investors table only
-  Future<void> _loadBasicInvestorProfile(String userId) async {
-    try {
-      final response =
+      // Check if user record exists - CRITICAL: Filter by specific user ID
+      final existingUser =
           await _supabase
               .from('investors')
-              .select('*')
-              .eq('id', userId)
+              .select('id, email, created_at')
+              .eq('id', user.id) // THIS IS THE KEY FIX
               .maybeSingle();
 
-      if (response != null) {
-        _currentUser = InvestorUser.fromDatabase(response);
-        debugPrint(
-          '✅ Loaded basic investor profile for: ${_currentUser!.email}',
-        );
-      } else {
-        // Create basic investor record if doesn't exist
-        final authUser = _supabase.auth.currentUser;
-        if (authUser != null) {
-          _currentUser = InvestorUser.fromSupabaseUser(authUser);
-          await _createBasicInvestorRecord(_currentUser!);
-        }
-      }
-    } catch (e) {
-      _logger.e('Error loading basic investor profile: $e');
-      // Final fallback
-      final authUser = _supabase.auth.currentUser;
-      if (authUser != null) {
-        _currentUser = InvestorUser.fromSupabaseUser(authUser);
-      }
-    }
-  }
-
-  // Handle sign in event
-  Future<void> _handleSignIn(User authUser) async {
-    try {
-      await _loadCompleteInvestorProfile(authUser.id);
-      if (_currentUser == null) {
-        _currentUser = InvestorUser.fromSupabaseUser(authUser);
-        await _createBasicInvestorRecord(_currentUser!);
-      } else {
-        await _updateLastLogin(_currentUser!.id);
-      }
-    } catch (e) {
-      _logger.e('Error handling investor sign in: $e');
-      _currentUser = InvestorUser.fromSupabaseUser(authUser);
-    }
-  }
-
-  // Handle user update event
-  Future<void> _handleUserUpdate(User authUser) async {
-    try {
-      if (_currentUser != null) {
-        final updatedUser = _currentUser!.copyWith(
-          email: authUser.email ?? _currentUser!.email,
-          username:
-              authUser.userMetadata?['full_name'] as String? ??
-              _currentUser!.username,
-        );
-
-        await _updateBasicInvestorRecord(updatedUser);
-        _currentUser = updatedUser;
-      }
-    } catch (e) {
-      _logger.e('Error handling investor user update: $e');
-    }
-  }
-
-  // Create basic investor record in investors table
-  Future<void> _createBasicInvestorRecord(InvestorUser user) async {
-    try {
-      final existingInvestor =
-          await _supabase
-              .from('investors')
-              .select('id')
-              .eq('id', user.id)
-              .maybeSingle();
-
-      if (existingInvestor == null) {
-        final insertData = {
+      if (existingUser == null) {
+        // Create new user record with FULL NAME as username
+        await _supabase.from('investors').insert({
           'id': user.id,
           'email': user.email,
-          'username': user.username ?? user.email.split('@')[0],
-          'portfolio_size': 0,
-          'is_verified': false,
-          'last_login_at': DateTime.now().toIso8601String(),
+          'username':
+              user.fullName.isNotEmpty
+                  ? user.fullName
+                  : user.email.split(
+                    '@',
+                  )[0], // Fallback to email prefix if no full name
           'created_at': user.createdAt.toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+          'last_login_at': user.lastLoginAt.toIso8601String(),
+          'is_verified': user.isVerified,
+        });
+
+        _logger.i(
+          '✅ Created new user record for: ${user.email} with ID: ${user.id}',
+        );
+        debugPrint('✅ Created user record for ID: ${user.id}');
+      } else {
+        // Update existing user record - CRITICAL: Filter by specific user ID
+        final updateData = {
+          'last_login_at': user.lastLoginAt.toIso8601String(),
+          'is_verified': user.isVerified,
           'updated_at': DateTime.now().toIso8601String(),
         };
 
-        await _supabase.from('investors').insert(insertData);
+        // Also update username if it's currently the email prefix and we have a full name
+        if (user.fullName.isNotEmpty) {
+          updateData['username'] = user.fullName;
+        }
+
+        await _supabase
+            .from('investors')
+            .update(updateData)
+            .eq('id', user.id); // THIS IS THE KEY FIX
 
         _logger.i(
-          '✅ Created basic investor record for: ${user.email} with ID: ${user.id}',
+          '✅ Updated user record for: ${user.email} with ID: ${user.id}',
         );
-        debugPrint('✅ Created investor record for ID: ${user.id}');
-      } else {
-        _logger.i('✅ Investor record already exists for: ${user.email}');
+        debugPrint('✅ Updated user record for ID: ${user.id}');
       }
     } catch (e) {
-      _logger.e('❌ Error creating investor record: $e');
-      throw Exception('Failed to create investor record: $e');
-    }
-  }
-
-  // Update basic investor record in investors table
-  Future<void> _updateBasicInvestorRecord(InvestorUser user) async {
-    try {
-      final updateData = user.toBasicDatabase();
-
-      await _supabase.from('investors').update(updateData).eq('id', user.id);
-
-      _logger.i('✅ Updated basic investor record for: ${user.email}');
-      debugPrint('✅ Updated investor record for ID: ${user.id}');
-    } catch (e) {
-      _logger.e('❌ Error updating investor record: $e');
-      throw Exception('Failed to update investor record: $e');
-    }
-  }
-
-  // Create or update investor profile in investor_profiles table
-  Future<void> _createOrUpdateInvestorProfile(InvestorUser user) async {
-    try {
-      final existingProfile =
-          await _supabase
-              .from('investor_profiles')
-              .select('id')
-              .eq('investor_id', user.id)
-              .maybeSingle();
-
-      final profileData = user.toProfileDatabase();
-
-      if (existingProfile == null) {
-        // Create new profile
-        await _supabase.from('investor_profiles').insert(profileData);
-        _logger.i('✅ Created investor profile for: ${user.email}');
-      } else {
-        // Update existing profile
-        await _supabase
-            .from('investor_profiles')
-            .update(profileData)
-            .eq('investor_id', user.id);
-        _logger.i('✅ Updated investor profile for: ${user.email}');
-      }
-    } catch (e) {
-      _logger.e('❌ Error creating/updating investor profile: $e');
-      throw Exception('Failed to create/update investor profile: $e');
-    }
-  }
-
-  // Update last login timestamp
-  Future<void> _updateLastLogin(String userId) async {
-    try {
-      await _supabase
-          .from('investors')
-          .update({
-            'last_login_at': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', userId);
-
-      debugPrint('✅ Updated last login for investor: $userId');
-    } catch (e) {
-      _logger.w('Error updating last login: $e');
+      _logger.e('❌ Error creating/updating user record: $e');
+      debugPrint('❌ Error with user record for ID: ${user.id}');
+      // Don't throw error to not break authentication flow
     }
   }
 
@@ -587,6 +347,7 @@ class InvestorAuthProvider with ChangeNotifier {
     String? password,
     String? confirmPassword,
   }) async {
+    // Use provided values or controller values
     if (fullName != null) _nameController.text = fullName;
     if (email != null) _emailController.text = email;
     if (password != null) _passwordController.text = password;
@@ -601,7 +362,7 @@ class InvestorAuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      _logger.i('Attempting investor signup for: ${this.email}');
+      _logger.i('Attempting signup for: ${this.email}');
 
       final response = await _supabase.auth.signUp(
         email: this.email,
@@ -609,14 +370,15 @@ class InvestorAuthProvider with ChangeNotifier {
         data: {
           'full_name': fullName ?? this.fullName,
           'email': email ?? this.email,
-          'user_type': 'investor',
         },
       );
 
       if (response.user != null) {
-        _logger.i('✅ Investor signup successful: ${this.email}');
-        debugPrint('✅ New investor created with ID: ${response.user!.id}');
+        _logger.i('✅ Signup successful: ${this.email}');
+        debugPrint('✅ New user created with ID: ${response.user!.id}');
 
+        // User will be set via auth state listener
+        // Save remember me if checked
         if (_rememberMe) {
           await _saveRememberMe(this.email);
         }
@@ -628,11 +390,11 @@ class InvestorAuthProvider with ChangeNotifier {
         return false;
       }
     } on AuthException catch (e) {
-      _logger.e('❌ Auth exception during investor signup: ${e.message}');
+      _logger.e('❌ Auth exception during signup: ${e.message}');
       _error = e.message;
       return false;
     } catch (e) {
-      _logger.e('❌ Unexpected error during investor signup: $e');
+      _logger.e('❌ Unexpected error during signup: $e');
       _error = 'Signup failed. Please try again.';
       return false;
     } finally {
@@ -646,6 +408,7 @@ class InvestorAuthProvider with ChangeNotifier {
     String? password,
     bool? rememberMe,
   }) async {
+    // Use provided values or controller values
     if (email != null) _emailController.text = email;
     if (password != null) _passwordController.text = password;
     if (rememberMe != null) _rememberMe = rememberMe;
@@ -657,7 +420,7 @@ class InvestorAuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      _logger.i('Attempting investor login for: ${this.email}');
+      _logger.i('Attempting login for: ${this.email}');
 
       final response = await _supabase.auth.signInWithPassword(
         email: this.email,
@@ -665,9 +428,11 @@ class InvestorAuthProvider with ChangeNotifier {
       );
 
       if (response.user != null) {
-        _logger.i('✅ Investor login successful: ${this.email}');
-        debugPrint('✅ Investor logged in with ID: ${response.user!.id}');
+        _logger.i('✅ Login successful: ${this.email}');
+        debugPrint('✅ User logged in with ID: ${response.user!.id}');
 
+        // User will be set via auth state listener
+        // Save remember me if checked
         if (_rememberMe) {
           await _saveRememberMe(this.email);
         }
@@ -679,11 +444,11 @@ class InvestorAuthProvider with ChangeNotifier {
         return false;
       }
     } on AuthException catch (e) {
-      _logger.e('❌ Auth exception during investor login: ${e.message}');
+      _logger.e('❌ Auth exception during login: ${e.message}');
       _error = e.message;
       return false;
     } catch (e) {
-      _logger.e('❌ Unexpected error during investor login: $e');
+      _logger.e('❌ Unexpected error during login: $e');
       _error = 'Login failed. Please try again.';
       return false;
     } finally {
@@ -692,322 +457,251 @@ class InvestorAuthProvider with ChangeNotifier {
     }
   }
 
+  // CRITICAL: Enhanced sign out method that properly clears user state
   Future<void> signOut() async {
-    _isAuthenticating = true;
-    notifyListeners();
-
     try {
+      _isAuthenticating = true;
+      _error = null;
+      notifyListeners();
+
+      final previousUserId = _currentUser?.id;
+      _logger.i('🔄 Starting sign out process for user: $previousUserId');
+
+      // Sign out from Supabase
       await _supabase.auth.signOut();
-      _logger.i('✅ Investor signed out successfully');
+
+      // Clear local state
+      _currentUser = null;
+      _isLoggedIn = false;
+      _error = null;
+
+      // Clear form data
+      clearForm();
+
+      // Clear saved preferences if remember me was not checked
+      if (!_rememberMe) {
+        _savedEmail = null;
+      }
+
+      _logger.i('✅ User signed out successfully');
+      debugPrint('✅ User signed out (was: $previousUserId)');
     } catch (e) {
-      _logger.e('❌ Error signing out investor: $e');
-      _error = 'Failed to sign out. Please try again.';
+      _error = 'Failed to sign out: $e';
+      _logger.e('❌ Error signing out: $e');
+      rethrow; // Re-throw so UI can handle the error
     } finally {
       _isAuthenticating = false;
       notifyListeners();
     }
   }
 
-  // ========== PROFILE MANAGEMENT METHODS ==========
-
-  // Update basic investor information
-  Future<bool> updateBasicProfile({
-    String? username,
-    String? avatarUrl,
-    int? portfolioSize,
-  }) async {
-    if (_currentUser == null) {
-      _error = 'No user logged in';
-      return false;
-    }
+  Future<bool> resetPassword(String email) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
 
     try {
-      final updatedUser = _currentUser!.copyWith(
-        username: username,
-        avatarUrl: avatarUrl,
-        portfolioSize: portfolioSize,
-      );
-
-      await _updateBasicInvestorRecord(updatedUser);
-      _currentUser = updatedUser;
-      notifyListeners();
-
+      await _supabase.auth.resetPasswordForEmail(email);
+      _logger.i('Password reset email sent to: $email');
       return true;
+    } on AuthException catch (e) {
+      _logger.e('Auth exception during password reset: ${e.message}');
+      _error = e.message;
+      return false;
     } catch (e) {
-      _error = 'Failed to update basic profile: $e';
+      _logger.e('Unexpected error during password reset: $e');
+      _error = 'Failed to send reset email. Please try again.';
       return false;
-    }
-  }
-
-  // Update professional profile information
-  Future<bool> updateProfessionalProfile({
-    String? companyName,
-    String? title,
-    String? bio,
-    String? linkedinUrl,
-    String? websiteUrl,
-    List<String>? industries,
-    List<String>? geographicFocus,
-  }) async {
-    if (_currentUser == null) {
-      _error = 'No user logged in';
-      return false;
-    }
-
-    try {
-      final updatedUser = _currentUser!.copyWith(
-        companyName: companyName,
-        title: title,
-        bio: bio,
-        linkedinUrl: linkedinUrl,
-        websiteUrl: websiteUrl,
-        industries: industries,
-        geographicFocus: geographicFocus,
-      );
-
-      await _createOrUpdateInvestorProfile(updatedUser);
-      _currentUser = updatedUser;
+    } finally {
+      _isLoading = false;
       notifyListeners();
-
-      return true;
-    } catch (e) {
-      _error = 'Failed to update professional profile: $e';
-      return false;
     }
   }
 
-  // Get all verified investors for discovery
-  Future<List<InvestorUser>> getAllInvestors({
-    String? searchTerm,
-    List<String>? industries,
-    List<String>? geographicFocus,
-    String? companyFilter,
-  }) async {
-    try {
-      final response = await _supabase.rpc(
-        'search_investors_with_profiles',
-        params: {
-          'search_term': searchTerm,
-          'industry_filter': industries,
-          'geographic_filter': geographicFocus,
-          'company_filter': companyFilter,
-        },
-      );
-
-      return (response as List)
-          .map((data) => InvestorUser.fromJoinedData(data))
-          .toList();
-    } catch (e) {
-      _logger.e('Error fetching investors: $e');
-      throw Exception('Failed to fetch investors: $e');
-    }
-  }
-
-  // Get investor by ID
-  Future<InvestorUser?> getInvestorById(String investorId) async {
-    try {
-      final response = await _supabase.rpc(
-        'get_complete_investor_profile',
-        params: {'investor_user_id': investorId},
-      );
-
-      if (response != null && response.isNotEmpty) {
-        return InvestorUser.fromJoinedData(response[0]);
-      }
-      return null;
-    } catch (e) {
-      _logger.e('Error fetching investor: $e');
-      return null;
-    }
-  }
-
-  // Check if investor has a professional profile
-  bool get hasCompleteProfessionalProfile {
+  // Resend email verification
+  Future<bool> resendEmailVerification() async {
     if (_currentUser == null) return false;
-    return _currentUser!.hasProfile;
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _supabase.auth.resend(
+        type: OtpType.signup,
+        email: _currentUser!.email,
+      );
+      _logger.i('Verification email resent to: ${_currentUser!.email}');
+      return true;
+    } on AuthException catch (e) {
+      _logger.e('Error resending verification: ${e.message}');
+      _error = e.message;
+      return false;
+    } catch (e) {
+      _logger.e('Unexpected error resending verification: $e');
+      _error = 'Failed to resend verification email.';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
-  // Get profile completion percentage
-  double get profileCompletionPercentage {
-    if (_currentUser == null) return 0.0;
+  // Update user profile
+  Future<bool> updateProfile({String? fullName, String? email}) async {
+    if (_currentUser == null) return false;
 
-    int completed = 0;
-    int total = 8; // Total number of profile fields
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
 
-    // Basic fields (4)
-    if (_currentUser!.username != null && _currentUser!.username!.isNotEmpty) {
-      completed++;
-    }
-    if (_currentUser!.avatarUrl != null &&
-        _currentUser!.avatarUrl!.isNotEmpty) {
-      completed++;
-    }
+    try {
+      Map<String, dynamic> updates = {};
 
-    // Professional fields (6)
-    if (_currentUser!.companyName != null &&
-        _currentUser!.companyName!.isNotEmpty) {
-      completed++;
-    }
-    if (_currentUser!.title != null && _currentUser!.title!.isNotEmpty) {
-      completed++;
-    }
-    if (_currentUser!.bio != null && _currentUser!.bio!.isNotEmpty) completed++;
-    if (_currentUser!.linkedinUrl != null &&
-        _currentUser!.linkedinUrl!.isNotEmpty) {
-      completed++;
-    }
-    if (_currentUser!.industries.isNotEmpty) completed++;
-    if (_currentUser!.geographicFocus.isNotEmpty) completed++;
+      if (fullName != null && fullName != _currentUser!.fullName) {
+        updates['full_name'] = fullName;
+      }
 
-    return (completed / total) * 100;
+      if (email != null && email != _currentUser!.email) {
+        updates['email'] = email;
+      }
+
+      if (updates.isNotEmpty) {
+        await _supabase.auth.updateUser(
+          UserAttributes(email: email, data: updates),
+        );
+
+        _logger.i('Profile updated successfully');
+        return true;
+      }
+
+      return true; // No changes needed
+    } on AuthException catch (e) {
+      _logger.e('Error updating profile: ${e.message}');
+      _error = e.message;
+      return false;
+    } catch (e) {
+      _logger.e('Unexpected error updating profile: $e');
+      _error = 'Failed to update profile.';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // ========== HELPER METHODS ==========
+  Future<void> _saveRememberMe(String email) async {
+    try {
+      _rememberMe = true;
+      _savedEmail = email;
+      _logger.i('Remember me saved for: $email');
+    } catch (e) {
+      _logger.w('Error saving remember me: $e');
+    }
   }
 
   // ========== FORM MANAGEMENT METHODS ==========
   void setFormType(FormType type) {
     _currentFormType = type;
+    clearForm();
     clearError();
-    notifyListeners();
-  }
-
-  void togglePasswordVisibility() {
-    _isPasswordVisible = !_isPasswordVisible;
-    notifyListeners();
-  }
-
-  void toggleConfirmPasswordVisibility() {
-    _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
-    notifyListeners();
-  }
-
-  void toggleRememberMe() {
-    _rememberMe = !_rememberMe;
-    notifyListeners();
-  }
-
-  void clearForm() {
-    _nameController.clear();
-    _emailController.clear();
-    _passwordController.clear();
-    _confirmPasswordController.clear();
-    _clearValidationErrors();
-    _isFormValid = false;
-    notifyListeners();
-  }
-
-  void clearError() {
-    _error = null;
     notifyListeners();
   }
 
   void enableRealTimeValidation() {
     _validateRealTime = true;
-    _validateForm();
+    notifyListeners();
   }
 
-  void disableRealTimeValidation() {
-    _validateRealTime = false;
-    _clearValidationErrors();
+  bool validateForm() {
+    switch (_currentFormType) {
+      case FormType.signup:
+        return _validateSignupForm();
+      case FormType.login:
+        return _validateLoginForm();
+    }
+  }
+
+  // Login method (alias for signIn for backward compatibility)
+  Future<bool> login({
+    String? email,
+    String? password,
+    bool? rememberMe,
+  }) async {
+    return await signIn(
+      email: email,
+      password: password,
+      rememberMe: rememberMe,
+    );
+  }
+
+  // Signup method (alias for signUp for backward compatibility)
+  Future<bool> signup({
+    String? fullName,
+    String? email,
+    String? password,
+    String? confirmPassword,
+  }) async {
+    return await signUp(
+      fullName: fullName,
+      email: email,
+      password: password,
+      confirmPassword: confirmPassword,
+    );
   }
 
   // ========== VALIDATION METHODS ==========
+  bool _validateLoginForm() {
+    bool isValid = true;
+
+    _emailError = validateEmail(email);
+    if (_emailError != null) isValid = false;
+
+    _passwordError = validatePassword(password);
+    if (_passwordError != null) isValid = false;
+
+    _isFormValid = isValid;
+    notifyListeners();
+    return isValid;
+  }
+
+  bool _validateSignupForm() {
+    bool isValid = true;
+
+    _nameError = validateFullName(fullName);
+    if (_nameError != null) isValid = false;
+
+    _emailError = validateEmail(email);
+    if (_emailError != null) isValid = false;
+
+    _passwordError = validatePassword(password);
+    if (_passwordError != null) isValid = false;
+
+    _confirmPasswordError = validateConfirmPassword(password, confirmPassword);
+    if (_confirmPasswordError != null) isValid = false;
+
+    _isFormValid = isValid;
+    notifyListeners();
+    return isValid;
+  }
+
   void _onFormFieldChanged() {
     if (_validateRealTime) {
       _validationTimer?.cancel();
       _validationTimer = Timer(const Duration(milliseconds: 300), () {
-        _validateForm();
+        validateForm();
       });
     }
   }
 
-  void _validateForm() {
-    if (_currentFormType == FormType.signup) {
-      _validateSignupForm();
-    } else {
-      _validateLoginForm();
-    }
-  }
-
-  bool _validateSignupForm() {
-    _clearValidationErrors();
-    bool isValid = true;
-
-    if (fullName.isEmpty) {
-      _nameError = 'Full name is required';
-      isValid = false;
-    } else if (fullName.length < 2) {
-      _nameError = 'Name must be at least 2 characters';
-      isValid = false;
-    }
-
-    if (email.isEmpty) {
-      _emailError = 'Email is required';
-      isValid = false;
-    } else if (!_isValidEmail(email)) {
-      _emailError = 'Please enter a valid email address';
-      isValid = false;
-    }
-
-    if (password.isEmpty) {
-      _passwordError = 'Password is required';
-      isValid = false;
-    } else if (password.length < 6) {
-      _passwordError = 'Password must be at least 6 characters';
-      isValid = false;
-    }
-
-    if (confirmPassword.isEmpty) {
-      _confirmPasswordError = 'Please confirm your password';
-      isValid = false;
-    } else if (password != confirmPassword) {
-      _confirmPasswordError = 'Passwords do not match';
-      isValid = false;
-    }
-
-    _isFormValid = isValid;
-    notifyListeners();
-    return isValid;
-  }
-
-  bool _validateLoginForm() {
-    _clearValidationErrors();
-    bool isValid = true;
-
-    if (email.isEmpty) {
-      _emailError = 'Email is required';
-      isValid = false;
-    } else if (!_isValidEmail(email)) {
-      _emailError = 'Please enter a valid email address';
-      isValid = false;
-    }
-
-    if (password.isEmpty) {
-      _passwordError = 'Password is required';
-      isValid = false;
-    }
-
-    _isFormValid = isValid;
-    notifyListeners();
-    return isValid;
-  }
-
-  void _clearValidationErrors() {
-    _nameError = null;
-    _emailError = null;
-    _passwordError = null;
-    _confirmPasswordError = null;
-  }
-
-  bool _isValidEmail(String email) {
-    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
-  }
-
-  // Individual field validation methods for UI
-  String? validateName(String? value) {
+  // ========== FIELD VALIDATION ==========
+  String? validateFullName(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Full name is required';
     }
     if (value.trim().length < 2) {
-      return 'Name must be at least 2 characters';
+      return 'Full name must be at least 2 characters';
     }
     return null;
   }
@@ -1016,7 +710,8 @@ class InvestorAuthProvider with ChangeNotifier {
     if (value == null || value.trim().isEmpty) {
       return 'Email is required';
     }
-    if (!_isValidEmail(value.trim())) {
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(value.trim())) {
       return 'Please enter a valid email address';
     }
     return null;
@@ -1042,26 +737,117 @@ class InvestorAuthProvider with ChangeNotifier {
     return null;
   }
 
-  // ========== UTILITY METHODS ==========
+  // ========== PASSWORD STRENGTH ==========
   PasswordStrength getPasswordStrength(String password) {
     if (password.isEmpty) return PasswordStrength.none;
-    if (password.length < 6) return PasswordStrength.weak;
-    if (password.length < 10) return PasswordStrength.medium;
+
+    int score = 0;
+
+    // Length
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+
+    // Character types
+    if (RegExp(r'[a-z]').hasMatch(password)) score++;
+    if (RegExp(r'[A-Z]').hasMatch(password)) score++;
+    if (RegExp(r'[0-9]').hasMatch(password)) score++;
+    if (RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password)) score++;
+
+    if (score <= 2) return PasswordStrength.weak;
+    if (score <= 4) return PasswordStrength.medium;
     return PasswordStrength.strong;
   }
 
-  Future<void> _saveRememberMe(String email) async {
-    try {
-      _savedEmail = email;
-      _logger.i('Remember me saved for investor: $email');
-    } catch (e) {
-      _logger.w('Error saving remember me for investor: $e');
+  Color getPasswordStrengthColor(dynamic input) {
+    PasswordStrength strength;
+    if (input is String) {
+      strength = getPasswordStrength(input);
+    } else if (input is PasswordStrength) {
+      strength = input;
+    } else {
+      strength = PasswordStrength.none;
+    }
+
+    switch (strength) {
+      case PasswordStrength.none:
+        return Colors.grey;
+      case PasswordStrength.weak:
+        return Colors.red;
+      case PasswordStrength.medium:
+        return Colors.orange;
+      case PasswordStrength.strong:
+        return Colors.green;
     }
   }
 
-  // ========== CLEANUP ==========
+  String getPasswordStrengthText(dynamic input) {
+    PasswordStrength strength;
+    if (input is String) {
+      strength = getPasswordStrength(input);
+    } else if (input is PasswordStrength) {
+      strength = input;
+    } else {
+      strength = PasswordStrength.none;
+    }
+
+    switch (strength) {
+      case PasswordStrength.none:
+        return '';
+      case PasswordStrength.weak:
+        return 'Weak';
+      case PasswordStrength.medium:
+        return 'Medium';
+      case PasswordStrength.strong:
+        return 'Strong';
+    }
+  }
+
+  // ========== UI CONTROL METHODS ==========
+  void togglePasswordVisibility() {
+    _isPasswordVisible = !_isPasswordVisible;
+    notifyListeners();
+  }
+
+  void toggleConfirmPasswordVisibility() {
+    _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+    notifyListeners();
+  }
+
+  void setRememberMe(bool value) {
+    _rememberMe = value;
+    notifyListeners();
+  }
+
+  void clearForm() {
+    _nameController.clear();
+    _emailController.clear();
+    _passwordController.clear();
+    _confirmPasswordController.clear();
+
+    _nameError = null;
+    _emailError = null;
+    _passwordError = null;
+    _confirmPasswordError = null;
+    _isFormValid = false;
+
+    notifyListeners();
+  }
+
+  void clearError() {
+    _error = null;
+    notifyListeners();
+  }
+
+  // Get user status for dashboard routing
+  String getUserStatus() {
+    return 'investor'; // Default for now, can be enhanced to read from database
+  }
+
   @override
   void dispose() {
+    _authSubscription?.cancel();
+    _validationTimer?.cancel();
+
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -1071,9 +857,6 @@ class InvestorAuthProvider with ChangeNotifier {
     _emailFocusNode.dispose();
     _passwordFocusNode.dispose();
     _confirmPasswordFocusNode.dispose();
-
-    _validationTimer?.cancel();
-    _authSubscription?.cancel();
 
     super.dispose();
   }

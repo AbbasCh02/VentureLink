@@ -1,8 +1,8 @@
-// lib/Investor/investor_login_page.dart
 import 'package:flutter/material.dart';
-// import 'investor_dashboard.dart'; // You'll create this later
+import 'package:provider/provider.dart';
+import 'investor_dashboard.dart';
 import 'signup_investor.dart';
-// import 'Providers/investor_authentication_provider.dart'; // You'll create this later
+import 'Providers/investor_authentication_provider.dart';
 
 class InvestorLoginPage extends StatefulWidget {
   const InvestorLoginPage({super.key});
@@ -21,14 +21,6 @@ class _InvestorLoginPageState extends State<InvestorLoginPage>
   late Animation<Offset> _slideAnimation;
   late Animation<double> _pulseAnimation;
   late Animation<Color?> _colorAnimation;
-
-  // Form controllers for demo purposes
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final FocusNode _emailFocusNode = FocusNode();
-  final FocusNode _passwordFocusNode = FocusNode();
-  bool _rememberMe = false;
-  bool _isPasswordVisible = false;
 
   @override
   void initState() {
@@ -81,9 +73,18 @@ class _InvestorLoginPageState extends State<InvestorLoginPage>
     _pulseController.repeat(reverse: true);
     _colorController.repeat(reverse: true);
 
-    // Add listeners for real-time validation
-    _emailController.addListener(_onFormFieldChanged);
-    _passwordController.addListener(_onFormFieldChanged);
+    // Initialize form for login
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = context.read<InvestorAuthProvider>();
+      authProvider.setFormType(FormType.login);
+      authProvider.clearForm();
+      authProvider.enableRealTimeValidation();
+
+      // Pre-fill email if remembered
+      if (authProvider.savedEmail != null) {
+        authProvider.emailController.text = authProvider.savedEmail!;
+      }
+    });
   }
 
   @override
@@ -92,21 +93,7 @@ class _InvestorLoginPageState extends State<InvestorLoginPage>
     _slideController.dispose();
     _pulseController.dispose();
     _colorController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _emailFocusNode.dispose();
-    _passwordFocusNode.dispose();
     super.dispose();
-  }
-
-  void _onFormFieldChanged() {
-    setState(() {}); // Trigger rebuild for form validation
-  }
-
-  bool get _isFormValid {
-    return _emailController.text.isNotEmpty &&
-        _passwordController.text.isNotEmpty &&
-        _emailController.text.contains('@');
   }
 
   Widget _buildBackgroundDecoration() {
@@ -321,235 +308,272 @@ class _InvestorLoginPageState extends State<InvestorLoginPage>
     required String label,
     required TextEditingController controller,
     required FocusNode focusNode,
+    required String? Function(String?) validator,
     bool isPassword = false,
     IconData? icon,
     TextInputType? keyboardType,
   }) {
-    final hasContent = controller.text.isNotEmpty;
-    final hasFocus = focusNode.hasFocus;
-    final hasError =
-        hasContent &&
-        ((label == 'Email' && !controller.text.contains('@')) ||
-            (label == 'Password' && controller.text.length < 6));
+    return Consumer<InvestorAuthProvider>(
+      builder: (context, authProvider, child) {
+        final hasContent = controller.text.isNotEmpty;
+        final hasFocus = focusNode.hasFocus;
+        final hasError =
+            controller.text.isNotEmpty &&
+            validator(controller.text) != null &&
+            authProvider.validateRealTime;
 
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF65c6f4).withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF65c6f4).withValues(alpha: 0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        obscureText: isPassword && !_isPasswordVisible,
-        keyboardType: keyboardType,
-        cursorColor: const Color(0xFF65c6f4),
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
-        onSubmitted: (_) {
-          if (label == 'Email') {
-            _passwordFocusNode.requestFocus();
-          } else {
-            _handleLogin();
-          }
-        },
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(
-            color:
-                hasError
-                    ? Colors.red
-                    : hasFocus
-                    ? const Color(0xFF65c6f4)
-                    : Colors.grey[400],
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
-          ),
-          errorText:
-              hasError
-                  ? (label == 'Email'
-                      ? 'Please enter a valid email'
-                      : 'Password must be at least 6 characters')
-                  : null,
-          errorStyle: const TextStyle(color: Colors.red, fontSize: 12),
-          prefixIcon:
-              icon != null
-                  ? Container(
-                    margin: const EdgeInsets.all(10),
-                    padding: const EdgeInsets.all(7),
-                    decoration: BoxDecoration(
-                      color:
-                          hasError
-                              ? Colors.red.withValues(alpha: 0.1)
-                              : hasFocus
-                              ? const Color(0xFF65c6f4).withValues(alpha: 0.15)
-                              : Colors.grey[800]!.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      icon,
-                      color:
-                          hasError
-                              ? Colors.red
-                              : hasFocus
-                              ? const Color(0xFF65c6f4)
-                              : Colors.grey[400],
-                      size: 18,
-                    ),
-                  )
-                  : null,
-          suffixIcon:
-              isPassword
-                  ? GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _isPasswordVisible = !_isPasswordVisible;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      child: Icon(
-                        _isPasswordVisible
-                            ? Icons.visibility
-                            : Icons.visibility_off,
-                        color: Colors.grey[400],
-                        size: 18,
-                      ),
-                    ),
-                  )
-                  : null,
-          filled: true,
-          fillColor: Colors.grey[850]!.withValues(alpha: 0.9),
-          enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(
-              color: hasError ? Colors.red : Colors.grey[800]!,
-              width: 1,
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            obscureText: isPassword && !authProvider.isPasswordVisible,
+            keyboardType: keyboardType,
+            cursorColor: const Color(0xFF65c6f4),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
             ),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(
-              color: hasError ? Colors.red : const Color(0xFF65c6f4),
-              width: 2,
+            onSubmitted: (_) {
+              if (label.contains('Email')) {
+                authProvider.passwordFocusNode.requestFocus();
+              } else {
+                _handleLogin();
+              }
+            },
+            decoration: InputDecoration(
+              labelText: label,
+              labelStyle: TextStyle(
+                color:
+                    hasError
+                        ? Colors.red
+                        : hasFocus
+                        ? const Color(0xFF65c6f4)
+                        : Colors.grey[400],
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+              errorText: hasError ? validator(controller.text) : null,
+              errorStyle: const TextStyle(color: Colors.red, fontSize: 12),
+              prefixIcon:
+                  icon != null
+                      ? Container(
+                        margin: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color:
+                              hasError
+                                  ? Colors.red.withValues(alpha: 0.1)
+                                  : hasFocus
+                                  ? const Color(
+                                    0xFF65c6f4,
+                                  ).withValues(alpha: 0.15)
+                                  : Colors.grey[800]!.withValues(alpha: 0.8),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          icon,
+                          color:
+                              hasError
+                                  ? Colors.red
+                                  : hasFocus
+                                  ? const Color(0xFF65c6f4)
+                                  : Colors.grey[400],
+                          size: 18,
+                        ),
+                      )
+                      : null,
+              suffixIcon:
+                  isPassword
+                      ? IconButton(
+                        onPressed: authProvider.togglePasswordVisibility,
+                        icon: Icon(
+                          authProvider.isPasswordVisible
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                          color: Colors.grey[500],
+                          size: 20,
+                        ),
+                      )
+                      : hasContent
+                      ? Icon(
+                        hasError ? Icons.error : Icons.check_circle,
+                        color: hasError ? Colors.red : Colors.green,
+                        size: 20,
+                      )
+                      : null,
+              filled: true,
+              fillColor: Colors.grey[900]!.withValues(alpha: 0.6),
+              enabledBorder: OutlineInputBorder(
+                borderSide: BorderSide(
+                  color: hasError ? Colors.red : Colors.grey[800]!,
+                  width: 1,
+                ),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(
+                  color: hasError ? Colors.red : const Color(0xFF65c6f4),
+                  width: 2,
+                ),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderSide: const BorderSide(color: Colors.red, width: 2),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderSide: const BorderSide(color: Colors.red, width: 2),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: 16,
+              ),
             ),
-            borderRadius: BorderRadius.circular(14),
           ),
-          errorBorder: OutlineInputBorder(
-            borderSide: const BorderSide(color: Colors.red, width: 2),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderSide: const BorderSide(color: Colors.red, width: 2),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 14,
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   Widget _buildRememberMeCheckbox() {
-    return Row(
-      children: [
-        Transform.scale(
-          scale: 1.1,
-          child: Checkbox(
-            value: _rememberMe,
-            onChanged: (value) {
-              setState(() {
-                _rememberMe = value ?? false;
-              });
-            },
-            activeColor: const Color(0xFF65c6f4),
-            checkColor: Colors.black,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
+    return Consumer<InvestorAuthProvider>(
+      builder: (context, authProvider, child) {
+        return Row(
+          children: [
+            Transform.scale(
+              scale: 1.1,
+              child: Checkbox(
+                value: authProvider.rememberMe,
+                onChanged:
+                    (value) => authProvider.setRememberMe(value ?? false),
+                activeColor: const Color(0xFF65c6f4),
+                checkColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
             ),
-          ),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          'Remember me',
-          style: TextStyle(
-            color: Colors.grey[400],
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
+            const SizedBox(width: 4),
+            Text(
+              'Remember me',
+              style: TextStyle(
+                color: Colors.grey[400],
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildLoginButton() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(
-              0xFF65c6f4,
-            ).withValues(alpha: _isFormValid ? 0.3 : 0.1),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: _isFormValid ? _handleLogin : null,
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          backgroundColor:
-              _isFormValid ? const Color(0xFF65c6f4) : Colors.grey[700],
-          elevation: 0,
-          shape: RoundedRectangleBorder(
+    return Consumer<InvestorAuthProvider>(
+      builder: (context, authProvider, child) {
+        final isLoading = authProvider.isAuthenticating;
+        final isFormValid = authProvider.isFormValid;
+
+        return Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            side: BorderSide(
-              color: const Color(0xFF4fa8d8).withValues(alpha: 0.3),
-              width: 1,
-            ),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF65c6f4).withValues(alpha: 0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+              BoxShadow(
                 color: Colors.black.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(5),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
               ),
-              child: const Icon(Icons.login, color: Colors.black, size: 16),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Login to Dashboard',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: _isFormValid ? Colors.black : Colors.grey[400],
-                letterSpacing: 0.3,
+            ],
+          ),
+          child: ElevatedButton(
+            onPressed: (isFormValid && !isLoading) ? _handleLogin : null,
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              backgroundColor: const Color(0xFF65c6f4),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: BorderSide(
+                  color: const Color(0xFF65c6f4).withValues(alpha: 0.3),
+                  width: 1,
+                ),
               ),
             ),
-          ],
-        ),
-      ),
+            child:
+                isLoading
+                    ? const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.black,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          'Signing In...',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    )
+                    : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: const Icon(
+                            Icons.login,
+                            color: Colors.black,
+                            size: 16,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Login to Dashboard',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color:
+                                isFormValid ? Colors.black : Colors.grey[400],
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+          ),
+        );
+      },
     );
   }
 
@@ -564,51 +588,6 @@ class _InvestorLoginPageState extends State<InvestorLoginPage>
           fontWeight: FontWeight.w600,
           decoration: TextDecoration.underline,
           decorationColor: Color(0xFF65c6f4),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSignUpLink() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[800]!, width: 1),
-        gradient: LinearGradient(
-          colors: [
-            Colors.grey[900]!.withValues(alpha: 0.3),
-            Colors.grey[800]!.withValues(alpha: 0.1),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: TextButton(
-        onPressed: () {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const InvestorSignupPage()),
-          );
-        },
-        style: TextButton.styleFrom(
-          padding: EdgeInsets.zero,
-          minimumSize: Size.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-        child: RichText(
-          text: TextSpan(
-            text: "Don't have an account? ",
-            style: TextStyle(color: Colors.grey[400], fontSize: 13),
-            children: const [
-              TextSpan(
-                text: "Sign Up",
-                style: TextStyle(
-                  color: Color(0xFF65c6f4),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -665,56 +644,80 @@ class _InvestorLoginPageState extends State<InvestorLoginPage>
   }
 
   Future<void> _handleLogin() async {
-    // TODO: Implement actual login logic with InvestorAuthProvider
+    final authProvider = context.read<InvestorAuthProvider>();
 
-    // Unfocus fields
-    _emailFocusNode.unfocus();
-    _passwordFocusNode.unfocus();
+    // Validate form
+    if (!authProvider.validateForm()) {
+      return;
+    }
+    // Unfocus all fields
+    authProvider.emailFocusNode.unfocus();
+    authProvider.passwordFocusNode.unfocus();
 
-    // Show loading state
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            SizedBox(
-              width: 20,
-              height: 20,
-              child: const CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Text('Logging in...'),
-          ],
-        ),
-        backgroundColor: const Color(0xFF65c6f4),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 2),
-      ),
+    // Attempt login
+    final success = await authProvider.login(
+      email: authProvider.email,
+      password: authProvider.password,
+      rememberMe: authProvider.rememberMe,
     );
 
-    // Simulate login delay
-    await Future.delayed(const Duration(seconds: 2));
-
     if (mounted) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Login functionality will be implemented with InvestorAuthProvider',
-            style: TextStyle(color: Colors.black),
+      if (success) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Welcome back, ${authProvider.currentUser?.fullName ?? 'User'}!',
+              style: const TextStyle(color: Colors.black),
+            ),
+            backgroundColor: const Color(0xFF65c6f4),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.all(16),
           ),
-          backgroundColor: const Color(0xFF65c6f4),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+        );
+
+        // Navigate to dashboard
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const InvestorDashboard()),
+          );
+        }
+      } else {
+        // Handle different error types
+        String errorMessage =
+            authProvider.error ?? 'Login failed. Please try again.';
+
+        // Special handling for email confirmation
+        if (errorMessage.toLowerCase().contains('email not confirmed') ||
+            errorMessage.toLowerCase().contains('confirmation')) {
+          errorMessage =
+              'Please check your email and click the confirmation link before logging in.';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              errorMessage,
+              style: const TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Colors.red[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.all(16),
+            duration: const Duration(seconds: 5),
           ),
-          margin: const EdgeInsets.all(16),
-        ),
-      );
+        );
+
+        // Clear password on error
+        authProvider.clearForm();
+      }
     }
   }
 
@@ -732,54 +735,191 @@ class _InvestorLoginPageState extends State<InvestorLoginPage>
               position: _slideAnimation,
               child: SafeArea(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 10),
-                      _buildElegantLogo(),
-                      const SizedBox(height: 24),
-                      _buildHeaderText(),
-                      const SizedBox(height: 24),
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight:
+                          MediaQuery.of(context).size.height -
+                          MediaQuery.of(context).padding.top -
+                          kToolbarHeight,
+                    ),
+                    child: IntrinsicHeight(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SizedBox(height: 30),
 
-                      Form(
-                        child: Column(
-                          children: [
-                            _buildInputField(
-                              label: "Email",
-                              controller: _emailController,
-                              focusNode: _emailFocusNode,
-                              keyboardType: TextInputType.emailAddress,
-                              icon: Icons.email_outlined,
-                            ),
-                            const SizedBox(height: 12),
+                          // Logo
+                          _buildElegantLogo(),
+                          const SizedBox(height: 24),
 
-                            _buildInputField(
-                              label: "Password",
-                              controller: _passwordController,
-                              focusNode: _passwordFocusNode,
-                              isPassword: true,
-                              icon: Icons.lock_outline,
-                            ),
-                            const SizedBox(height: 16),
+                          // Header text
+                          _buildHeaderText(),
+                          const SizedBox(height: 32),
 
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _buildRememberMeCheckbox(),
-                                _buildForgotPassword(),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
+                          // Error Display
+                          Consumer<InvestorAuthProvider>(
+                            builder: (context, authProvider, child) {
+                              if (authProvider.error != null) {
+                                return Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(12),
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.red.withValues(alpha: 0.3),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.error_outline,
+                                        color: Colors.red,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          authProvider.error!,
+                                          style: const TextStyle(
+                                            color: Colors.red,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        onPressed: authProvider.clearError,
+                                        icon: const Icon(
+                                          Icons.close,
+                                          color: Colors.red,
+                                          size: 18,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
 
-                            _buildLoginButton(),
-                            const SizedBox(height: 20),
+                          // Form fields
+                          Consumer<InvestorAuthProvider>(
+                            builder: (context, authProvider, child) {
+                              return Form(
+                                key: authProvider.loginFormKey,
+                                child: Column(
+                                  children: [
+                                    _buildInputField(
+                                      label: "Email",
+                                      controller: authProvider.emailController,
+                                      focusNode: authProvider.emailFocusNode,
+                                      validator: authProvider.validateEmail,
+                                      keyboardType: TextInputType.emailAddress,
+                                      icon: Icons.email_outlined,
+                                    ),
+                                    const SizedBox(height: 16),
 
-                            _buildSignUpLink(),
-                            const SizedBox(height: 10),
-                          ],
-                        ),
+                                    _buildInputField(
+                                      label: "Password",
+                                      controller:
+                                          authProvider.passwordController,
+                                      focusNode: authProvider.passwordFocusNode,
+                                      validator: authProvider.validatePassword,
+                                      isPassword: true,
+                                      icon: Icons.lock_outline,
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // Remember me and forgot password row
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _buildRememberMeCheckbox(),
+                              _buildForgotPassword(),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Login Button
+                          _buildLoginButton(),
+                          const SizedBox(height: 20),
+
+                          // Sign Up Link
+                          Consumer<InvestorAuthProvider>(
+                            builder: (context, authProvider, child) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.grey[800]!,
+                                    width: 1,
+                                  ),
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.grey[900]!.withValues(alpha: 0.3),
+                                      Colors.grey[800]!.withValues(alpha: 0.1),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                ),
+                                child: TextButton(
+                                  onPressed: () {
+                                    authProvider.setFormType(FormType.signup);
+                                    authProvider.clearForm();
+                                    Navigator.of(context).pushReplacement(
+                                      MaterialPageRoute(
+                                        builder:
+                                            (context) =>
+                                                const InvestorSignupPage(),
+                                      ),
+                                    );
+                                  },
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: Size.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: RichText(
+                                    text: TextSpan(
+                                      text: "Don't have an account? ",
+                                      style: TextStyle(
+                                        color: Colors.grey[400],
+                                        fontSize: 13,
+                                      ),
+                                      children: const [
+                                        TextSpan(
+                                          text: "Sign Up",
+                                          style: TextStyle(
+                                            color: Color(0xFF65c6f4),
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 20), // Extra bottom padding
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
