@@ -10,7 +10,7 @@ import 'funding_progress.dart';
 import 'package:venturelink/Startup/Startup_Dashboard/profile_overview.dart';
 import 'pitch_deck.dart';
 import '../Providers/startup_authentication_provider.dart';
-import '../services/storage_service.dart';
+import '../../services/storage_service.dart';
 
 class StartupProfilePage extends StatefulWidget {
   final Function(int?, String?)? onDataSaved;

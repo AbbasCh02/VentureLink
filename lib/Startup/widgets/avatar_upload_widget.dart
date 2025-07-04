@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../Providers/startup_profile_provider.dart';
-import '../services/storage_service.dart';
+import '../../services/storage_service.dart';
 
 class AvatarUploadWidget extends StatelessWidget {
   final double size;

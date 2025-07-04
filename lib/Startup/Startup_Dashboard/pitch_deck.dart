@@ -7,7 +7,7 @@ import 'package:logger/logger.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 import '../Providers/startup_profile_provider.dart';
-import '../services/storage_service.dart';
+import '../../services/storage_service.dart';
 
 class PitchDeck extends StatelessWidget {
   final Logger logger = Logger();
