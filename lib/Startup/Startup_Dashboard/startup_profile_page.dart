@@ -462,7 +462,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
     try {
       // Get auth provider and sign out
       final authProvider = context.read<StartupAuthProvider>();
-      await authProvider.signOut();
+      await authProvider.logout();
 
       // Navigate to the welcome page and clear all routes
       if (mounted) {

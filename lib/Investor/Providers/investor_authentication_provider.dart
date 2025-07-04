@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:logger/logger.dart';
+import '../../services/user_type_service.dart';
 
 /// Custom user model for better type safety and data handling
 class InvestorUser {
@@ -281,16 +282,18 @@ class InvestorAuthProvider with ChangeNotifier {
   // Create or update user record in our users table - CRITICAL: Proper user isolation
   Future<void> _createOrUpdateUserRecord(InvestorUser user) async {
     try {
-      // Check if user record exists - CRITICAL: Filter by specific user ID
+      debugPrint('🔍 Creating/updating investor user record for: ${user.id}');
+
+      // CRITICAL: Check if user record exists - Filter by specific user ID
       final existingUser =
           await _supabase
-              .from('investors')
+              .from('investors') // This is the INVESTOR table
               .select('id, email, created_at')
               .eq('id', user.id) // THIS IS THE KEY FIX
               .maybeSingle();
 
       if (existingUser == null) {
-        // Create new user record with FULL NAME as username
+        // Create new INVESTOR user record
         await _supabase.from('investors').insert({
           'id': user.id,
           'email': user.email,
@@ -307,11 +310,11 @@ class InvestorAuthProvider with ChangeNotifier {
         });
 
         _logger.i(
-          '✅ Created new user record for: ${user.email} with ID: ${user.id}',
+          '✅ Created new INVESTOR user record for: ${user.email} with ID: ${user.id}',
         );
-        debugPrint('✅ Created user record for ID: ${user.id}');
+        debugPrint('✅ Created INVESTOR user record for ID: ${user.id}');
       } else {
-        // Update existing user record - CRITICAL: Filter by specific user ID
+        // Update existing INVESTOR user record
         final updateData = {
           'last_login_at': user.lastLoginAt.toIso8601String(),
           'is_verified': user.isVerified,
@@ -324,18 +327,18 @@ class InvestorAuthProvider with ChangeNotifier {
         }
 
         await _supabase
-            .from('investors')
+            .from('investors') // This is the INVESTOR table
             .update(updateData)
             .eq('id', user.id); // THIS IS THE KEY FIX
 
         _logger.i(
-          '✅ Updated user record for: ${user.email} with ID: ${user.id}',
+          '✅ Updated INVESTOR user record for: ${user.email} with ID: ${user.id}',
         );
-        debugPrint('✅ Updated user record for ID: ${user.id}');
+        debugPrint('✅ Updated INVESTOR user record for ID: ${user.id}');
       }
     } catch (e) {
-      _logger.e('❌ Error creating/updating user record: $e');
-      debugPrint('❌ Error with user record for ID: ${user.id}');
+      _logger.e('❌ Error creating/updating INVESTOR user record: $e');
+      debugPrint('❌ Error with INVESTOR user record for ID: ${user.id}');
       // Don't throw error to not break authentication flow
     }
   }
@@ -457,40 +460,113 @@ class InvestorAuthProvider with ChangeNotifier {
     }
   }
 
-  // CRITICAL: Enhanced sign out method that properly clears user state
-  Future<void> signOut() async {
+  Future<bool> validateInvestorUserAccess() async {
     try {
-      _isAuthenticating = true;
-      _error = null;
+      if (!_isLoggedIn || _currentUser == null) {
+        debugPrint('❌ No startup user logged in');
+        return false;
+      }
+
+      debugPrint('🔍 Validating startup user access for: ${_currentUser!.id}');
+
+      // Use UserTypeService to validate user type
+      final isValidStartup = await UserTypeService.validateUserTypeConsistency(
+        _currentUser!.id,
+        'startup',
+      );
+
+      if (!isValidStartup) {
+        debugPrint('❌ User ${_currentUser!.id} is not a valid startup user');
+        debugPrint('🔄 Logging out invalid user');
+
+        // Log out the user as they don't belong in startup system
+        await logout();
+        return false;
+      }
+
+      debugPrint('✅ Startup user access validated');
+      return true;
+    } catch (e) {
+      debugPrint('❌ Error validating startup user access: $e');
+      await logout();
+      return false;
+    }
+  }
+
+  /// Enhanced checkAuthState method with user type validation
+  Future<void> checkAuthState() async {
+    try {
+      debugPrint('🔍 Checking startup auth state...');
+
+      final session = _supabase.auth.currentSession;
+      final user = session?.user;
+
+      if (user != null) {
+        debugPrint('👤 Found existing session for: ${user.email}');
+
+        // First verify this user should be in startup system
+        final userType = await UserTypeService.detectUserType(user.id);
+
+        if (userType != 'startup') {
+          debugPrint(
+            '❌ User ${user.id} is not a startup user (type: $userType)',
+          );
+          debugPrint('🔄 Clearing startup session');
+
+          await _supabase.auth.signOut();
+          _currentUser = null;
+          _isLoggedIn = false;
+          notifyListeners();
+          return;
+        }
+
+        // User is valid startup user
+        _currentUser = InvestorUser.fromSupabaseUser(user);
+        _isLoggedIn = true;
+
+        debugPrint(
+          '✅ Startup auth state validated for: ${_currentUser!.email}',
+        );
+      } else {
+        debugPrint('📝 No existing startup session found');
+        _currentUser = null;
+        _isLoggedIn = false;
+      }
+
+      _isLoading = false;
       notifyListeners();
+    } catch (e) {
+      debugPrint('❌ Error checking startup auth state: $e');
+      _currentUser = null;
+      _isLoggedIn = false;
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
-      final previousUserId = _currentUser?.id;
-      _logger.i('🔄 Starting sign out process for user: $previousUserId');
+  /// Enhanced logout method with proper cleanup
+  Future<void> logout() async {
+    try {
+      debugPrint('🔄 Logging out startup user: ${_currentUser?.email}');
 
-      // Sign out from Supabase
-      await _supabase.auth.signOut();
-
-      // Clear local state
+      // Clear local state first
       _currentUser = null;
       _isLoggedIn = false;
       _error = null;
 
+      // Clear Supabase session
+      await UserTypeService.cleanupUserSessions();
+
       // Clear form data
       clearForm();
 
-      // Clear saved preferences if remember me was not checked
-      if (!_rememberMe) {
-        _savedEmail = null;
-      }
-
-      _logger.i('✅ User signed out successfully');
-      debugPrint('✅ User signed out (was: $previousUserId)');
+      debugPrint('✅ Startup user logged out successfully');
+      notifyListeners();
     } catch (e) {
-      _error = 'Failed to sign out: $e';
-      _logger.e('❌ Error signing out: $e');
-      rethrow; // Re-throw so UI can handle the error
-    } finally {
-      _isAuthenticating = false;
+      debugPrint('❌ Error during startup logout: $e');
+      // Still clear local state even if Supabase logout fails
+      _currentUser = null;
+      _isLoggedIn = false;
       notifyListeners();
     }
   }
