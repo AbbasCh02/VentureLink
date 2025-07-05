@@ -9,7 +9,7 @@ import 'package:venturelink/Startup/Startup_Dashboard/team_members_page.dart';
 import 'funding_progress.dart';
 import 'package:venturelink/Startup/Startup_Dashboard/profile_overview.dart';
 import 'pitch_deck.dart';
-import '../Providers/startup_authentication_provider.dart';
+import '../../auth/unified_authentication_provider.dart';
 import '../../services/storage_service.dart';
 
 class StartupProfilePage extends StatefulWidget {
@@ -461,8 +461,8 @@ class _StartupProfilePageState extends State<StartupProfilePage>
     if (confirmed != true || !mounted) return;
     try {
       // Get auth provider and sign out
-      final authProvider = context.read<StartupAuthProvider>();
-      await authProvider.logout();
+      final authProvider = context.read<UnifiedAuthProvider>();
+      await authProvider.signOut();
 
       // Navigate to the welcome page and clear all routes
       if (mounted) {

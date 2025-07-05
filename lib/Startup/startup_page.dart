@@ -1,8 +1,9 @@
+// lib/Startup/startup_page.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:venturelink/Startup/login_startup.dart';
-import "signup_startup.dart";
-import 'Providers/startup_authentication_provider.dart'; // Fixed import path to match the typo in filename
+import '../auth/unified_signup.dart';
+import '../auth/unified_login.dart';
+import '../auth/unified_authentication_provider.dart';
 
 class StartupPage extends StatefulWidget {
   const StartupPage({super.key});
@@ -81,10 +82,11 @@ class _StartupPageState extends State<StartupPage>
   }
 
   void _checkLoginStatus() {
-    final authProvider = context.read<StartupAuthProvider>();
-    if (authProvider.isLoggedIn) {
-      // Navigate to dashboard if already logged in
-      Navigator.pushReplacementNamed(context, '/startup-dashboard');
+    final authProvider = context.read<UnifiedAuthProvider>();
+    if (authProvider.isLoggedIn &&
+        authProvider.currentUser?.userType == UserType.startup) {
+      // Navigate to startup dashboard if already logged in as startup
+      Navigator.pushReplacementNamed(context, '/startup_dashboard');
     }
   }
 
@@ -146,23 +148,158 @@ class _StartupPageState extends State<StartupPage>
                   color: const Color(0xFFffa500).withValues(alpha: 0.3),
                   width: 1,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFffa500).withValues(alpha: 0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
               ),
               child: const Icon(
                 Icons.arrow_back_ios_new,
                 color: Color(0xFFffa500),
-                size: 20,
+                size: 18,
               ),
             ),
           ),
         ),
       ),
+      title: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: const Color(0xFFffa500).withValues(alpha: 0.1),
+          border: Border.all(
+            color: const Color(0xFFffa500).withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.rocket_launch, color: Color(0xFFffa500), size: 20),
+            SizedBox(width: 8),
+            Text(
+              'Startup Portal',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+      centerTitle: true,
+    );
+  }
+
+  // Enhanced background decoration
+  Widget _buildBackgroundDecoration() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment.topCenter,
+          radius: 1.5,
+          colors: [Color(0xFF1a1a1a), Color(0xFF0f0f0f), Color(0xFF0a0a0a)],
+        ),
+      ),
+      child: CustomPaint(
+        painter: StartupBackgroundPainter(),
+        size: Size.infinite,
+      ),
+    );
+  }
+
+  // Centered logo with enhanced design
+  Widget _buildCenteredLogo() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          AnimatedBuilder(
+            animation: _colorAnimation,
+            builder: (context, child) {
+              return ScaleTransition(
+                scale: _pulseAnimation,
+                child: Container(
+                  width: 140,
+                  height: 140,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        _colorAnimation.value ?? const Color(0xFFffa500),
+                        const Color(0xFFff8c00),
+                        const Color(0xFFe67e00),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(
+                      color: (_colorAnimation.value ?? const Color(0xFFffa500))
+                          .withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (_colorAnimation.value ??
+                                const Color(0xFFffa500))
+                            .withValues(alpha: 0.4),
+                        blurRadius: 30,
+                        offset: const Offset(0, 15),
+                      ),
+                      BoxShadow(
+                        color: const Color(0xFFffa500).withValues(alpha: 0.2),
+                        blurRadius: 60,
+                        offset: const Offset(0, 30),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.rocket_launch,
+                    color: Colors.white,
+                    size: 64,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Startup welcome text
+  Widget _buildStartupText() {
+    return Column(
+      children: [
+        const Text(
+          'Welcome, Founder',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            letterSpacing: -0.5,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Transform your ideas into reality',
+          style: TextStyle(
+            color: Colors.grey[400],
+            fontSize: 18,
+            letterSpacing: 0.3,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Connect with investors and grow your startup',
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: 14,
+            letterSpacing: 0.2,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 
@@ -170,25 +307,20 @@ class _StartupPageState extends State<StartupPage>
     required String text,
     required Color backgroundColor,
     required Color accentColor,
-    required IconData icon,
     required VoidCallback onPressed,
+    required IconData icon,
   }) {
     return Container(
       width: double.infinity,
-      height: 60,
+      height: 64,
       margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: backgroundColor.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -196,224 +328,64 @@ class _StartupPageState extends State<StartupPage>
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: backgroundColor,
+          foregroundColor: Colors.white,
           elevation: 0,
+          shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [backgroundColor, accentColor],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Colors.black, size: 24),
-            const SizedBox(width: 12),
-            Text(
-              text,
-              style: const TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                letterSpacing: 0.8,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBackgroundDecoration() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment.topCenter,
-          radius: 1.2,
-          colors: [Color(0xFF1a1a1a), Color(0xFF0a0a0a)],
-        ),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFFffa500).withValues(alpha: 0.1),
-              Colors.transparent,
-              const Color(0xFFff8c00).withValues(alpha: 0.05),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStartupText() {
-    return Column(
-      children: [
-        ShaderMask(
-          shaderCallback:
-              (bounds) => const LinearGradient(
-                colors: [Color(0xFFffa500), Color(0xFFff8c00)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ).createShader(bounds),
-          child: const Text(
-            'Startup Portal',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              letterSpacing: 1.0,
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'Launch Your Innovation Journey',
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.grey[400],
-            fontWeight: FontWeight.w500,
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          width: 60,
-          height: 3,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFffa500), Color(0xFFff8c00)],
-            ),
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCenteredLogo() {
-    return Center(
-      child: AnimatedBuilder(
-        animation: _colorAnimation,
-        builder: (context, child) {
-          return Stack(
-            alignment: Alignment.center,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Outer glowing rectangle with orange color transition
               Container(
-                width: 280,
-                height: 280,
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(40),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _colorAnimation.value!.withValues(alpha: 0.5),
-                      blurRadius: 50,
-                      spreadRadius: 15,
-                    ),
-                    BoxShadow(
-                      color: _colorAnimation.value!.withValues(alpha: 0.3),
-                      blurRadius: 80,
-                      spreadRadius: 25,
-                    ),
-                  ],
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
                 ),
+                child: Icon(icon, color: Colors.white, size: 20),
               ),
-
-              // Middle illumination rectangle
-              Container(
-                width: 260,
-                height: 260,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(35),
-                  border: Border.all(
-                    color: _colorAnimation.value!.withValues(alpha: 0.4),
-                    width: 2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _colorAnimation.value!.withValues(alpha: 0.6),
-                      blurRadius: 30,
-                      spreadRadius: 5,
-                    ),
-                  ],
-                ),
-              ),
-
-              // Inner subtle rectangle
-              Container(
-                width: 240,
-                height: 240,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                    color: _colorAnimation.value!.withValues(alpha: 0.2),
-                    width: 1,
-                  ),
-                ),
-              ),
-
-              // Main logo container
-              ScaleTransition(
-                scale: _pulseAnimation,
-                child: Container(
-                  width: 200,
-                  height: 200,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.grey[900]!, Colors.grey[850]!],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(30),
-                    border: Border.all(
-                      color: _colorAnimation.value!.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _colorAnimation.value!.withValues(alpha: 0.3),
-                        blurRadius: 30,
-                        offset: const Offset(0, 15),
-                      ),
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.4),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Image.asset(
-                    'assets/VentureLink LogoAlone 2.0.png',
-                    width: 160,
-                    height: 160,
-                    fit: BoxFit.contain,
-                  ),
+              const SizedBox(width: 16),
+              Text(
+                text,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  letterSpacing: 0.8,
                 ),
               ),
             ],
-          );
-        },
+          ),
+        ),
       ),
     );
   }
 
   void _navigateToSignup() {
-    // Use unified provider for both form and auth management
-    final authProvider = context.read<StartupAuthProvider>();
+    final authProvider = context.read<UnifiedAuthProvider>();
     authProvider.setFormType(FormType.signup);
+    authProvider.setUserType(UserType.startup); // Pre-select startup type
     authProvider.clearForm();
 
     Navigator.of(
       context,
-    ).push(MaterialPageRoute(builder: (context) => const StartupSignupPage()));
+    ).push(MaterialPageRoute(builder: (context) => const UnifiedSignupPage()));
   }
 
   void _navigateToLogin() {
-    // Use unified provider for both form and auth management
-    final authProvider = context.read<StartupAuthProvider>();
+    final authProvider = context.read<UnifiedAuthProvider>();
     authProvider.setFormType(FormType.login);
     authProvider.clearForm();
 
@@ -424,7 +396,7 @@ class _StartupPageState extends State<StartupPage>
 
     Navigator.of(
       context,
-    ).push(MaterialPageRoute(builder: (context) => const StartupLoginPage()));
+    ).push(MaterialPageRoute(builder: (context) => const UnifiedLoginPage()));
   }
 
   @override
@@ -459,7 +431,7 @@ class _StartupPageState extends State<StartupPage>
                           children: [
                             // Sign Up Button
                             _buildElegantButton(
-                              text: 'Sign Up',
+                              text: 'Create Account',
                               backgroundColor: const Color(0xFFffa500),
                               accentColor: const Color(0xFFff8c00),
                               icon: Icons.person_add,
@@ -468,36 +440,23 @@ class _StartupPageState extends State<StartupPage>
 
                             // Log In Button
                             _buildElegantButton(
-                              text: 'Log In',
-                              backgroundColor: const Color(0xFFffa500),
-                              accentColor: const Color(0xFFff8c00),
+                              text: 'Sign In',
+                              backgroundColor: const Color(0xFFff8c00),
+                              accentColor: const Color(0xFFe67e00),
                               icon: Icons.login,
                               onPressed: _navigateToLogin,
                             ),
 
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 24),
 
-                            // Subtitle with user count
-                            Consumer<StartupAuthProvider>(
-                              builder: (context, authProvider, child) {
-                                return Column(
-                                  children: [
-                                    Text(
-                                      'Ready to transform your ideas into reality?',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey[500],
-                                        fontWeight: FontWeight.w400,
-                                        letterSpacing: 0.3,
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
+                            // Feature highlights
+                            _buildFeatureHighlights(),
                           ],
                         ),
                       ),
+
+                      // Footer section
+                      _buildFooter(),
                     ],
                   ),
                 ),
@@ -508,4 +467,141 @@ class _StartupPageState extends State<StartupPage>
       ),
     );
   }
+
+  Widget _buildFeatureHighlights() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1a1a1a).withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFffa500).withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Text(
+            'Ready to transform your ideas into reality?',
+            style: TextStyle(
+              color: Colors.grey[300],
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildFeatureItem(Icons.lightbulb, 'Innovate'),
+              _buildFeatureItem(Icons.trending_up, 'Scale'),
+              _buildFeatureItem(Icons.attach_money, 'Fund'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureItem(IconData icon, String label) {
+    return Column(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: const Color(0xFFffa500).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: const Color(0xFFffa500).withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
+          child: Icon(icon, color: const Color(0xFFffa500), size: 18),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey[500],
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFooter() {
+    return Column(
+      children: [
+        Text(
+          'Join thousands of entrepreneurs building the future',
+          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.verified_user, color: Colors.grey[700], size: 12),
+            const SizedBox(width: 4),
+            Text(
+              'Trusted by Founders Worldwide',
+              style: TextStyle(color: Colors.grey[700], fontSize: 10),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// Custom painter for startup-themed background
+class StartupBackgroundPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..color = const Color(0xFFffa500).withValues(alpha: 0.03)
+          ..strokeWidth = 1;
+
+    // Draw subtle startup-themed pattern
+    const spacing = 60.0;
+
+    // Draw grid pattern
+    for (double x = 0; x < size.width; x += spacing) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    for (double y = 0; y < size.height; y += spacing) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+
+    // Draw some startup-themed shapes (rockets, lightbulbs)
+    paint.color = const Color(0xFFffa500).withValues(alpha: 0.05);
+    for (int i = 0; i < 6; i++) {
+      final x = (i * spacing * 1.8) % size.width;
+      final y = (i * spacing * 1.2) % size.height;
+
+      // Draw rocket-like triangular shapes
+      final path = Path();
+      path.moveTo(x, y - 15);
+      path.lineTo(x - 10, y + 15);
+      path.lineTo(x + 10, y + 15);
+      path.close();
+      canvas.drawPath(path, paint);
+    }
+
+    // Draw some circular innovation bubbles
+    paint.color = const Color(0xFFffa500).withValues(alpha: 0.04);
+    for (int i = 0; i < 8; i++) {
+      final x = (i * spacing * 1.3 + spacing / 2) % size.width;
+      final y = (i * spacing * 0.9 + spacing / 2) % size.height;
+      canvas.drawCircle(Offset(x, y), 18, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

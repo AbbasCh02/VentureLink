@@ -1,6 +1,7 @@
+// lib/homepage.dart (Updated WelcomePage)
 import 'package:flutter/material.dart';
-import 'Startup/startup_page.dart';
-import 'Investor/investor_page.dart';
+import 'auth/unified_signup.dart';
+import 'auth/unified_login.dart';
 
 class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});
@@ -11,37 +12,30 @@ class WelcomePage extends StatefulWidget {
 
 class _WelcomePageState extends State<WelcomePage>
     with TickerProviderStateMixin {
-  String? selectedUserType;
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late AnimationController _pulseController;
-  late AnimationController _colorController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _pulseAnimation;
-  late Animation<Color?> _colorAnimation;
 
   @override
   void initState() {
     super.initState();
+    _setupAnimations();
+  }
 
+  void _setupAnimations() {
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
-
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
-
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    );
-
-    _colorController = AnimationController(
-      duration: const Duration(milliseconds: 3000),
       vsync: this,
     );
 
@@ -50,27 +44,17 @@ class _WelcomePageState extends State<WelcomePage>
     );
 
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
+      begin: const Offset(0, 0.5),
       end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _slideController, curve: Curves.elasticOut),
-    );
+    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
 
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    _colorAnimation = ColorTween(
-      begin: const Color(0xFFffa500),
-      end: const Color(0xFF65c6f4),
-    ).animate(
-      CurvedAnimation(parent: _colorController, curve: Curves.easeInOut),
-    );
-
     _fadeController.forward();
     _slideController.forward();
     _pulseController.repeat(reverse: true);
-    _colorController.repeat(reverse: true);
   }
 
   @override
@@ -78,72 +62,52 @@ class _WelcomePageState extends State<WelcomePage>
     _fadeController.dispose();
     _slideController.dispose();
     _pulseController.dispose();
-    _colorController.dispose();
     super.dispose();
   }
 
-  Widget _buildElegantButton({
-    required String text,
-    required Color backgroundColor,
-    required Color accentColor,
-    required VoidCallback onPressed,
-    required IconData icon,
-  }) {
-    return Container(
-      width: 220,
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: backgroundColor.withValues(alpha: 0.4),
-            blurRadius: 15,
-            offset: const Offset(0, 6),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+  void _navigateToSignup() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => const UnifiedSignupPage()));
+  }
+
+  void _navigateToLogin() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => const UnifiedLoginPage()));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0a0a0a),
+      body: Stack(
+        children: [
+          _buildBackgroundDecoration(),
+          FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    children: [
+                      // Logo and brand section
+                      Expanded(flex: 5, child: _buildBrandSection()),
+
+                      // Action buttons section
+                      Expanded(flex: 3, child: _buildActionSection()),
+
+                      // Footer section
+                      _buildFooter(),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
-      ),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-          backgroundColor: backgroundColor,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-            side: BorderSide(
-              color: accentColor.withValues(alpha: 0.3),
-              width: 1,
-            ),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Icon(icon, color: Colors.black, size: 18),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              text,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -157,280 +121,336 @@ class _WelcomePageState extends State<WelcomePage>
           colors: [Color(0xFF1a1a1a), Color(0xFF0a0a0a)],
         ),
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFFffa500).withValues(alpha: 0.05),
-              Colors.transparent,
-              const Color(0xFF65c6f4).withValues(alpha: 0.05),
-            ],
+      child: CustomPaint(
+        painter: BackgroundPatternPainter(),
+        size: Size.infinite,
+      ),
+    );
+  }
+
+  Widget _buildBrandSection() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Animated logo
+        ScaleTransition(
+          scale: _pulseAnimation,
+          child: Container(
+            width: 120,
+            height: 120,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFffa500), Color(0xFFff8c00)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFffa500).withValues(alpha: 0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.business_center,
+              size: 60,
+              color: Colors.white,
+            ),
           ),
+        ),
+        const SizedBox(height: 32),
+
+        // App name
+        const Text(
+          'VentureLink',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 36,
+            fontWeight: FontWeight.bold,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Tagline
+        Text(
+          'Connecting Startups with Investors',
+          style: TextStyle(
+            color: Colors.grey[400],
+            fontSize: 18,
+            letterSpacing: 0.5,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+
+        // Subtitle
+        Text(
+          'Join the ecosystem where innovation meets investment',
+          style: TextStyle(color: Colors.grey[600], fontSize: 14),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionSection() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Get Started Button (Sign Up)
+        _buildPrimaryButton(
+          text: 'Get Started',
+          subtitle: 'Create your account',
+          icon: Icons.rocket_launch,
+          onPressed: _navigateToSignup,
+        ),
+        const SizedBox(height: 16),
+
+        // Sign In Button
+        _buildSecondaryButton(
+          text: 'Sign In',
+          subtitle: 'Already have an account?',
+          icon: Icons.login,
+          onPressed: _navigateToLogin,
+        ),
+        const SizedBox(height: 32),
+
+        // Features preview
+        _buildFeaturePreview(),
+      ],
+    );
+  }
+
+  Widget _buildPrimaryButton({
+    required String text,
+    required String subtitle,
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return Container(
+      width: double.infinity,
+      height: 70,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFffa500), Color(0xFFff8c00)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFffa500).withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    text,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildWelcomeText() {
+  Widget _buildSecondaryButton({
+    required String text,
+    required String subtitle,
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return Container(
+      width: double.infinity,
+      height: 60,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1a1a1a),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[800]!, width: 1),
+      ),
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: Colors.grey[850],
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: Colors.grey[400], size: 18),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    text,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, color: Colors.grey[600], size: 14),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeaturePreview() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _buildFeatureItem(Icons.handshake, 'Connect'),
+        _buildFeatureItem(Icons.trending_up, 'Grow'),
+        _buildFeatureItem(Icons.security, 'Secure'),
+      ],
+    );
+  }
+
+  Widget _buildFeatureItem(IconData icon, String label) {
     return Column(
       children: [
-        ShaderMask(
-          shaderCallback:
-              (bounds) => const LinearGradient(
-                colors: [Color(0xFFffa500), Color(0xFF65c6f4)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ).createShader(bounds),
-          child: const Text(
-            'Welcome to VentureLink',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              letterSpacing: 1.0,
-            ),
-            textAlign: TextAlign.center,
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: const Color(0xFF1a1a1a),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[800]!),
           ),
+          child: Icon(icon, color: Colors.grey[400], size: 20),
         ),
         const SizedBox(height: 8),
         Text(
-          'Connect, Invest, Innovate',
+          label,
           style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[400],
+            color: Colors.grey[500],
+            fontSize: 12,
             fontWeight: FontWeight.w500,
-            letterSpacing: 0.5,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 6),
-        Container(
-          width: 50,
-          height: 2,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFffa500), Color(0xFF65c6f4)],
-            ),
-            borderRadius: BorderRadius.circular(1),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildResponsiveLogo(BuildContext context) {
-    return Center(
-      child: AnimatedBuilder(
-        animation: _colorAnimation,
-        builder: (context, child) {
-          return Stack(
-            alignment: Alignment.center,
-            children: [
-              // Outer glowing rectangle with orange color transition
-              Container(
-                width: 280,
-                height: 280,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(40),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _colorAnimation.value!.withValues(alpha: 0.5),
-                      blurRadius: 50,
-                      spreadRadius: 15,
-                    ),
-                    BoxShadow(
-                      color: _colorAnimation.value!.withValues(alpha: 0.3),
-                      blurRadius: 80,
-                      spreadRadius: 25,
-                    ),
-                  ],
-                ),
+  Widget _buildFooter() {
+    return Column(
+      children: [
+        Text(
+          '© 2025 VentureLink. All rights reserved.',
+          style: TextStyle(color: Colors.grey[700], fontSize: 12),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TextButton(
+              onPressed: () {},
+              child: Text(
+                'Privacy Policy',
+                style: TextStyle(color: Colors.grey[600], fontSize: 11),
               ),
-
-              // Middle illumination rectangle
-              Container(
-                width: 260,
-                height: 260,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(35),
-                  border: Border.all(
-                    color: _colorAnimation.value!.withValues(alpha: 0.4),
-                    width: 2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _colorAnimation.value!.withValues(alpha: 0.6),
-                      blurRadius: 30,
-                      spreadRadius: 5,
-                    ),
-                  ],
-                ),
+            ),
+            Text('•', style: TextStyle(color: Colors.grey[700])),
+            TextButton(
+              onPressed: () {},
+              child: Text(
+                'Terms of Service',
+                style: TextStyle(color: Colors.grey[600], fontSize: 11),
               ),
-
-              // Inner subtle rectangle
-              Container(
-                width: 240,
-                height: 240,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                    color: _colorAnimation.value!.withValues(alpha: 0.2),
-                    width: 1,
-                  ),
-                ),
-              ),
-
-              // Main logo container
-              ScaleTransition(
-                scale: _pulseAnimation,
-                child: Container(
-                  width: 200,
-                  height: 200,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.grey[900]!, Colors.grey[850]!],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(30),
-                    border: Border.all(
-                      color: _colorAnimation.value!.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _colorAnimation.value!.withValues(alpha: 0.3),
-                        blurRadius: 30,
-                        offset: const Offset(0, 15),
-                      ),
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.4),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Image.asset(
-                    'assets/VentureLink LogoAlone 2.0.png',
-                    width: 160,
-                    height: 160,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+            ),
+          ],
+        ),
+      ],
     );
+  }
+}
+
+// Custom painter for background pattern
+class BackgroundPatternPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.02)
+          ..strokeWidth = 1;
+
+    // Draw subtle grid pattern
+    const spacing = 50.0;
+    for (double x = 0; x < size.width; x += spacing) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    for (double y = 0; y < size.height; y += spacing) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final isSmallScreen = screenSize.height < 700;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFF0a0a0a),
-      body: Stack(
-        children: [
-          _buildBackgroundDecoration(),
-          SafeArea(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return SingleChildScrollView(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 20.0,
-                        vertical: isSmallScreen ? 16.0 : 24.0,
-                      ),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: constraints.maxHeight,
-                        ),
-                        child: IntrinsicHeight(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              // Logo section
-                              Flexible(
-                                flex: 3,
-                                child: Center(
-                                  child: _buildResponsiveLogo(context),
-                                ),
-                              ),
-
-                              // Welcome text section
-                              Flexible(flex: 1, child: _buildWelcomeText()),
-
-                              // Buttons section
-                              Flexible(
-                                flex: 2,
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    _buildElegantButton(
-                                      text: 'Startup',
-                                      backgroundColor: const Color(0xFFffa500),
-                                      accentColor: const Color(0xFFff8c00),
-                                      icon: Icons.rocket_launch,
-                                      onPressed: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder:
-                                                (context) =>
-                                                    const StartupPage(),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    _buildElegantButton(
-                                      text: 'Investor',
-                                      backgroundColor: const Color(0xFF65c6f4),
-                                      accentColor: const Color(0xFF2196F3),
-                                      icon: Icons.trending_up,
-                                      onPressed: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder:
-                                                (context) =>
-                                                    const InvestorPage(),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    SizedBox(height: isSmallScreen ? 12 : 20),
-                                    Text(
-                                      'Choose your path to innovation',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[500],
-                                        fontWeight: FontWeight.w400,
-                                        letterSpacing: 0.3,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
