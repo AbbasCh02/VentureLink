@@ -107,13 +107,13 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24.0,
-                    vertical: 16.0,
+                    vertical: 2.0,
                   ),
                   child: Column(
                     children: [
                       // Back button
                       _buildBackButton(),
-                      const SizedBox(height: 16), // Reduced from 20
+                      const SizedBox(height: 12), // Reduced from 20
                       // Logo section
                       _buildLogoSection(),
                       const SizedBox(height: 28), // Reduced from 40
@@ -150,8 +150,8 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        width: 45,
-        height: 45,
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
           color: const Color(0xFF1a1a1a),
           borderRadius: BorderRadius.circular(12),
@@ -161,7 +161,7 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
           icon: const Icon(
             Icons.arrow_back_ios_new,
             color: Colors.white70,
-            size: 20,
+            size: 18,
           ),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -181,8 +181,8 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
             return ScaleTransition(
               scale: _pulseAnimation,
               child: Container(
-                width: 130, // Increased from 100
-                height: 130, // Increased from 100
+                width: 160, // Increased from 100
+                height: 160, // Increased from 100
                 padding: const EdgeInsets.all(12), // Increased from 10
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -290,8 +290,9 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
                 validator: authProvider.validateEmail,
                 keyboardType: TextInputType.emailAddress,
                 icon: Icons.email_outlined,
+                errorText: authProvider.emailError,
               ),
-              const SizedBox(height: 16), // Reduced from 20
+              const SizedBox(height: 10), // Reduced from 20
               // Password Field
               _buildInputField(
                 label: "Password",
@@ -300,11 +301,12 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
                 validator: authProvider.validatePassword,
                 isPassword: true,
                 icon: Icons.lock_outline,
+                errorText: authProvider.passwordError,
               ),
-              const SizedBox(height: 12), // Reduced from 16
+              const SizedBox(height: 10), // Reduced from 16
               // Remember Me and Forgot Password Row
               _buildRememberMeAndForgotPassword(),
-              const SizedBox(height: 24), // Reduced from 32
+              const SizedBox(height: 18), // Reduced from 32
               // Sign In Button
               _buildSignInButton(),
               const SizedBox(height: 16), // Reduced from 24
@@ -329,9 +331,13 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
     TextInputType keyboardType = TextInputType.text,
     IconData? icon,
     bool isPassword = false,
+    String? errorText,
   }) {
     return Consumer<UnifiedAuthProvider>(
       builder: (context, authProvider, child) {
+        // Check if there's a validation error for this field
+        bool hasError = errorText != null && errorText.isNotEmpty;
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -339,11 +345,11 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
               label,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 14, // Reduced from 15
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 6), // Reduced from 8
+            const SizedBox(height: 6),
             AnimatedBuilder(
               animation: _colorAnimation,
               builder: (context, child) {
@@ -351,11 +357,11 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
                     _colorAnimation.value ?? const Color(0xFFffa500);
                 return Container(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14), // Reduced from 16
+                    borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 6, // Reduced from 8
+                        blurRadius: 6,
                         offset: const Offset(0, 2),
                       ),
                     ],
@@ -366,22 +372,24 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
                     validator: validator,
                     keyboardType: keyboardType,
                     obscureText: isPassword && !authProvider.isPasswordVisible,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                    ), // Reduced from 16
+                    onChanged: (value) {
+                      // Enable real-time validation when user starts typing
+                      if (!authProvider.validateRealTime) {
+                        authProvider.enableRealTimeValidation();
+                      }
+                    },
+                    style: const TextStyle(color: Colors.white, fontSize: 15),
                     decoration: InputDecoration(
                       prefixIcon:
                           icon != null
                               ? Container(
-                                padding: const EdgeInsets.all(
-                                  10,
-                                ), // Reduced from 12
+                                padding: const EdgeInsets.all(10),
                                 child: Icon(
                                   icon,
-                                  color: Colors.grey[400],
+                                  color:
+                                      hasError ? Colors.red : Colors.grey[400],
                                   size: 20,
-                                ), // Reduced from 22
+                                ),
                               )
                               : null,
                       suffixIcon:
@@ -391,8 +399,9 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
                                   authProvider.isPasswordVisible
                                       ? Icons.visibility_off_outlined
                                       : Icons.visibility_outlined,
-                                  color: Colors.grey[400],
-                                  size: 20, // Reduced from 22
+                                  color:
+                                      hasError ? Colors.red : Colors.grey[400],
+                                  size: 20,
                                 ),
                                 onPressed:
                                     authProvider.togglePasswordVisibility,
@@ -402,68 +411,75 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
                       hintStyle: TextStyle(
                         color: Colors.grey[500],
                         fontSize: 14,
-                      ), // Reduced from 15
+                      ),
                       filled: true,
                       fillColor: const Color(0xFF1a1a1a),
+
+                      // CRITICAL: Different borders based on validation state
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(
-                          14,
-                        ), // Reduced from 16
+                        borderRadius: BorderRadius.circular(14),
                         borderSide: BorderSide(
-                          color: Colors.grey[800]!,
-                          width: 1,
+                          color: hasError ? Colors.red : Colors.grey[800]!,
+                          width: hasError ? 2 : 1,
                         ),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(
-                          14,
-                        ), // Reduced from 16
+                        borderRadius: BorderRadius.circular(14),
                         borderSide: BorderSide(
-                          color: Colors.grey[800]!,
-                          width: 1,
+                          color: hasError ? Colors.red : Colors.grey[800]!,
+                          width: hasError ? 2 : 1,
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(
-                          14,
-                        ), // Reduced from 16
+                        borderRadius: BorderRadius.circular(14),
                         borderSide: BorderSide(
-                          color: currentColor,
+                          color: hasError ? Colors.red : currentColor,
                           width: 2,
-                        ), // Animated border color
+                        ),
                       ),
                       errorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(
-                          14,
-                        ), // Reduced from 16
+                        borderRadius: BorderRadius.circular(14),
                         borderSide: const BorderSide(
                           color: Colors.red,
                           width: 2,
                         ),
                       ),
                       focusedErrorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(
-                          14,
-                        ), // Reduced from 16
+                        borderRadius: BorderRadius.circular(14),
                         borderSide: const BorderSide(
                           color: Colors.red,
                           width: 2,
                         ),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, // Reduced from 20
-                        vertical: 14, // Reduced from 18
-                      ),
+
+                      // Hide the default error text since we show it below
+                      errorText: null,
                     ),
-                    onChanged: (value) {
-                      if (authProvider.validateRealTime) {
-                        authProvider.validateForm();
-                      }
-                    },
                   ),
                 );
               },
             ),
+
+            // Show custom error message below the field
+            if (hasError) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      errorText,
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         );
       },
@@ -689,7 +705,7 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
       child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: 20,
-          vertical: 12,
+          vertical: 1,
         ), // Reduced padding
         decoration: BoxDecoration(
           color: const Color(0xFF1a1a1a).withValues(alpha: 0.6),
@@ -715,7 +731,7 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
                   text: "Don't have an account? ",
                   style: const TextStyle(
                     color: Colors.white70,
-                    fontSize: 14,
+                    fontSize: 12,
                   ), // Reduced from 15
                   children: [
                     TextSpan(
@@ -723,7 +739,7 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
                       style: TextStyle(
                         color: currentColor, // Animated color
                         fontWeight: FontWeight.w600,
-                        fontSize: 14, // Reduced from 15
+                        fontSize: 12, // Reduced from 15
                         shadows: [
                           Shadow(
                             color: currentColor.withValues(alpha: 0.3),

@@ -15,8 +15,6 @@ import 'Startup/Startup_Dashboard/startup_dashboard.dart';
 import 'Investor/investor_dashboard.dart'; // Add investor dashboard
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'Startup/startup_page.dart';
-import 'Investor/investor_page.dart';
 import 'auth/unified_login.dart';
 import 'auth/unified_signup.dart';
 
@@ -101,11 +99,9 @@ class MyApp extends StatelessWidget {
           '/startup-profile': (context) => const StartupProfilePage(),
           '/team-members': (context) => const TeamMembersPage(),
           '/business_model': (context) => const BusinessModelCanvas(),
-          '/startup_page': (context) => const StartupPage(),
           '/startup_dashboard': (context) => const StartupDashboard(),
 
           // Investor Routes
-          '/investor_page': (context) => const InvestorPage(),
           '/investor_dashboard': (context) => const InvestorDashboard(),
 
           // Unified Authentication Routes

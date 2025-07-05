@@ -120,6 +120,7 @@ class UnifiedAuthProvider with ChangeNotifier {
   UnifiedAuthProvider() {
     _initializeAuth();
     _initializeListeners();
+    _setupControllerListeners();
   }
 
   // ========== GETTERS ==========
@@ -481,6 +482,23 @@ class UnifiedAuthProvider with ChangeNotifier {
     _passwordError = null;
     _confirmPasswordError = null;
     notifyListeners();
+  }
+
+  // Add listener setup for real-time validation
+  void _setupControllerListeners() {
+    _emailController.addListener(() {
+      if (_validateRealTime) {
+        _emailError = validateEmail(_emailController.text);
+        notifyListeners();
+      }
+    });
+
+    _passwordController.addListener(() {
+      if (_validateRealTime) {
+        _passwordError = validatePassword(_passwordController.text);
+        notifyListeners();
+      }
+    });
   }
 
   // ========== AUTHENTICATION METHODS ==========
