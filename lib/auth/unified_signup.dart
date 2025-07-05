@@ -188,8 +188,8 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
             return ScaleTransition(
               scale: _pulseAnimation,
               child: Container(
-                width: 100,
-                height: 100,
+                width: 140,
+                height: 140,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
@@ -252,19 +252,14 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
   }
 
   Widget _buildHeader() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment:
-            CrossAxisAlignment.center, // center contents horizontally
-        children: [
-          Consumer<UnifiedAuthProvider>(
-            builder: (context, authProvider, child) {
-              final currentColor =
-                  authProvider.selectedUserType != null
-                      ? _getCurrentThemeColor()
-                      : (_colorAnimation.value ?? const Color(0xFFffa500));
-
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Consumer<UnifiedAuthProvider>(
+          builder: (context, authProvider, child) {
+            // When user type is selected, show static colored text
+            if (authProvider.selectedUserType != null) {
+              final currentColor = _getCurrentThemeColor();
               return Text(
                 'Join VentureLink',
                 style: TextStyle(
@@ -273,25 +268,47 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
                   fontWeight: FontWeight.bold,
                   shadows: [
                     Shadow(
-                      color: currentColor.withValues(
-                        alpha: 0.3,
-                      ), // Use withValues
+                      color: currentColor.withValues(alpha: 0.3),
                       blurRadius: 6,
-                      offset: Offset(0, 1),
+                      offset: const Offset(0, 1),
                     ),
                   ],
                 ),
               );
-            },
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Connect with the startup ecosystem',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey[400], fontSize: 13),
-          ),
-        ],
-      ),
+            }
+
+            // When no selection, show animated text
+            return AnimatedBuilder(
+              animation: _colorAnimation,
+              builder: (context, child) {
+                final animatedColor =
+                    _colorAnimation.value ?? const Color(0xFFffa500);
+                return Text(
+                  'Join VentureLink',
+                  style: TextStyle(
+                    color: animatedColor,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    shadows: [
+                      Shadow(
+                        color: animatedColor.withValues(alpha: 0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Connect with the startup ecosystem',
+          style: TextStyle(color: Colors.grey[400], fontSize: 13),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 
@@ -361,10 +378,6 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
                 errorText: authProvider.confirmPasswordError,
               ),
               const SizedBox(height: 15),
-
-              // Remember Me Checkbox
-              _buildRememberMeCheckbox(),
-              const SizedBox(height: 18),
 
               // Sign Up Button
               _buildSignUpButton(),
@@ -575,7 +588,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
                         )
                         : null,
                 hintText: 'Enter your ${label.toLowerCase()}',
-                hintStyle: TextStyle(color: Colors.grey[600]),
+                hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
                 filled: true,
                 fillColor: const Color(0xFF1a1a1a),
                 border: OutlineInputBorder(
@@ -722,86 +735,91 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     return PasswordStrength.weak;
   }
 
-  Widget _buildRememberMeCheckbox() {
-    return Consumer<UnifiedAuthProvider>(
-      builder: (context, authProvider, child) {
-        final currentColor = _getCurrentThemeColor();
-
-        return Row(
-          children: [
-            SizedBox(
-              width: 20,
-              height: 20,
-              child: Checkbox(
-                value: authProvider.rememberMe,
-                onChanged:
-                    (value) => authProvider.setRememberMe(value ?? false),
-                activeColor: currentColor,
-                checkColor:
-                    authProvider.selectedUserType == UserType.startup
-                        ? Colors.black
-                        : Colors.white,
-                side: BorderSide(color: Colors.grey[600]!),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Remember me',
-              style: TextStyle(
-                color: Colors.grey[300],
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Widget _buildSignUpButton() {
     return Consumer<UnifiedAuthProvider>(
       builder: (context, authProvider, child) {
-        final currentColor = _getCurrentThemeColor();
-
-        return SizedBox(
-          width: double.infinity,
-          height: 44,
-          child: ElevatedButton(
-            onPressed: authProvider.isAuthenticating ? null : _handleSignUp,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: currentColor,
-              foregroundColor:
-                  authProvider.selectedUserType == UserType.startup
-                      ? Colors.black
-                      : Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+        // Show animated colors when no selection, fixed color when selected
+        if (authProvider.selectedUserType != null) {
+          final currentColor = _getCurrentThemeColor();
+          return SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: ElevatedButton(
+              onPressed: authProvider.isAuthenticating ? null : _handleSignUp,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: currentColor,
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 0,
               ),
-              elevation: 0,
-            ),
-            child:
-                authProvider.isAuthenticating
-                    ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          authProvider.selectedUserType == UserType.startup
-                              ? Colors.black
-                              : Colors.white,
+              child:
+                  authProvider.isAuthenticating
+                      ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            authProvider.selectedUserType == UserType.startup
+                                ? Colors.black
+                                : Colors.white,
+                          ),
+                        ),
+                      )
+                      : const Text(
+                        'Create Account',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    )
-                    : const Text(
-                      'Create Account',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-          ),
+            ),
+          );
+        }
+
+        // When no selection, show animated button
+        return AnimatedBuilder(
+          animation: _colorAnimation,
+          builder: (context, child) {
+            final animatedColor =
+                _colorAnimation.value ?? const Color(0xFFffa500);
+            return SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: ElevatedButton(
+                onPressed: authProvider.isAuthenticating ? null : _handleSignUp,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: animatedColor,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 0,
+                ),
+                child:
+                    authProvider.isAuthenticating
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.black,
+                            ),
+                          ),
+                        )
+                        : const Text(
+                          'Create Account',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+              ),
+            );
+          },
         );
       },
     );
@@ -860,33 +878,67 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
           style: TextButton.styleFrom(padding: EdgeInsets.zero),
           child: Consumer<UnifiedAuthProvider>(
             builder: (context, authProvider, child) {
-              final currentColor =
-                  authProvider.selectedUserType != null
-                      ? _getCurrentThemeColor()
-                      : (_colorAnimation.value ?? const Color(0xFFffa500));
-
-              return RichText(
-                text: TextSpan(
-                  text: "Already have an account? ",
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
-                  children: [
-                    TextSpan(
-                      text: "Sign In",
-                      style: TextStyle(
-                        color: currentColor,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                        shadows: [
-                          Shadow(
-                            color: currentColor.withValues(alpha: 0.3),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
+              // Show animated colors when no selection, fixed color when selected
+              if (authProvider.selectedUserType != null) {
+                final currentColor = _getCurrentThemeColor();
+                return RichText(
+                  text: TextSpan(
+                    text: "Already have an account? ",
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    children: [
+                      TextSpan(
+                        text: "Sign In",
+                        style: TextStyle(
+                          color: currentColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                          shadows: [
+                            Shadow(
+                              color: currentColor.withValues(alpha: 0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
                       ),
+                    ],
+                  ),
+                );
+              }
+
+              // When no selection, show animated text
+              return AnimatedBuilder(
+                animation: _colorAnimation,
+                builder: (context, child) {
+                  final animatedColor =
+                      _colorAnimation.value ?? const Color(0xFFffa500);
+                  return RichText(
+                    text: TextSpan(
+                      text: "Already have an account? ",
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: "Sign In",
+                          style: TextStyle(
+                            color: animatedColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                            shadows: [
+                              Shadow(
+                                color: animatedColor.withValues(alpha: 0.3),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  );
+                },
               );
             },
           ),

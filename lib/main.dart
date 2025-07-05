@@ -206,7 +206,9 @@ class AuthLoadingScreen extends StatelessWidget {
                         border: Border.all(color: Colors.grey[800]!, width: 1),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFffa500).withOpacity(0.1),
+                            color: const Color(
+                              0xFFffa500,
+                            ).withValues(alpha: 0.1),
                             blurRadius: 20,
                             spreadRadius: 2,
                           ),

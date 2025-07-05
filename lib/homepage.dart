@@ -377,14 +377,14 @@ class _WelcomePageState extends State<WelcomePage>
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
+                    color: Colors.black.withValues(alpha: 0.25),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.3),
+                      color: Colors.black.withValues(alpha: 0.3),
                       width: 1,
                     ),
                   ),
-                  child: Icon(icon, color: Colors.white, size: 20),
+                  child: Icon(icon, color: Colors.black, size: 20),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -395,30 +395,16 @@ class _WelcomePageState extends State<WelcomePage>
                       Text(
                         text,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: Colors.black,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          shadows: [
-                            Shadow(
-                              color: Colors.black26,
-                              blurRadius: 2,
-                              offset: Offset(0, 1),
-                            ),
-                          ],
                         ),
                       ),
                       Text(
                         subtitle,
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.9),
+                          color: Colors.black.withValues(alpha: 0.9),
                           fontSize: 12,
-                          shadows: const [
-                            Shadow(
-                              color: Colors.black26,
-                              blurRadius: 1,
-                              offset: Offset(0, 1),
-                            ),
-                          ],
                         ),
                       ),
                     ],
@@ -427,12 +413,12 @@ class _WelcomePageState extends State<WelcomePage>
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
                     Icons.arrow_forward_ios,
-                    color: Colors.white,
+                    color: Colors.black,
                     size: 14,
                   ),
                 ),
