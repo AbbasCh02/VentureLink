@@ -1,4 +1,4 @@
-// lib/Providers/unified_authentication_provider.dart
+// lib/auth/unified_authentication_provider.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -113,6 +113,9 @@ class UnifiedAuthProvider with ChangeNotifier {
 
   // User type selection for signup
   UserType? _selectedUserType;
+
+  // CRITICAL: Flag to prevent duplicate user record creation
+  bool _isCreatingUserRecord = false;
 
   // Supabase auth stream subscription
   StreamSubscription<AuthState>? _authSubscription;
@@ -297,8 +300,27 @@ class UnifiedAuthProvider with ChangeNotifier {
         _isLoggedIn = true;
         _error = null;
 
-        // Create or update user record in appropriate table
-        await _createOrUpdateUserRecord(_currentUser!);
+        // CRITICAL FIX: Only create/update user record if not already in progress
+        // But allow retry if previous attempt may have failed
+        if (!_isCreatingUserRecord) {
+          debugPrint(
+            '🔥 Auth state listener calling _createOrUpdateUserRecord...',
+          );
+          await _createOrUpdateUserRecord(_currentUser!);
+        } else {
+          debugPrint(
+            '🔍 Skipping user record creation from auth listener - already in progress',
+          );
+          debugPrint('   Will retry in 1 second if still needed...');
+          // Set a timer to retry if the flag is still set (means something went wrong)
+          Timer(const Duration(seconds: 1), () async {
+            if (_isCreatingUserRecord) {
+              debugPrint('🔄 Retrying user record creation after timeout...');
+              _isCreatingUserRecord = false; // Reset flag
+              await _createOrUpdateUserRecord(_currentUser!);
+            }
+          });
+        }
 
         _logger.i(
           '✅ User signed in: ${_currentUser!.email} (${userType.name})',
@@ -329,13 +351,24 @@ class UnifiedAuthProvider with ChangeNotifier {
     _isLoggedIn = false;
     _error = null;
     _selectedUserType = null;
+    _isCreatingUserRecord = false; // Reset the flag
     _logger.i('✅ User signed out');
     debugPrint('✅ User signed out (was: $previousUserId)');
   }
 
   /// Create or update user record in the appropriate table based on user type
-  /// Create or update user record in the appropriate table based on user type
   Future<void> _createOrUpdateUserRecord(AppUser user) async {
+    // CRITICAL FIX: Check if already creating, but allow retry if previous attempt failed
+    if (_isCreatingUserRecord) {
+      debugPrint('🔍 User record creation already in progress, skipping...');
+      return;
+    }
+
+    _isCreatingUserRecord = true;
+    debugPrint(
+      '🔥 Starting user record creation for ${user.id} (${user.userType.name})',
+    );
+
     try {
       final tableName =
           user.userType == UserType.startup ? 'users' : 'investors';
@@ -393,13 +426,34 @@ class UnifiedAuthProvider with ChangeNotifier {
 
         // CRITICAL FIX: Add error handling and debugging for the insert operation
         try {
+          debugPrint('🔥 Executing INSERT query...');
           final insertResult =
               await _supabase.from(tableName).insert(insertData).select();
           debugPrint('✅ INSERT successful! Result: $insertResult');
+
+          if (insertResult.isNotEmpty) {
+            debugPrint(
+              '✅ Database record created successfully for ${user.email}',
+            );
+            debugPrint('   Record ID: ${insertResult[0]['id']}');
+            debugPrint('   Email: ${insertResult[0]['email']}');
+            debugPrint('   User Type: ${user.userType.name}');
+          }
         } catch (insertError) {
           debugPrint('❌ INSERT failed with error: $insertError');
           debugPrint('❌ Insert data was: $insertData');
           debugPrint('❌ Table name: $tableName');
+
+          // CRITICAL FIX: Handle duplicate key error gracefully
+          if (insertError.toString().contains('duplicate key') ||
+              insertError.toString().contains('23505')) {
+            debugPrint(
+              '🔍 User record already exists, this is expected in some cases',
+            );
+            // Don't throw error for duplicate key, just log it
+            _logger.i('User record already exists for: ${user.email}');
+            return;
+          }
 
           // Check if it's a policy issue
           if (insertError.toString().contains('policy')) {
@@ -411,7 +465,7 @@ class UnifiedAuthProvider with ChangeNotifier {
             );
           }
 
-          // Re-throw the error with more context
+          // Re-throw the error with more context for non-duplicate errors
           throw Exception(
             'Failed to insert ${user.userType.name} user: $insertError',
           );
@@ -438,12 +492,27 @@ class UnifiedAuthProvider with ChangeNotifier {
 
         debugPrint('🔄 Updating existing user with data: $updateData');
 
-        await _supabase.from(tableName).update(updateData).eq('id', user.id);
+        try {
+          final updateResult =
+              await _supabase
+                  .from(tableName)
+                  .update(updateData)
+                  .eq('id', user.id)
+                  .select();
 
-        _logger.i('✅ Updated ${user.userType.name} record for: ${user.email}');
-        debugPrint(
-          '✅ Updated ${user.userType.name} user record for ID: ${user.id}',
-        );
+          debugPrint('✅ UPDATE successful! Result: $updateResult');
+          _logger.i(
+            '✅ Updated ${user.userType.name} record for: ${user.email}',
+          );
+          debugPrint(
+            '✅ Updated ${user.userType.name} user record for ID: ${user.id}',
+          );
+        } catch (updateError) {
+          debugPrint('❌ UPDATE failed with error: $updateError');
+          throw Exception(
+            'Failed to update ${user.userType.name} user: $updateError',
+          );
+        }
       }
     } catch (e) {
       _logger.e('❌ Error creating/updating user record: $e');
@@ -464,6 +533,8 @@ class UnifiedAuthProvider with ChangeNotifier {
       // Don't throw error to not break authentication flow, but log extensively
       _error = 'Failed to create user record: ${e.toString()}';
       notifyListeners();
+    } finally {
+      _isCreatingUserRecord = false; // Always reset the flag
     }
   }
 
@@ -620,7 +691,7 @@ class UnifiedAuthProvider with ChangeNotifier {
           '✅ New ${_selectedUserType!.name} user created with ID: ${response.user!.id}',
         );
 
-        // CRITICAL: Immediately set the user as verified in our app
+        // CRITICAL: Set the user data but let the auth state listener handle user record creation
         _currentUser = AppUser.fromSupabaseUser(
           response.user!,
           _selectedUserType!,
@@ -630,7 +701,8 @@ class UnifiedAuthProvider with ChangeNotifier {
         ); // Force verified status
         _isLoggedIn = true;
 
-        // Create the user record in the database
+        // CRITICAL FIX: Create user record here since auth listener might race
+        debugPrint('🔥 SignUp method calling _createOrUpdateUserRecord...');
         await _createOrUpdateUserRecord(_currentUser!);
 
         // Save remember me if checked
