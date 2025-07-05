@@ -373,9 +373,9 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
                     keyboardType: keyboardType,
                     obscureText: isPassword && !authProvider.isPasswordVisible,
                     onChanged: (value) {
-                      // Enable real-time validation when user starts typing
-                      if (!authProvider.validateRealTime) {
-                        authProvider.enableRealTimeValidation();
+                      // Trigger real-time validation
+                      if (authProvider.validateRealTime) {
+                        authProvider.validateForm();
                       }
                     },
                     style: const TextStyle(color: Colors.white, fontSize: 15),
