@@ -1,7 +1,7 @@
 // lib/auth/unified_login_page.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'unified_authentication_provider.dart';
+import '../auth/unified_authentication_provider.dart';
 import 'unified_signup.dart';
 
 class UnifiedLoginPage extends StatefulWidget {
@@ -15,13 +15,27 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
     with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late AnimationController _slideController;
+  late AnimationController _pulseController;
+  late AnimationController _colorController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  late Animation<double> _pulseAnimation;
+  late Animation<Color?> _colorAnimation;
 
   @override
   void initState() {
     super.initState();
     _setupAnimations();
+
+    // Set the form type to login when this page loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<UnifiedAuthProvider>(
+        context,
+        listen: false,
+      );
+      authProvider.setFormType(FormType.login);
+      debugPrint('🔍 Login page initialized - form type set to login');
+    });
   }
 
   void _setupAnimations() {
@@ -31,6 +45,14 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
     );
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    );
+    _colorController = AnimationController(
+      duration: const Duration(milliseconds: 3000),
       vsync: this,
     );
 
@@ -43,14 +65,30 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
 
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    // Color animation between orange and blue
+    _colorAnimation = ColorTween(
+      begin: const Color(0xFFffa500), // Orange
+      end: const Color(0xFF65c6f4), // Blue
+    ).animate(
+      CurvedAnimation(parent: _colorController, curve: Curves.easeInOut),
+    );
+
     _fadeController.forward();
     _slideController.forward();
+    _pulseController.repeat(reverse: true);
+    _colorController.repeat(reverse: true);
   }
 
   @override
   void dispose() {
     _fadeController.dispose();
     _slideController.dispose();
+    _pulseController.dispose();
+    _colorController.dispose();
     super.dispose();
   }
 
@@ -58,7 +96,6 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0a0a0a),
-      appBar: _buildAppBar(),
       body: Stack(
         children: [
           _buildBackgroundDecoration(),
@@ -68,12 +105,19 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
               position: _slideAnimation,
               child: SafeArea(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24.0,
+                    vertical: 16.0,
+                  ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeader(),
-                      const SizedBox(height: 40),
+                      // Back button
+                      _buildBackButton(),
+                      const SizedBox(height: 16), // Reduced from 20
+                      // Logo section
+                      _buildLogoSection(),
+                      const SizedBox(height: 28), // Reduced from 40
+                      // Login form
                       _buildLoginForm(),
                     ],
                   ),
@@ -82,25 +126,6 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios, color: Colors.white70),
-        onPressed: () => Navigator.of(context).pop(),
-      ),
-      title: const Text(
-        'Welcome Back',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-        ),
       ),
     );
   }
@@ -114,25 +139,136 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
           colors: [Color(0xFF1a1a1a), Color(0xFF0a0a0a)],
         ),
       ),
+      child: CustomPaint(
+        painter: BackgroundPatternPainter(),
+        size: Size.infinite,
+      ),
     );
   }
 
-  Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Sign In',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-          ),
+  Widget _buildBackButton() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        width: 45,
+        height: 45,
+        decoration: BoxDecoration(
+          color: const Color(0xFF1a1a1a),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[800]!, width: 1),
         ),
-        const SizedBox(height: 8),
+        child: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.white70,
+            size: 20,
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogoSection() {
+    return Column(
+      children: [
+        // Animated logo with glow (bigger size)
+        AnimatedBuilder(
+          animation: _colorAnimation,
+          builder: (context, child) {
+            final currentColor =
+                _colorAnimation.value ?? const Color(0xFFffa500);
+            return ScaleTransition(
+              scale: _pulseAnimation,
+              child: Container(
+                width: 130, // Increased from 100
+                height: 130, // Increased from 100
+                padding: const EdgeInsets.all(12), // Increased from 10
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.grey[900]!,
+                      Colors.grey[850]!,
+                      Colors.grey[800]!,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(28), // Increased from 20
+                  border: Border.all(color: currentColor, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: currentColor.withValues(alpha: 0.5),
+                      blurRadius: 20, // Increased from 15
+                      offset: const Offset(0, 0),
+                      spreadRadius: 3, // Increased from 2
+                    ),
+                    BoxShadow(
+                      color: currentColor.withValues(alpha: 0.3),
+                      blurRadius: 35, // Increased from 25
+                      offset: const Offset(0, 0),
+                      spreadRadius: 5, // Increased from 3
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      blurRadius: 15, // Increased from 12
+                      offset: const Offset(0, 8), // Increased from 6
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(18), // Increased from 12
+                  child: Image.asset(
+                    'assets/VentureLink LogoAlone 2.0.png',
+                    width: 106, // Increased from 80
+                    height: 106, // Increased from 80
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(
+                        Icons.business_center,
+                        size: 55, // Increased from 40
+                        color: Color(0xFFffa500),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 20),
+
+        // Welcome back text
+        AnimatedBuilder(
+          animation: _colorAnimation,
+          builder: (context, child) {
+            final currentColor =
+                _colorAnimation.value ?? const Color(0xFFffa500);
+            return Text(
+              'Welcome Back',
+              style: TextStyle(
+                color: currentColor,
+                fontSize: 26, // Increased from 24
+                fontWeight: FontWeight.bold,
+                shadows: [
+                  Shadow(
+                    color: currentColor.withValues(alpha: 0.3),
+                    blurRadius: 8, // Increased from 6
+                    offset: const Offset(0, 2), // Increased from 1
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 6),
+
         Text(
-          'Access your VentureLink account',
-          style: TextStyle(color: Colors.grey[400], fontSize: 16),
+          'Sign in to continue your journey',
+          style: TextStyle(
+            color: Colors.grey[400],
+            fontSize: 15, // Increased from 14
+          ),
         ),
       ],
     );
@@ -155,8 +291,7 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
                 keyboardType: TextInputType.emailAddress,
                 icon: Icons.email_outlined,
               ),
-              const SizedBox(height: 20),
-
+              const SizedBox(height: 16), // Reduced from 20
               // Password Field
               _buildInputField(
                 label: "Password",
@@ -166,21 +301,19 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
                 isPassword: true,
                 icon: Icons.lock_outline,
               ),
-              const SizedBox(height: 16),
-
+              const SizedBox(height: 12), // Reduced from 16
               // Remember Me and Forgot Password Row
               _buildRememberMeAndForgotPassword(),
-              const SizedBox(height: 32),
-
+              const SizedBox(height: 24), // Reduced from 32
               // Sign In Button
               _buildSignInButton(),
-              const SizedBox(height: 24),
-
+              const SizedBox(height: 16), // Reduced from 24
               // Error Message
               if (authProvider.error != null) _buildErrorMessage(),
 
               // Sign Up Link
               _buildSignUpLink(),
+              const SizedBox(height: 12),
             ],
           ),
         );
@@ -205,66 +338,130 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
             Text(
               label,
               style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+                color: Colors.white,
+                fontSize: 14, // Reduced from 15
+                fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: controller,
-              focusNode: focusNode,
-              validator: validator,
-              keyboardType: keyboardType,
-              obscureText: isPassword && !authProvider.isPasswordVisible,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                prefixIcon:
-                    icon != null
-                        ? Icon(icon, color: Colors.grey[400], size: 20)
-                        : null,
-                suffixIcon:
-                    isPassword
-                        ? IconButton(
-                          icon: Icon(
-                            authProvider.isPasswordVisible
-                                ? Icons.visibility_off
-                                : Icons.visibility,
-                            color: Colors.grey[400],
-                            size: 20,
-                          ),
-                          onPressed: authProvider.togglePasswordVisibility,
-                        )
-                        : null,
-                hintText: 'Enter your ${label.toLowerCase()}',
-                hintStyle: TextStyle(color: Colors.grey[600]),
-                filled: true,
-                fillColor: const Color(0xFF1a1a1a),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[800]!),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[800]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFffa500)),
-                ),
-                errorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.red),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
-              ),
-              onChanged: (value) {
-                if (authProvider.validateRealTime) {
-                  authProvider.validateForm();
-                }
+            const SizedBox(height: 6), // Reduced from 8
+            AnimatedBuilder(
+              animation: _colorAnimation,
+              builder: (context, child) {
+                final currentColor =
+                    _colorAnimation.value ?? const Color(0xFFffa500);
+                return Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14), // Reduced from 16
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 6, // Reduced from 8
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: TextFormField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    validator: validator,
+                    keyboardType: keyboardType,
+                    obscureText: isPassword && !authProvider.isPasswordVisible,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                    ), // Reduced from 16
+                    decoration: InputDecoration(
+                      prefixIcon:
+                          icon != null
+                              ? Container(
+                                padding: const EdgeInsets.all(
+                                  10,
+                                ), // Reduced from 12
+                                child: Icon(
+                                  icon,
+                                  color: Colors.grey[400],
+                                  size: 20,
+                                ), // Reduced from 22
+                              )
+                              : null,
+                      suffixIcon:
+                          isPassword
+                              ? IconButton(
+                                icon: Icon(
+                                  authProvider.isPasswordVisible
+                                      ? Icons.visibility_off_outlined
+                                      : Icons.visibility_outlined,
+                                  color: Colors.grey[400],
+                                  size: 20, // Reduced from 22
+                                ),
+                                onPressed:
+                                    authProvider.togglePasswordVisibility,
+                              )
+                              : null,
+                      hintText: 'Enter your ${label.toLowerCase()}',
+                      hintStyle: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 14,
+                      ), // Reduced from 15
+                      filled: true,
+                      fillColor: const Color(0xFF1a1a1a),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          14,
+                        ), // Reduced from 16
+                        borderSide: BorderSide(
+                          color: Colors.grey[800]!,
+                          width: 1,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          14,
+                        ), // Reduced from 16
+                        borderSide: BorderSide(
+                          color: Colors.grey[800]!,
+                          width: 1,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          14,
+                        ), // Reduced from 16
+                        borderSide: BorderSide(
+                          color: currentColor,
+                          width: 2,
+                        ), // Animated border color
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          14,
+                        ), // Reduced from 16
+                        borderSide: const BorderSide(
+                          color: Colors.red,
+                          width: 2,
+                        ),
+                      ),
+                      focusedErrorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          14,
+                        ), // Reduced from 16
+                        borderSide: const BorderSide(
+                          color: Colors.red,
+                          width: 2,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, // Reduced from 20
+                        vertical: 14, // Reduced from 18
+                      ),
+                    ),
+                    onChanged: (value) {
+                      if (authProvider.validateRealTime) {
+                        authProvider.validateForm();
+                      }
+                    },
+                  ),
+                );
               },
             ),
           ],
@@ -279,25 +476,43 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Remember Me Checkbox
+            // Remember Me Checkbox with animated colors
             Row(
               children: [
-                SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: Checkbox(
-                    value: authProvider.rememberMe,
-                    onChanged:
-                        (value) => authProvider.setRememberMe(value ?? false),
-                    activeColor: const Color(0xFFffa500),
-                    checkColor: Colors.black,
-                    side: BorderSide(color: Colors.grey[600]!),
-                  ),
+                AnimatedBuilder(
+                  animation: _colorAnimation,
+                  builder: (context, child) {
+                    final currentColor =
+                        _colorAnimation.value ?? const Color(0xFFffa500);
+                    return SizedBox(
+                      width: 22, // Slightly smaller
+                      height: 22,
+                      child: Checkbox(
+                        value: authProvider.rememberMe,
+                        onChanged:
+                            (value) =>
+                                authProvider.setRememberMe(value ?? false),
+                        activeColor: currentColor, // Animated checkbox color
+                        checkColor: Colors.black,
+                        side: BorderSide(
+                          color: currentColor.withValues(alpha: 0.7),
+                          width: 2,
+                        ), // Animated border
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10), // Reduced from 12
                 Text(
                   'Remember me',
-                  style: TextStyle(color: Colors.grey[300], fontSize: 14),
+                  style: TextStyle(
+                    color: Colors.grey[300],
+                    fontSize: 13, // Reduced from 14
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -305,13 +520,33 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
             // Forgot Password Link
             TextButton(
               onPressed: _handleForgotPassword,
-              child: const Text(
-                'Forgot Password?',
-                style: TextStyle(
-                  color: Color(0xFFffa500),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 2,
+                ), // Reduced padding
+              ),
+              child: AnimatedBuilder(
+                animation: _colorAnimation,
+                builder: (context, child) {
+                  final currentColor =
+                      _colorAnimation.value ?? const Color(0xFFffa500);
+                  return Text(
+                    'Forgot Password?',
+                    style: TextStyle(
+                      color: currentColor, // Animated color
+                      fontSize: 13, // Reduced from 14
+                      fontWeight: FontWeight.w600,
+                      shadows: [
+                        Shadow(
+                          color: currentColor.withValues(alpha: 0.3),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ),
           ],
@@ -323,37 +558,92 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
   Widget _buildSignInButton() {
     return Consumer<UnifiedAuthProvider>(
       builder: (context, authProvider, child) {
-        return SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: ElevatedButton(
-            onPressed: authProvider.isAuthenticating ? null : _handleSignIn,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFffa500),
-              foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+        return AnimatedBuilder(
+          animation: _colorAnimation,
+          builder: (context, child) {
+            final currentColor =
+                _colorAnimation.value ?? const Color(0xFFffa500);
+            final lightShade =
+                Color.lerp(currentColor, Colors.white, 0.1) ?? currentColor;
+            final darkShade =
+                Color.lerp(currentColor, Colors.black, 0.2) ?? currentColor;
+
+            return Container(
+              width: double.infinity,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [lightShade, currentColor, darkShade],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  stops: const [0.0, 0.5, 1.0],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: currentColor.withValues(alpha: 0.4),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                    spreadRadius: 1,
+                  ),
+                  BoxShadow(
+                    color: currentColor.withValues(alpha: 0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                    spreadRadius: 2,
+                  ),
+                ],
               ),
-              elevation: 0,
-            ),
-            child:
-                authProvider.isAuthenticating
-                    ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-                      ),
-                    )
-                    : const Text(
-                      'Sign In',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-          ),
+              child: ElevatedButton(
+                onPressed: authProvider.isAuthenticating ? null : _handleSignIn,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child:
+                    authProvider.isAuthenticating
+                        ? const SizedBox(
+                          width: 22, // Reduced from 24
+                          height: 22, // Reduced from 24
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                        : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.login,
+                              color: Colors.white,
+                              size: 18, // Reduced from 20
+                            ),
+                            const SizedBox(width: 10), // Reduced from 12
+                            const Text(
+                              'Sign In',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16, // Reduced from 18
+                                fontWeight: FontWeight.bold,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.black26,
+                                    blurRadius: 2,
+                                    offset: Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+              ),
+            );
+          },
         );
       },
     );
@@ -367,13 +657,13 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
           padding: const EdgeInsets.all(16),
           margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
-            color: Colors.red.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.red.withOpacity(0.3)),
+            color: Colors.red.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
           ),
           child: Row(
             children: [
-              const Icon(Icons.error_outline, color: Colors.red, size: 20),
+              const Icon(Icons.error_outline, color: Colors.red, size: 22),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -382,7 +672,7 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.close, color: Colors.red, size: 18),
+                icon: const Icon(Icons.close, color: Colors.red, size: 20),
                 onPressed: authProvider.clearError,
                 constraints: const BoxConstraints(),
                 padding: EdgeInsets.zero,
@@ -396,25 +686,57 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
 
   Widget _buildSignUpLink() {
     return Center(
-      child: TextButton(
-        onPressed: () {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const UnifiedSignupPage()),
-          );
-        },
-        child: RichText(
-          text: const TextSpan(
-            text: "Don't have an account? ",
-            style: TextStyle(color: Colors.white70, fontSize: 14),
-            children: [
-              TextSpan(
-                text: "Sign Up",
-                style: TextStyle(
-                  color: Color(0xFFffa500),
-                  fontWeight: FontWeight.w600,
-                ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 12,
+        ), // Reduced padding
+        decoration: BoxDecoration(
+          color: const Color(0xFF1a1a1a).withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[800]!, width: 1),
+        ),
+        child: TextButton(
+          onPressed: () {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => const UnifiedSignupPage(),
               ),
-            ],
+            );
+          },
+          style: TextButton.styleFrom(padding: EdgeInsets.zero),
+          child: AnimatedBuilder(
+            animation: _colorAnimation,
+            builder: (context, child) {
+              final currentColor =
+                  _colorAnimation.value ?? const Color(0xFFffa500);
+              return RichText(
+                text: TextSpan(
+                  text: "Don't have an account? ",
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ), // Reduced from 15
+                  children: [
+                    TextSpan(
+                      text: "Sign Up",
+                      style: TextStyle(
+                        color: currentColor, // Animated color
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14, // Reduced from 15
+                        shadows: [
+                          Shadow(
+                            color: currentColor.withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -429,6 +751,12 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
 
     // Enable real-time validation
     authProvider.enableRealTimeValidation();
+
+    // Validate form first
+    if (!authProvider.validateForm()) {
+      // If validation fails, show errors but don't proceed
+      return;
+    }
 
     final success = await authProvider.signIn();
 
@@ -451,26 +779,28 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
             ),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
         );
-
-        // Navigation will be handled automatically by the UnifiedAuthWrapper
-        // based on the user type detected from the database
       }
     }
   }
 
   void _handleForgotPassword() {
-    // TODO: Implement forgot password functionality
-    // This could show a dialog or navigate to a forgot password page
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF1a1a1a),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Text(
             'Forgot Password',
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           content: const Text(
             'Password reset functionality will be available in a future update. Please contact support if you need assistance.',
@@ -481,7 +811,10 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
               onPressed: () => Navigator.of(context).pop(),
               child: const Text(
                 'OK',
-                style: TextStyle(color: Color(0xFFffa500)),
+                style: TextStyle(
+                  color: Color(0xFFffa500),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -489,4 +822,27 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
       },
     );
   }
+}
+
+// Custom painter for background pattern
+class BackgroundPatternPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.02)
+          ..strokeWidth = 1;
+
+    // Draw subtle grid pattern
+    const spacing = 50.0;
+    for (double x = 0; x < size.width; x += spacing) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    for (double y = 0; y < size.height; y += spacing) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

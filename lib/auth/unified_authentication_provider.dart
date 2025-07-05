@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:logger/logger.dart';
-import '../../services/user_type_service.dart';
+import '../services/user_type_service.dart';
 
 /// User types enumeration
 enum UserType { startup, investor }
@@ -143,6 +143,7 @@ class UnifiedAuthProvider with ChangeNotifier {
   bool get isFormValid => _isFormValid;
   FormType get currentFormType => _currentFormType;
 
+  // Validation error getters - ESSENTIAL FOR THE UI
   String? get nameError => _nameError;
   String? get emailError => _emailError;
   String? get passwordError => _passwordError;
@@ -218,7 +219,7 @@ class UnifiedAuthProvider with ChangeNotifier {
   }
 
   void _initializeListeners() {
-    // Set up form field listeners
+    // Set up form field listeners for real-time validation
     _nameController.addListener(_onFormFieldChanged);
     _emailController.addListener(_onFormFieldChanged);
     _passwordController.addListener(_onFormFieldChanged);
@@ -335,26 +336,46 @@ class UnifiedAuthProvider with ChangeNotifier {
               .maybeSingle();
 
       if (existingUser == null) {
-        // Create new user record
-        await _supabase.from(tableName).insert({
+        // Create new user record - using correct field names from your database schema
+        final insertData = <String, dynamic>{
           'id': user.id,
           'email': user.email,
           'username':
               user.fullName.isNotEmpty
                   ? user.fullName
                   : user.email.split('@')[0],
-          'created_at': user.createdAt.toIso8601String(),
-          'updated_at': DateTime.now().toIso8601String(),
-          'last_login_at': user.lastLoginAt.toIso8601String(),
           'is_verified': user.isVerified,
-        });
+          'last_login_at': user.lastLoginAt.toIso8601String(),
+        };
+
+        // Add fields specific to each table type
+        if (user.userType == UserType.startup) {
+          // For users table - check your DB Scheme.txt for exact fields
+          insertData.addAll({
+            'user_status': 'startup', // Based on your schema
+            'created_at': user.createdAt.toIso8601String(),
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+        } else {
+          // For investors table - based on DB investor.txt
+          insertData.addAll({
+            'portfolio_size': 0, // Default value
+            'created_at': user.createdAt.toIso8601String(),
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+        }
+
+        await _supabase.from(tableName).insert(insertData);
 
         _logger.i(
           '✅ Created new ${user.userType.name} record for: ${user.email}',
         );
+        debugPrint(
+          '✅ Created ${user.userType.name} user record for ID: ${user.id}',
+        );
       } else {
-        // Update existing user record
-        final updateData = {
+        // Update existing user record - using only fields that exist
+        final updateData = <String, dynamic>{
           'last_login_at': user.lastLoginAt.toIso8601String(),
           'is_verified': user.isVerified,
           'updated_at': DateTime.now().toIso8601String(),
@@ -368,9 +389,16 @@ class UnifiedAuthProvider with ChangeNotifier {
         await _supabase.from(tableName).update(updateData).eq('id', user.id);
 
         _logger.i('✅ Updated ${user.userType.name} record for: ${user.email}');
+        debugPrint(
+          '✅ Updated ${user.userType.name} user record for ID: ${user.id}',
+        );
       }
     } catch (e) {
       _logger.e('❌ Error creating/updating user record: $e');
+      debugPrint('❌ Database error for user ${user.id}: $e');
+      debugPrint(
+        '❌ Table: ${user.userType == UserType.startup ? "users" : "investors"}',
+      );
       // Don't throw error to not break authentication flow
     }
   }
@@ -388,6 +416,7 @@ class UnifiedAuthProvider with ChangeNotifier {
 
   // ========== FORM MANAGEMENT ==========
   void setFormType(FormType formType) {
+    debugPrint('🔍 setFormType called: $formType');
     _currentFormType = formType;
     clearForm();
     notifyListeners();
@@ -409,6 +438,7 @@ class UnifiedAuthProvider with ChangeNotifier {
   }
 
   void clearForm() {
+    debugPrint('🔍 clearForm called');
     _nameController.clear();
     _emailController.clear();
     _passwordController.clear();
@@ -427,17 +457,30 @@ class UnifiedAuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void validateForm() {
+  // Public method to validate form (called from UI)
+  bool validateForm() {
+    debugPrint('🔍 validateForm called - currentFormType: $_currentFormType');
     if (_currentFormType == FormType.login) {
-      _validateLoginForm();
+      return _validateLoginForm();
     } else {
-      _validateSignupForm();
+      return _validateSignupForm();
     }
   }
 
+  // Public method to enable real-time validation (called from UI)
   void enableRealTimeValidation() {
+    debugPrint('🔍 enableRealTimeValidation called');
     _validateRealTime = true;
-    validateForm();
+    validateForm(); // Validate immediately when enabled
+  }
+
+  // Method to clear validation errors
+  void clearValidationErrors() {
+    _nameError = null;
+    _emailError = null;
+    _passwordError = null;
+    _confirmPasswordError = null;
+    notifyListeners();
   }
 
   // ========== AUTHENTICATION METHODS ==========
@@ -614,20 +657,35 @@ class UnifiedAuthProvider with ChangeNotifier {
 
   // ========== VALIDATION METHODS ==========
   bool _validateLoginForm() {
+    debugPrint('🔍 _validateLoginForm called');
     bool isValid = true;
 
-    _emailError = validateEmail(email);
-    if (_emailError != null) isValid = false;
+    final emailValue = email;
+    final passwordValue = password;
+    debugPrint(
+      '🔍 Validating email: "$emailValue", password: "${passwordValue.length} chars"',
+    );
 
-    _passwordError = validatePassword(password);
-    if (_passwordError != null) isValid = false;
+    _emailError = validateEmail(emailValue);
+    if (_emailError != null) {
+      debugPrint('🔍 Email error: $_emailError');
+      isValid = false;
+    }
+
+    _passwordError = validatePassword(passwordValue);
+    if (_passwordError != null) {
+      debugPrint('🔍 Password error: $_passwordError');
+      isValid = false;
+    }
 
     _isFormValid = isValid;
-    notifyListeners();
+    debugPrint('🔍 Form valid: $isValid, notifying listeners...');
+    notifyListeners(); // CRITICAL: Notify UI of validation changes
     return isValid;
   }
 
   bool _validateSignupForm() {
+    debugPrint('🔍 _validateSignupForm called');
     bool isValid = true;
 
     _nameError = validateFullName(fullName);
@@ -643,16 +701,17 @@ class UnifiedAuthProvider with ChangeNotifier {
     if (_confirmPasswordError != null) isValid = false;
 
     _isFormValid = isValid;
-    notifyListeners();
+    debugPrint('🔍 Signup form valid: $isValid, notifying listeners...');
+    notifyListeners(); // CRITICAL: Notify UI of validation changes
     return isValid;
   }
 
   void _onFormFieldChanged() {
+    debugPrint('🔍 Form field changed - validateRealTime: $_validateRealTime');
     if (_validateRealTime) {
-      _validationTimer?.cancel();
-      _validationTimer = Timer(const Duration(milliseconds: 300), () {
-        validateForm();
-      });
+      // Immediate validation for instant feedback
+      debugPrint('🔍 Running validation immediately...');
+      validateForm();
     }
   }
 
@@ -671,7 +730,10 @@ class UnifiedAuthProvider with ChangeNotifier {
     if (value == null || value.trim().isEmpty) {
       return 'Email is required';
     }
-    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    // Fixed complete email regex
+    final emailRegex = RegExp(
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    );
     if (!emailRegex.hasMatch(value.trim())) {
       return 'Please enter a valid email address';
     }

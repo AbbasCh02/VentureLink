@@ -129,7 +129,9 @@ class _UserTypeCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color:
-              isSelected ? iconColor.withOpacity(0.1) : const Color(0xFF1a1a1a),
+              isSelected
+                  ? iconColor.withValues(alpha: 0.1)
+                  : const Color(0xFF1a1a1a),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? iconColor : Colors.grey[800]!,
@@ -139,7 +141,7 @@ class _UserTypeCard extends StatelessWidget {
               isSelected
                   ? [
                     BoxShadow(
-                      color: iconColor.withOpacity(0.3),
+                      color: iconColor.withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -155,7 +157,9 @@ class _UserTypeCard extends StatelessWidget {
               height: 48,
               decoration: BoxDecoration(
                 color:
-                    isSelected ? iconColor.withOpacity(0.2) : Colors.grey[850],
+                    isSelected
+                        ? iconColor.withValues(alpha: 0.2)
+                        : Colors.grey[850],
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
