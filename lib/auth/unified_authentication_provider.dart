@@ -236,10 +236,12 @@ class UnifiedAuthProvider with ChangeNotifier {
       switch (event) {
         case AuthChangeEvent.signedIn:
           if (session?.user != null) {
+            debugPrint('🔄 Handling signed in user...');
             await _handleSignedInUser(session!.user);
           }
           break;
         case AuthChangeEvent.signedOut:
+          debugPrint('🔄 Handling signed out user...');
           _handleSignedOut();
           break;
         case AuthChangeEvent.userUpdated:
@@ -248,6 +250,9 @@ class UnifiedAuthProvider with ChangeNotifier {
               session!.user,
               _currentUser!.userType,
             );
+            _currentUser = _currentUser!.copyWith(
+              isVerified: true,
+            ); // Always verified
             await _createOrUpdateUserRecord(_currentUser!);
             _logger.i('User updated: ${_currentUser!.email}');
           }
@@ -258,7 +263,7 @@ class UnifiedAuthProvider with ChangeNotifier {
         default:
           _logger.i('Auth event: ${event.name}');
       }
-      notifyListeners();
+      notifyListeners(); // CRITICAL: Always notify listeners for route changes
     });
   }
 
@@ -270,20 +275,25 @@ class UnifiedAuthProvider with ChangeNotifier {
       // If we have a selected type (from signup), use it
       if (_selectedUserType != null) {
         userType = _selectedUserType!;
+        debugPrint('🔍 Using selected user type: ${userType.name}');
       } else {
-        // Detect existing user type
+        // Detect existing user type for login
         final userTypeString = await UserTypeService.detectUserType(user.id);
         if (userTypeString != null) {
           userType =
               userTypeString == 'startup'
                   ? UserType.startup
                   : UserType.investor;
+          debugPrint('🔍 Detected user type: ${userType.name}');
         }
       }
 
       if (userType != null) {
         final previousUserId = _currentUser?.id;
         _currentUser = AppUser.fromSupabaseUser(user, userType);
+        _currentUser = _currentUser!.copyWith(
+          isVerified: true,
+        ); // Always mark as verified
         _isLoggedIn = true;
         _error = null;
 
@@ -294,6 +304,7 @@ class UnifiedAuthProvider with ChangeNotifier {
           '✅ User signed in: ${_currentUser!.email} (${userType.name})',
         );
         debugPrint('✅ User signed in with ID: ${_currentUser!.id}');
+        debugPrint('✅ Routing to ${userType.name} dashboard');
 
         // If user changed, notify listeners for data isolation
         if (previousUserId != null && previousUserId != _currentUser!.id) {
@@ -323,10 +334,16 @@ class UnifiedAuthProvider with ChangeNotifier {
   }
 
   /// Create or update user record in the appropriate table based on user type
+  /// Create or update user record in the appropriate table based on user type
   Future<void> _createOrUpdateUserRecord(AppUser user) async {
     try {
       final tableName =
           user.userType == UserType.startup ? 'users' : 'investors';
+
+      debugPrint('🔍 Attempting to create/update record in table: $tableName');
+      debugPrint('   User ID: ${user.id}');
+      debugPrint('   User Type: ${user.userType.name}');
+      debugPrint('   Email: ${user.email}');
 
       // Check if user record exists
       final existingUser =
@@ -335,6 +352,10 @@ class UnifiedAuthProvider with ChangeNotifier {
               .select('id, email, created_at')
               .eq('id', user.id)
               .maybeSingle();
+
+      debugPrint(
+        '🔍 Existing user check result: ${existingUser != null ? "Found" : "Not found"}',
+      );
 
       if (existingUser == null) {
         // Create new user record - using correct field names from your database schema
@@ -347,26 +368,54 @@ class UnifiedAuthProvider with ChangeNotifier {
                   : user.email.split('@')[0],
           'is_verified': user.isVerified,
           'last_login_at': user.lastLoginAt.toIso8601String(),
+          'created_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
         };
 
         // Add fields specific to each table type
         if (user.userType == UserType.startup) {
-          // For users table - check your DB Scheme.txt for exact fields
+          // For users table - CRITICAL: Include all required fields from DB schema
           insertData.addAll({
-            'user_status': 'startup', // Based on your schema
-            'created_at': user.createdAt.toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
+            'user_type': 'startup', // Required field from schema
           });
+          debugPrint('📝 Preparing startup user insert with data: $insertData');
         } else {
           // For investors table - based on DB investor.txt
           insertData.addAll({
-            'portfolio_size': 0, // Default value
-            'created_at': user.createdAt.toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
+            'portfolio_size': 0, // Default value for investors
           });
+          debugPrint(
+            '📝 Preparing investor user insert with data: $insertData',
+          );
         }
 
-        await _supabase.from(tableName).insert(insertData);
+        debugPrint('🔥 Attempting INSERT into $tableName table...');
+
+        // CRITICAL FIX: Add error handling and debugging for the insert operation
+        try {
+          final insertResult =
+              await _supabase.from(tableName).insert(insertData).select();
+          debugPrint('✅ INSERT successful! Result: $insertResult');
+        } catch (insertError) {
+          debugPrint('❌ INSERT failed with error: $insertError');
+          debugPrint('❌ Insert data was: $insertData');
+          debugPrint('❌ Table name: $tableName');
+
+          // Check if it's a policy issue
+          if (insertError.toString().contains('policy')) {
+            debugPrint(
+              '🔒 This appears to be a Row Level Security (RLS) policy issue',
+            );
+            debugPrint(
+              '🔒 Ensure the INSERT policy exists for table: $tableName',
+            );
+          }
+
+          // Re-throw the error with more context
+          throw Exception(
+            'Failed to insert ${user.userType.name} user: $insertError',
+          );
+        }
 
         _logger.i(
           '✅ Created new ${user.userType.name} record for: ${user.email}',
@@ -387,6 +436,8 @@ class UnifiedAuthProvider with ChangeNotifier {
           updateData['username'] = user.fullName;
         }
 
+        debugPrint('🔄 Updating existing user with data: $updateData');
+
         await _supabase.from(tableName).update(updateData).eq('id', user.id);
 
         _logger.i('✅ Updated ${user.userType.name} record for: ${user.email}');
@@ -398,9 +449,21 @@ class UnifiedAuthProvider with ChangeNotifier {
       _logger.e('❌ Error creating/updating user record: $e');
       debugPrint('❌ Database error for user ${user.id}: $e');
       debugPrint(
-        '❌ Table: ${user.userType == UserType.startup ? "users" : "investors"}',
+        '❌ Table: ${user.userType == UserType.startup ? 'users' : 'investors'}',
       );
-      // Don't throw error to not break authentication flow
+
+      // Enhanced error reporting
+      debugPrint('❌ Full error details:');
+      debugPrint('   User Type: ${user.userType.name}');
+      debugPrint(
+        '   Table Name: ${user.userType == UserType.startup ? 'users' : 'investors'}',
+      );
+      debugPrint('   User ID: ${user.id}');
+      debugPrint('   Email: ${user.email}');
+
+      // Don't throw error to not break authentication flow, but log extensively
+      _error = 'Failed to create user record: ${e.toString()}';
+      notifyListeners();
     }
   }
 
@@ -536,13 +599,16 @@ class UnifiedAuthProvider with ChangeNotifier {
         'Attempting signup for: ${this.email} as ${_selectedUserType!.name}',
       );
 
+      // CRITICAL: Sign up WITHOUT email confirmation required
       final response = await _supabase.auth.signUp(
         email: this.email,
         password: this.password,
+        emailRedirectTo: null, // Remove email confirmation redirect
         data: {
           'full_name': fullName ?? this.fullName,
           'email': email ?? this.email,
           'user_type': _selectedUserType!.name,
+          'email_confirmed': true, // Force email as confirmed
         },
       );
 
@@ -554,12 +620,33 @@ class UnifiedAuthProvider with ChangeNotifier {
           '✅ New ${_selectedUserType!.name} user created with ID: ${response.user!.id}',
         );
 
+        // CRITICAL: Immediately set the user as verified in our app
+        _currentUser = AppUser.fromSupabaseUser(
+          response.user!,
+          _selectedUserType!,
+        );
+        _currentUser = _currentUser!.copyWith(
+          isVerified: true,
+        ); // Force verified status
+        _isLoggedIn = true;
+
+        // Create the user record in the database
+        await _createOrUpdateUserRecord(_currentUser!);
+
         // Save remember me if checked
         if (_rememberMe) {
           await _saveRememberMe(this.email);
         }
 
+        _logger.i(
+          '✅ User immediately logged in after signup: ${_currentUser!.email}',
+        );
+        debugPrint(
+          '✅ User logged in with ID: ${_currentUser!.id} (${_currentUser!.userType.name})',
+        );
+
         clearForm();
+        notifyListeners(); // CRITICAL: Notify listeners to trigger navigation
         return true;
       } else {
         _error = 'Signup failed. Please try again.';

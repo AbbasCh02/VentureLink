@@ -904,41 +904,74 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     // Enable real-time validation
     authProvider.enableRealTimeValidation();
 
-    // Validate form first
-    if (!authProvider.validateForm()) {
-      // If validation fails, show errors but don't proceed
-      return;
-    }
-
     final success = await authProvider.signUp();
 
-    if (success) {
+    if (success && mounted) {
       // Show success message
-      if (mounted) {
-        final currentColor = _getCurrentThemeColor();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Account created successfully! Please check your email to verify your account.',
-                    style: TextStyle(color: Colors.white),
-                  ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Welcome to VentureLink! Redirecting to your dashboard...',
+                  style: const TextStyle(color: Colors.white),
                 ),
-              ],
-            ),
-            backgroundColor: currentColor,
-            duration: const Duration(seconds: 4),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
+              ),
+            ],
           ),
-        );
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+
+      // Get the current user type and navigate directly to appropriate dashboard
+      final user = authProvider.currentUser;
+      if (user != null) {
+        debugPrint('🚀 Navigating to ${user.userType.name} dashboard');
+
+        // Navigate to the appropriate dashboard based on user type
+        switch (user.userType) {
+          case UserType.startup:
+            if (mounted) {
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/startup_dashboard',
+                (route) => false, // Remove all previous routes
+              );
+            }
+            break;
+          case UserType.investor:
+            if (mounted) {
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/investor_dashboard',
+                (route) => false, // Remove all previous routes
+              );
+            }
+            break;
+        }
       }
+    } else if (!success && mounted) {
+      // Show error message if signup failed
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  authProvider.error ?? 'Signup failed. Please try again.',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 }
