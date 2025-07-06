@@ -466,11 +466,33 @@ class InvestorProfileProvider extends ChangeNotifier {
       return null; // URLs are optional
     }
 
+    final trimmedValue = value.trim();
+
     // Basic URL validation
-    final Uri? uri = Uri.tryParse(value);
-    if (uri == null || !uri.hasScheme || (!uri.scheme.startsWith('http'))) {
-      return 'Please enter a valid URL (starting with http:// or https://)';
+    final Uri? uri = Uri.tryParse(trimmedValue);
+
+    if (uri == null) {
+      return 'Please enter a valid URL';
     }
+
+    // Check for valid scheme (http or https only)
+    if (uri.scheme != 'http' && uri.scheme != 'https') {
+      return 'URL must start with http:// or https://';
+    }
+
+    // Check if host exists and is not empty
+    if (uri.host.isEmpty) {
+      return 'Please enter a valid URL with a domain';
+    }
+
+    // Additional validation: check for valid domain format
+    if (!RegExp(
+          r'^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.([a-zA-Z]{2,}|[a-zA-Z]{2,}\.[a-zA-Z]{2,})$',
+        ).hasMatch(uri.host) &&
+        uri.host != 'localhost') {
+      return 'Please enter a valid domain name';
+    }
+
     return null;
   }
 

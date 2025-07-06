@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:logger/logger.dart';
-import 'package:path/path.dart' as path;
 import 'package:venturelink/Investor/Investor_Dashboard/investor_bio.dart';
 import '../Providers/investor_profile_provider.dart';
 import '../../auth/unified_authentication_provider.dart';
@@ -21,7 +20,6 @@ class InvestorProfilePage extends StatefulWidget {
 
 class _InvestorProfilePageState extends State<InvestorProfilePage>
     with TickerProviderStateMixin {
-  final ImagePicker _picker = ImagePicker();
   final Logger _logger = Logger();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
@@ -92,114 +90,59 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
 
   // Profile image picking with enhanced source selection
   Future<void> _pickImage() async {
-    try {
-      // Show image source selection dialog
-      final ImageSource? source = await _showImageSourceDialog();
-      if (source == null) return;
+    final provider = Provider.of<InvestorProfileProvider>(
+      context,
+      listen: false,
+    );
 
-      final XFile? image = await _picker.pickImage(
-        source: source,
+    try {
+      final pickedFile = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
         maxWidth: 1024,
         maxHeight: 1024,
         imageQuality: 85,
       );
 
-      if (image != null && mounted) {
-        final File imageFile = File(image.path);
+      if (pickedFile != null) {
+        final File imageFile = File(pickedFile.path);
 
-        // Validate file using StorageService before setting it
+        // Validate the file first
         try {
           StorageService.validateAvatarFile(imageFile);
-
-          // Show file info to user
-          final fileSize = imageFile.lengthSync();
-          final formattedSize = StorageService.formatFileSize(fileSize);
-          final fileExtension = path
-              .extension(imageFile.path)
-              .toLowerCase()
-              .replaceAll('.', '');
-
-          _logger.i('Selected image: $formattedSize, Type: $fileExtension');
-
-          // File is valid, update provider
-          final provider = context.read<InvestorProfileProvider>();
-          provider.updateProfileImage(imageFile);
-
-          // Show success message with file info
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Profile image selected ($formattedSize)'),
-              backgroundColor: Colors.green,
-            ),
-          );
         } catch (e) {
-          // Validation failed, show user-friendly error
-          _logger.w('Image validation failed: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Invalid image: ${e.toString()}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        // Set the profile image - this will trigger auto-save
+        provider.updateProfileImage(imageFile);
+
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Invalid image: ${e.toString()}'),
-              backgroundColor: Colors.red,
+            const SnackBar(
+              content: Text('Profile picture updated successfully!'),
+              backgroundColor: Color(0xFF65c6f4),
             ),
           );
         }
       }
     } catch (e) {
-      _logger.e('Error picking image: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to pick image: $e'),
+            content: Text('Failed to pick image: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
       }
     }
-  }
-
-  // Show image source selection dialog
-  Future<ImageSource?> _showImageSourceDialog() async {
-    return showDialog<ImageSource>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1a1a1a),
-          title: const Text(
-            'Select Image Source',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(
-                  Icons.photo_library,
-                  color: Color(0xFF65c6f4),
-                ),
-                title: const Text(
-                  'Gallery',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onTap: () => Navigator.pop(context, ImageSource.gallery),
-              ),
-              ListTile(
-                leading: const Icon(Icons.camera_alt, color: Color(0xFF65c6f4)),
-                title: const Text(
-                  'Camera',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onTap: () => Navigator.pop(context, ImageSource.camera),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   // Save profile
@@ -225,10 +168,12 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
         if (provider.bio == null) missingFields.add('Professional Bio');
         if (provider.companyName == null) missingFields.add('Company Name');
         if (provider.title == null) missingFields.add('Job Title');
-        if (provider.selectedIndustries.isEmpty)
+        if (provider.selectedIndustries.isEmpty) {
           missingFields.add('Preferred Industries');
-        if (provider.selectedGeographicFocus.isEmpty)
+        }
+        if (provider.selectedGeographicFocus.isEmpty) {
           missingFields.add('Geographic Focus');
+        }
 
         String errorMessage =
             'Please complete the following fields:\n• ${missingFields.join('\n• ')}';
@@ -253,12 +198,14 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
       );
 
       // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile saved successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile saved successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
       _logger.e('Error saving profile: $e');
       if (mounted) {
@@ -434,28 +381,6 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
                               ),
                             ),
 
-                            // Company Information Section
-                            _buildSectionCard(
-                              title: 'Company Information',
-                              child: Column(
-                                children: [
-                                  _buildStyledTextFormField(
-                                    controller: provider.companyNameController,
-                                    labelText: 'Company/Firm Name',
-                                    icon: Icons.business,
-                                    validator: provider.validateCompanyName,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  _buildStyledTextFormField(
-                                    controller: provider.titleController,
-                                    labelText: 'Your Title/Position',
-                                    icon: Icons.work,
-                                    validator: provider.validateTitle,
-                                  ),
-                                ],
-                              ),
-                            ),
-
                             // Investment Preferences Section
                             _buildSectionCard(
                               title: 'Investment Preferences',
@@ -464,45 +389,13 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
                                   _buildStyledTextFormField(
                                     controller: provider.companyNameController,
                                     labelText: 'Preferred Industries',
-                                    icon: Icons.business,
                                     validator: provider.validateCompanyName,
                                   ),
                                   const SizedBox(height: 16),
                                   _buildStyledTextFormField(
                                     controller: provider.titleController,
                                     labelText: 'Geographic Focus',
-                                    icon: Icons.work,
                                     validator: provider.validateTitle,
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // Portfolio Information Section
-                            _buildSectionCard(
-                              title: 'Portfolio Information',
-                              child: _buildPortfolioSizeSelector(provider),
-                            ),
-
-                            // Contact Information Section
-                            _buildSectionCard(
-                              title: 'Contact Information',
-                              child: Column(
-                                children: [
-                                  _buildStyledTextFormField(
-                                    controller: provider.linkedinUrlController,
-                                    labelText: 'LinkedIn Profile',
-                                    icon: Icons.link,
-                                    keyboardType: TextInputType.url,
-                                    validator: provider.validateUrl,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  _buildStyledTextFormField(
-                                    controller: provider.websiteUrlController,
-                                    labelText: 'Company Website',
-                                    icon: Icons.web,
-                                    keyboardType: TextInputType.url,
-                                    validator: provider.validateUrl,
                                   ),
                                 ],
                               ),
@@ -661,99 +554,54 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
   Widget _buildStyledTextFormField({
     required TextEditingController controller,
     required String labelText,
-    String? hintText,
-    IconData? icon,
+    required String? Function(String?) validator,
     int maxLines = 1,
     TextInputType? keyboardType,
-    String? Function(String?)? validator,
   }) {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.grey[900]!.withValues(alpha: 0.8),
-            Colors.grey[850]!.withValues(alpha: 0.8),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[700]!.withValues(alpha: 0.5)),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(25),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: TextFormField(
         controller: controller,
         maxLines: maxLines,
         keyboardType: keyboardType,
-        validator: validator,
-        style: const TextStyle(color: Colors.white),
+        cursorColor: const Color(0xFF65c6f4),
+        style: const TextStyle(color: Colors.white, fontSize: 16),
         decoration: InputDecoration(
           labelText: labelText,
-          hintText: hintText ?? labelText,
-          labelStyle: TextStyle(color: Colors.grey[400]),
-          hintStyle: TextStyle(color: Colors.grey[600]),
-          prefixIcon:
-              icon != null ? Icon(icon, color: const Color(0xFF65c6f4)) : null,
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: icon != null ? 8 : 16,
-            vertical: 16,
+          labelStyle: TextStyle(
+            color: Colors.grey[400],
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPortfolioSizeSelector(InvestorProfileProvider provider) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.grey[900]!.withValues(alpha: 0.8),
-            Colors.grey[850]!.withValues(alpha: 0.8),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[700]!.withValues(alpha: 0.5)),
-      ),
-      child: TextFormField(
-        initialValue: provider.portfolioSize?.toString() ?? '',
-        keyboardType: TextInputType.number,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          labelText: 'Number of Portfolio Companies',
-          hintText: 'e.g., 25',
-          labelStyle: TextStyle(color: Colors.grey[400]),
-          hintStyle: TextStyle(color: Colors.grey[600]),
-          prefixIcon: const Icon(
-            Icons.business_center,
-            color: Color(0xFF65c6f4),
+          filled: true,
+          fillColor: Colors.grey[800]!.withAlpha(204), // same as 0.8
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
           ),
-          border: InputBorder.none,
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFF65c6f4), width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Colors.red, width: 2),
+          ),
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 8,
+            horizontal: 20,
             vertical: 16,
           ),
         ),
-        validator: (value) {
-          if (value == null || value.trim().isEmpty) {
-            return 'Please enter the number of companies in your portfolio';
-          }
-          final number = int.tryParse(value);
-          if (number == null) {
-            return 'Please enter a valid number';
-          }
-          if (number < 0) {
-            return 'Portfolio size cannot be negative';
-          }
-          if (number > 1000) {
-            return 'Portfolio size seems too large. Please verify.';
-          }
-          return null;
-        },
-        onChanged: (value) {
-          final number = int.tryParse(value);
-          if (number != null) {
-            provider.updatePortfolioSize(number);
-          }
-        },
+        validator: validator,
       ),
     );
   }

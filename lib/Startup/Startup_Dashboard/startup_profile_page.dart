@@ -332,6 +332,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
         controller: controller,
         maxLines: maxLines,
         keyboardType: keyboardType,
+        cursorColor: const Color(0xFFffa500),
         style: const TextStyle(color: Colors.white, fontSize: 16),
         decoration: InputDecoration(
           labelText: labelText,

@@ -19,6 +19,7 @@ import 'auth/unified_login.dart';
 import 'auth/unified_signup.dart';
 import 'Investor/Investor_Dashboard/investor_profile_page.dart';
 import 'Investor/Providers/investor_profile_provider.dart';
+import 'Investor/Investor_Dashboard/investor_bio.dart';
 
 Future<void> main() async {
   // Ensure Flutter is initialized
@@ -112,6 +113,7 @@ class MyApp extends StatelessWidget {
           // Investor Routes
           '/investor_dashboard': (context) => const InvestorDashboard(),
           '/investor_profile': (context) => const InvestorProfilePage(),
+          '/investor_bio': (context) => const InvestorBio(),
 
           // Unified Authentication Routes
           '/signup': (context) => const UnifiedSignupPage(),
