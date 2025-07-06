@@ -248,7 +248,6 @@ class InvestorProfileProvider extends ChangeNotifier {
         'id': user.id,
         'email': user.email,
         'username': user.userMetadata?['username'] ?? user.email?.split('@')[0],
-        'portfolio_size': 0,
         'is_verified': false,
         'created_at': DateTime.now().toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
@@ -282,16 +281,16 @@ class InvestorProfileProvider extends ChangeNotifier {
           await _saveToInvestorProfiles({'bio': bio});
           break;
         case 'companyName':
-          await _saveToInvestorProfiles({'company_name': companyName});
+          await _saveToInvestorCompanies({'company_name': companyName});
           break;
         case 'title':
-          await _saveToInvestorProfiles({'title': title});
+          await _saveToInvestorCompanies({'investor_title_in_compnay': title});
           break;
         case 'linkedinUrl':
           await _saveToInvestorProfiles({'linkedin_url': linkedinUrl});
           break;
         case 'websiteUrl':
-          await _saveToInvestorProfiles({'website_url': websiteUrl});
+          await _saveToInvestorCompanies({'website_url': websiteUrl});
           break;
         case 'industries':
           await _saveToInvestorProfiles({'industries': _selectedIndustries});
@@ -302,7 +301,7 @@ class InvestorProfileProvider extends ChangeNotifier {
           });
           break;
         case 'portfolioSize':
-          await _saveToInvestors({'portfolio_size': _portfolioSize});
+          await _saveToInvestorProfiles({'portfolio_size': _portfolioSize});
           break;
         case 'profileImage':
           await _saveProfileImage();
@@ -340,6 +339,27 @@ class InvestorProfileProvider extends ChangeNotifier {
         .from('investor_profiles')
         .update(data)
         .eq('investor_id', currentUser.id);
+  }
+
+  // Save to investor_companies table
+  Future<void> _saveToInvestorCompanies(Map<String, dynamic> data) async {
+    final User? currentUser = _supabase.auth.currentUser;
+    if (currentUser == null) return;
+
+    data['updated_at'] = DateTime.now().toIso8601String();
+
+    // First get the investor_profile_id
+    final profile =
+        await _supabase
+            .from('investor_profiles')
+            .select('id')
+            .eq('investor_id', currentUser.id)
+            .single();
+
+    await _supabase.from('investor_companies').upsert({
+      'investor_id': profile['id'],
+      ...data,
+    });
   }
 
   // Save profile image
