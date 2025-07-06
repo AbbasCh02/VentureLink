@@ -412,14 +412,6 @@ class UnifiedAuthProvider with ChangeNotifier {
             'user_type': 'startup', // Required field from schema
           });
           debugPrint('📝 Preparing startup user insert with data: $insertData');
-        } else {
-          // For investors table - based on DB investor.txt
-          insertData.addAll({
-            'portfolio_size': 0, // Default value for investors
-          });
-          debugPrint(
-            '📝 Preparing investor user insert with data: $insertData',
-          );
         }
 
         debugPrint('🔥 Attempting INSERT into $tableName table...');

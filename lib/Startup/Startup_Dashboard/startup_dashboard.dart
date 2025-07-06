@@ -134,33 +134,6 @@ class _StartupDashboardState extends State<StartupDashboard>
             },
           ),
         ),
-        Container(
-          margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFffa500),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.black, width: 1),
-          ),
-          child: IconButton(
-            icon: const Icon(
-              Icons.chat_bubble_outline,
-              color: Colors.black,
-              size: 20,
-            ),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Chat feature coming soon!'),
-                  backgroundColor: const Color(0xFFffa500),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
       ],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),

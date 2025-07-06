@@ -12,11 +12,13 @@ import 'Startup/Startup_Dashboard/startup_profile_page.dart';
 import 'Startup/Startup_Dashboard/team_members_page.dart';
 import 'Startup/Startup_Dashboard/Business_Model_Canvas/business_model_canvas.dart';
 import 'Startup/Startup_Dashboard/startup_dashboard.dart';
-import 'Investor/investor_dashboard.dart'; // Add investor dashboard
+import 'Investor/Investor_Dashboard/investor_dashboard.dart'; // Add investor dashboard
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'auth/unified_login.dart';
 import 'auth/unified_signup.dart';
+import 'Investor/Investor_Dashboard/investor_profile_page.dart';
+import 'Investor/Providers/investor_profile_provider.dart';
 
 Future<void> main() async {
   // Ensure Flutter is initialized
@@ -81,6 +83,12 @@ class MyApp extends StatelessWidget {
           create: (context) => BusinessModelCanvasProvider(),
           lazy: false,
         ),
+
+        // Investor Profile Provider
+        ChangeNotifierProvider(
+          create: (context) => InvestorProfileProvider(),
+          lazy: false,
+        ),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -103,6 +111,7 @@ class MyApp extends StatelessWidget {
 
           // Investor Routes
           '/investor_dashboard': (context) => const InvestorDashboard(),
+          '/investor_profile': (context) => const InvestorProfilePage(),
 
           // Unified Authentication Routes
           '/signup': (context) => const UnifiedSignupPage(),

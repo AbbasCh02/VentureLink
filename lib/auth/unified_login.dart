@@ -774,11 +774,11 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
       return;
     }
 
-    final success = await authProvider.signIn();
+    try {
+      final success = await authProvider.signIn();
 
-    if (success) {
-      // Show success message
-      if (mounted) {
+      if (success && mounted) {
+        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -787,13 +787,94 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Welcome back! You have been signed in successfully.',
+                    'Welcome back! Redirecting to your dashboard...',
                     style: const TextStyle(color: Colors.white),
                   ),
                 ),
               ],
             ),
             backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+
+        // Get the current user after successful authentication
+        final user = authProvider.currentUser;
+
+        if (user != null) {
+          debugPrint(
+            '🚀 User authenticated: ${user.email} (${user.userType.name})',
+          );
+          debugPrint('🔄 Routing to ${user.userType.name} dashboard');
+
+          // Navigate to the appropriate dashboard based on user type
+          switch (user.userType) {
+            case UserType.startup:
+              debugPrint('📱 Navigating to StartupDashboard');
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/startup_dashboard',
+                (route) => false, // Remove all previous routes
+              );
+              break;
+
+            case UserType.investor:
+              debugPrint('📱 Navigating to InvestorDashboard');
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/investor_dashboard',
+                (route) => false, // Remove all previous routes
+              );
+              break;
+          }
+        }
+      } else if (!success && mounted) {
+        // Show error message if sign-in failed
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    authProvider.error ??
+                        'Sign-in failed. Please check your credentials.',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      // Handle any unexpected errors
+      debugPrint('❌ Unexpected error during sign-in: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'An unexpected error occurred. Please try again.',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(

@@ -1,7 +1,8 @@
 // lib/Investor/investor_dashboard.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../auth/unified_authentication_provider.dart';
+import '../../auth/unified_authentication_provider.dart';
+import 'investor_profile_page.dart';
 
 class InvestorDashboard extends StatefulWidget {
   const InvestorDashboard({super.key});
@@ -51,63 +52,95 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     super.dispose();
   }
 
-  AppBar _buildElegantAppBar() {
+  PreferredSizeWidget _buildElegantAppBar() {
     return AppBar(
+      backgroundColor: Colors.grey[900],
       elevation: 0,
-      backgroundColor: const Color(0xFF0a0a0a),
+      toolbarHeight: 80,
       automaticallyImplyLeading: false,
-
-      title: Row(
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF65c6f4), Color(0xFF65c6f4)],
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.trending_up,
+                  color: Colors.black,
+                  size: 20,
+                ),
               ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.trending_up, color: Colors.white, size: 24),
+              const SizedBox(width: 12),
+              const Text(
+                'Investor Dashboard',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF65c6f4),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
+          const SizedBox(height: 4),
           const Text(
-            'Investor Dashboard',
+            'Empower the next big idea—invest in the future today.',
             style: TextStyle(
+              fontSize: 12,
               color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.normal,
             ),
           ),
         ],
       ),
       actions: [
-        IconButton(
-          onPressed: () => _handleLogout(context),
-          icon: const Icon(Icons.logout),
-          tooltip: 'Logout',
-        ),
         Container(
-          margin: const EdgeInsets.only(right: 16),
+          margin: const EdgeInsets.only(right: 6, top: 6, bottom: 6),
           decoration: BoxDecoration(
-            color: const Color(0xFF2196F3).withValues(alpha: 0.1),
+            color: const Color(0xFF65c6f4),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: const Color(0xFF2196F3).withValues(alpha: 0.3),
-            ),
+            border: Border.all(color: Colors.black, width: 1),
           ),
           child: IconButton(
-            onPressed: () {
-              // TODO: Implement notifications
-            },
             icon: const Icon(
-              Icons.notifications_outlined,
-              color: Color(0xFF2196F3),
+              Icons.person_outline,
+              color: Colors.black,
+              size: 20,
             ),
+            onPressed: () async {
+              // Navigate to StartupProfilePage
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const InvestorProfilePage(),
+                ),
+              );
+            },
           ),
         ),
       ],
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Container(
+          height: 1,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.transparent,
+                Colors.black.withValues(alpha: 0.3),
+                Colors.transparent,
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -117,14 +150,14 @@ class _InvestorDashboardState extends State<InvestorDashboard>
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
+          colors: [Color(0xFF65c6f4), Color(0xFF2476C9)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2196F3).withValues(alpha: 0.4),
+            color: const Color(0xFF65c6f4).withValues(alpha: 0.4),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -135,13 +168,17 @@ class _InvestorDashboardState extends State<InvestorDashboard>
         children: [
           Row(
             children: [
-              const Icon(Icons.trending_up, color: Colors.white, size: 28),
+              const Icon(
+                Icons.card_membership_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
               const SizedBox(width: 12),
               const Expanded(
                 child: Text(
                   'Welcome to Your Investment Hub',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 17,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -168,12 +205,12 @@ class _InvestorDashboardState extends State<InvestorDashboard>
         color: const Color(0xFF1a1a1a),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFF2196F3).withValues(alpha: 0.3),
+          color: const Color(0xFF65c6f4).withValues(alpha: 0.3),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2196F3).withValues(alpha: 0.2),
+            color: const Color(0xFF65c6f4).withValues(alpha: 0.2),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -188,12 +225,12 @@ class _InvestorDashboardState extends State<InvestorDashboard>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2196F3).withValues(alpha: 0.2),
+                  color: const Color(0xFF65c6f4).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
                   Icons.person_outline,
-                  color: Color(0xFF2196F3),
+                  color: Color(0xFF65c6f4),
                   size: 24,
                 ),
               ),
@@ -204,7 +241,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF2196F3),
+                    color: Color(0xFF65c6f4),
                   ),
                 ),
               ),
@@ -222,12 +259,12 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
+                    colors: [Color(0xFF65c6f4), Color(0xFF1976D2)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   border: Border.all(
-                    color: const Color(0xFF2196F3).withValues(alpha: 0.5),
+                    color: const Color(0xFF65c6f4).withValues(alpha: 0.5),
                     width: 2,
                   ),
                 ),
@@ -260,17 +297,17 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2196F3).withValues(alpha: 0.2),
+                        color: const Color(0xFF65c6f4).withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: const Color(0xFF2196F3).withValues(alpha: 0.5),
+                          color: const Color(0xFF65c6f4).withValues(alpha: 0.5),
                         ),
                       ),
                       child: const Text(
                         'Verified Investor',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Color(0xFF2196F3),
+                          color: Color(0xFF65c6f4),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -320,12 +357,12 @@ class _InvestorDashboardState extends State<InvestorDashboard>
         color: const Color(0xFF1a1a1a),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
+          color: const Color(0xFF65c6f4).withValues(alpha: 0.3),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF4CAF50).withValues(alpha: 0.2),
+            color: const Color(0xFF65c6f4).withValues(alpha: 0.2),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -340,12 +377,12 @@ class _InvestorDashboardState extends State<InvestorDashboard>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50).withValues(alpha: 0.2),
+                  color: const Color(0xFF65c6f4).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
                   Icons.search,
-                  color: Color(0xFF4CAF50),
+                  color: Color(0xFF65c6f4),
                   size: 24,
                 ),
               ),
@@ -356,7 +393,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF4CAF50),
+                    color: Color(0xFF65c6f4),
                   ),
                 ),
               ),
@@ -403,12 +440,12 @@ class _InvestorDashboardState extends State<InvestorDashboard>
         color: const Color(0xFF1a1a1a),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFFFF9800).withValues(alpha: 0.3),
+          color: const Color(0xFF65c6f4).withValues(alpha: 0.3),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFF9800).withValues(alpha: 0.2),
+            color: const Color(0xFF65c6f4).withValues(alpha: 0.2),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -423,12 +460,12 @@ class _InvestorDashboardState extends State<InvestorDashboard>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF9800).withValues(alpha: 0.2),
+                  color: const Color(0xFF65c6f4).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
                   Icons.folder_outlined,
-                  color: Color(0xFFFF9800),
+                  color: Color(0xFF65c6f4),
                   size: 24,
                 ),
               ),
@@ -439,7 +476,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFFFF9800),
+                    color: Color(0xFF65c6f4),
                   ),
                 ),
               ),
@@ -475,31 +512,6 @@ class _InvestorDashboardState extends State<InvestorDashboard>
         ],
       ),
     );
-  }
-
-  Future<void> _handleLogout(BuildContext context) async {
-    try {
-      // Get auth provider and sign out
-      final authProvider = context.read<UnifiedAuthProvider>();
-      await authProvider.signOut();
-
-      // Navigate back to welcome page
-      if (context.mounted) {
-        Navigator.of(
-          context,
-        ).pushNamedAndRemoveUntil('/welcome', (route) => false);
-      }
-    } catch (e) {
-      // Show error if logout fails
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Logout failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
   }
 
   Widget _buildMetricCard({
@@ -596,21 +608,21 @@ class _InvestorDashboardState extends State<InvestorDashboard>
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFF2196F3).withValues(alpha: 0.1),
+          color: const Color(0xFF65c6f4).withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: const Color(0xFF2196F3).withValues(alpha: 0.3),
+            color: const Color(0xFF65c6f4).withValues(alpha: 0.3),
           ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: const Color(0xFF2196F3), size: 16),
+            Icon(icon, color: const Color(0xFF65c6f4), size: 16),
             const SizedBox(width: 8),
             Text(
               title,
               style: const TextStyle(
-                color: Color(0xFF2196F3),
+                color: Color(0xFF65c6f4),
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
@@ -633,20 +645,20 @@ class _InvestorDashboardState extends State<InvestorDashboard>
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+          color: const Color(0xFF65c6f4).withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
+            color: const Color(0xFF65c6f4).withValues(alpha: 0.3),
           ),
         ),
         child: Column(
           children: [
-            Icon(icon, color: const Color(0xFF4CAF50), size: 24),
+            Icon(icon, color: const Color(0xFF65c6f4), size: 24),
             const SizedBox(height: 8),
             Text(
               title,
               style: const TextStyle(
-                color: Color(0xFF4CAF50),
+                color: Color(0xFF65c6f4),
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
@@ -700,7 +712,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                       title: 'Portfolio Size',
                       value: '12', // TODO: Get from provider
                       icon: Icons.folder_outlined,
-                      color: const Color(0xFF2196F3),
+                      color: const Color(0xFF65c6f4),
                       subtitle: 'Active Investments',
                     ),
                     const SizedBox(width: 12),
@@ -708,7 +720,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                       title: 'Deal Flow',
                       value: '8', // TODO: Get from provider
                       icon: Icons.trending_up_outlined,
-                      color: const Color(0xFF4CAF50),
+                      color: const Color(0xFF65c6f4),
                       subtitle: 'This Month',
                     ),
                   ],
@@ -723,7 +735,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                       title: 'Interested',
                       value: '24', // TODO: Get from provider
                       icon: Icons.favorite_outline,
-                      color: const Color(0xFFFF9800),
+                      color: const Color(0xFF65c6f4),
                       subtitle: 'Watching',
                     ),
                     const SizedBox(width: 12),
