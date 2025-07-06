@@ -367,7 +367,7 @@ class _InvestorBioState extends State<InvestorBio>
           'Portfolio Size',
           style: TextStyle(
             color: Colors.grey[300],
-            fontSize: 16,
+            fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -375,32 +375,27 @@ class _InvestorBioState extends State<InvestorBio>
         TextFormField(
           initialValue: provider.portfolioSize?.toString() ?? '',
           keyboardType: TextInputType.number,
-          style: const TextStyle(color: Colors.white),
+          cursorColor: const Color(0xFF65c6f4),
+          style: const TextStyle(color: Colors.white, fontSize: 16),
           decoration: InputDecoration(
-            labelText: 'Number of Portfolio Companies',
-            hintText: 'e.g., 25',
-            prefixIcon: const Icon(
-              Icons.business_center,
-              color: Color(0xFF65c6f4),
+            labelText: 'How Many Investments Done',
+            labelStyle: TextStyle(
+              color: Colors.grey[400],
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
             ),
-            labelStyle: TextStyle(color: Colors.grey[400]),
-            hintStyle: TextStyle(color: Colors.grey[600]),
             filled: true,
-            fillColor: Colors.grey[850],
+            fillColor: Colors.grey[800]!.withAlpha(204), // same as 0.8
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide.none,
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(color: Color(0xFF65c6f4), width: 2),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.red, width: 1),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(color: Colors.red, width: 2),
             ),
             contentPadding: const EdgeInsets.symmetric(
