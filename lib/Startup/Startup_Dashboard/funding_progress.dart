@@ -165,6 +165,13 @@ class _FundingState extends State<Funding> {
                 ),
                 items: const [
                   DropdownMenuItem(
+                    value: 'Idea',
+                    child: Text(
+                      'Idea',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ),
+                  DropdownMenuItem(
                     value: 'Pre-Seed',
                     child: Text(
                       'Pre-Seed',
@@ -172,9 +179,30 @@ class _FundingState extends State<Funding> {
                     ),
                   ),
                   DropdownMenuItem(
+                    value: 'MVP',
+                    child: Text(
+                      'MVP',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ),
+                  DropdownMenuItem(
                     value: 'Seed',
                     child: Text(
                       'Seed',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Product-Market Fit',
+                    child: Text(
+                      'Product-Market Fit',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Early Growth',
+                    child: Text(
+                      'Early Growth',
                       style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ),
@@ -196,6 +224,48 @@ class _FundingState extends State<Funding> {
                     value: 'Series C',
                     child: Text(
                       'Series C',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Series D+',
+                    child: Text(
+                      'Series D+',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Scaling ',
+                    child: Text(
+                      'Scaling ',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Late Stage ',
+                    child: Text(
+                      'Late Stage ',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Revenue-Generating',
+                    child: Text(
+                      'Revenue-Generating',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'IPO Ready',
+                    child: Text(
+                      'IPO Ready',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Bridge ',
+                    child: Text(
+                      'Bridge ',
                       style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ),

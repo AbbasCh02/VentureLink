@@ -20,6 +20,7 @@ class InvestorProfileProvider extends ChangeNotifier {
   File? _profileImage;
   List<String> _selectedIndustries = [];
   List<String> _selectedGeographicFocus = [];
+  List<String> _selectedPreferredStages = [];
   int? _portfolioSize;
   bool _isVerified = false;
   bool _isInitialized = false;
@@ -75,6 +76,22 @@ class InvestorProfileProvider extends ChangeNotifier {
     'Other',
   ];
 
+  // Available investment stages list
+  static const List<String> availableInvestmentStages = [
+    'Pre-Seed',
+    'Seed',
+    'Series A',
+    'Series B',
+    'Series C',
+    'Series D+',
+    'Growth',
+    'Late Stage',
+    'IPO Ready',
+    'Bridge',
+    'Convertible',
+    'Revenue Based',
+  ];
+
   // Getters
   TextEditingController get bioController => _bioController;
   TextEditingController get companyNameController => _companyNameController;
@@ -95,6 +112,8 @@ class InvestorProfileProvider extends ChangeNotifier {
   List<String> get selectedIndustries => List.unmodifiable(_selectedIndustries);
   List<String> get selectedGeographicFocus =>
       List.unmodifiable(_selectedGeographicFocus);
+  List<String> get selectedPreferredStages =>
+      List.unmodifiable(_selectedPreferredStages);
   int? get portfolioSize => _portfolioSize;
   bool get isVerified => _isVerified;
   File? get profileImage => _profileImage;
@@ -208,6 +227,9 @@ class InvestorProfileProvider extends ChangeNotifier {
         final List<dynamic>? geographicFocus = response['geographic_focus'];
         _selectedGeographicFocus = geographicFocus?.cast<String>() ?? [];
 
+        final List<dynamic>? preferredStages = response['preferred_stages'];
+        _selectedPreferredStages = preferredStages?.cast<String>() ?? [];
+
         debugPrint('✅ Investor profile data loaded successfully');
         debugPrint('   - Company: ${companyName ?? "Not Set"}');
         debugPrint('   - Title: ${title ?? "Not Set"}');
@@ -298,6 +320,11 @@ class InvestorProfileProvider extends ChangeNotifier {
         case 'geographicFocus':
           await _saveToInvestorProfiles({
             'geographic_focus': _selectedGeographicFocus,
+          });
+          break;
+        case 'preferredStages':
+          await _saveToInvestorProfiles({
+            'preferred_stages': _selectedPreferredStages,
           });
           break;
         case 'portfolioSize':
@@ -412,26 +439,6 @@ class InvestorProfileProvider extends ChangeNotifier {
     _onFieldChanged('websiteUrl');
   }
 
-  void updateSelectedIndustries(List<String> industries) {
-    _selectedIndustries = industries;
-    _dirtyFields.add('industries');
-    notifyListeners();
-    _saveTimer?.cancel();
-    _saveTimer = Timer(const Duration(seconds: 1), () {
-      saveField('industries');
-    });
-  }
-
-  void updateSelectedGeographicFocus(List<String> regions) {
-    _selectedGeographicFocus = regions;
-    _dirtyFields.add('geographicFocus');
-    notifyListeners();
-    _saveTimer?.cancel();
-    _saveTimer = Timer(const Duration(seconds: 1), () {
-      saveField('geographicFocus');
-    });
-  }
-
   void updatePortfolioSize(int? size) {
     _portfolioSize = size;
     _dirtyFields.add('portfolioSize');
@@ -448,6 +455,116 @@ class InvestorProfileProvider extends ChangeNotifier {
     notifyListeners();
     // Save immediately for profile image
     saveField('profileImage');
+  }
+
+  // Method to update selected industries
+  void updateSelectedIndustries(List<String> industries) {
+    _selectedIndustries = List.from(industries);
+    _dirtyFields.add('industries');
+    notifyListeners();
+  }
+
+  // Method to update selected geographic focus
+  void updateSelectedGeographicFocus(List<String> geographicFocus) {
+    _selectedGeographicFocus = List.from(geographicFocus);
+    _dirtyFields.add('geographicFocus');
+    notifyListeners();
+  }
+
+  // Method to add a single industry
+  void addIndustry(String industry) {
+    if (!_selectedIndustries.contains(industry)) {
+      _selectedIndustries.add(industry);
+      _dirtyFields.add('industries');
+      notifyListeners();
+    }
+  }
+
+  // Method to remove a single industry
+  void removeIndustry(String industry) {
+    if (_selectedIndustries.remove(industry)) {
+      _dirtyFields.add('industries');
+      notifyListeners();
+    }
+  }
+
+  // Method to add a single geographic focus
+  void addGeographicFocus(String region) {
+    if (!_selectedGeographicFocus.contains(region)) {
+      _selectedGeographicFocus.add(region);
+      _dirtyFields.add('geographicFocus');
+      notifyListeners();
+    }
+  }
+
+  // Method to remove a single geographic focus
+  void removeGeographicFocus(String region) {
+    if (_selectedGeographicFocus.remove(region)) {
+      _dirtyFields.add('geographicFocus');
+      notifyListeners();
+    }
+  }
+
+  // Method to clear all industries
+  void clearAllIndustries() {
+    if (_selectedIndustries.isNotEmpty) {
+      _selectedIndustries.clear();
+      _dirtyFields.add('industries');
+      notifyListeners();
+    }
+  }
+
+  // Method to clear all geographic focus
+  void clearAllGeographicFocus() {
+    if (_selectedGeographicFocus.isNotEmpty) {
+      _selectedGeographicFocus.clear();
+      _dirtyFields.add('geographicFocus');
+      notifyListeners();
+    }
+  }
+
+  // Methods to update preferred stages
+  void updateSelectedPreferredStages(List<String> stages) {
+    _selectedPreferredStages = List.from(stages);
+    _dirtyFields.add('preferredStages');
+    notifyListeners();
+  }
+
+  void addPreferredStage(String stage) {
+    if (!_selectedPreferredStages.contains(stage)) {
+      _selectedPreferredStages.add(stage);
+      _dirtyFields.add('preferredStages');
+      notifyListeners();
+    }
+  }
+
+  void removePreferredStage(String stage) {
+    if (_selectedPreferredStages.remove(stage)) {
+      _dirtyFields.add('preferredStages');
+      notifyListeners();
+    }
+  }
+
+  void clearAllPreferredStages() {
+    if (_selectedPreferredStages.isNotEmpty) {
+      _selectedPreferredStages.clear();
+      _dirtyFields.add('preferredStages');
+      notifyListeners();
+    }
+  }
+
+  bool isPreferredStageSelected(String stage) {
+    return _selectedPreferredStages.contains(stage);
+  }
+
+  // Method to get industry selection status
+  bool isIndustrySelected(String industry) {
+    return _selectedIndustries.contains(industry);
+  }
+
+  // Method to get geographic focus selection status
+  bool isGeographicFocusSelected(String region) {
+    return _selectedGeographicFocus.contains(region);
   }
 
   // Validation methods

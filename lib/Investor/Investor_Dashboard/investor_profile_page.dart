@@ -8,6 +8,7 @@ import 'package:venturelink/Investor/Investor_Dashboard/investor_bio.dart';
 import '../Providers/investor_profile_provider.dart';
 import '../../auth/unified_authentication_provider.dart';
 import '../../services/storage_service.dart';
+import 'investor_preference_page.dart';
 
 class InvestorProfilePage extends StatefulWidget {
   final Function(int?, String?)? onProfileUpdate;
@@ -382,24 +383,8 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
                             ),
 
                             // Investment Preferences Section
-                            _buildSectionCard(
-                              title: 'Investment Preferences',
-                              child: Column(
-                                children: [
-                                  _buildStyledTextFormField(
-                                    controller: provider.companyNameController,
-                                    labelText: 'Preferred Industries',
-                                    validator: provider.validateCompanyName,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  _buildStyledTextFormField(
-                                    controller: provider.titleController,
-                                    labelText: 'Geographic Focus',
-                                    validator: provider.validateTitle,
-                                  ),
-                                ],
-                              ),
-                            ),
+                            const SizedBox(height: 24),
+                            _buildInvestmentPreferencesCard(provider),
 
                             const SizedBox(height: 32),
 
@@ -551,61 +536,6 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
     );
   }
 
-  Widget _buildStyledTextFormField({
-    required TextEditingController controller,
-    required String labelText,
-    required String? Function(String?) validator,
-    int maxLines = 1,
-    TextInputType? keyboardType,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(25),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: TextFormField(
-        controller: controller,
-        maxLines: maxLines,
-        keyboardType: keyboardType,
-        cursorColor: const Color(0xFF65c6f4),
-        style: const TextStyle(color: Colors.white, fontSize: 16),
-        decoration: InputDecoration(
-          labelText: labelText,
-          labelStyle: TextStyle(
-            color: Colors.grey[400],
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-          filled: true,
-          fillColor: Colors.grey[800]!.withAlpha(204), // same as 0.8
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xFF65c6f4), width: 2),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Colors.red, width: 2),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 16,
-          ),
-        ),
-        validator: validator,
-      ),
-    );
-  }
-
   Widget _buildStyledButton({
     required String text,
     required IconData icon,
@@ -712,6 +642,287 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
           ),
         ),
       ),
+    );
+  }
+
+  // Add this widget to your investor_profile_page.dart
+
+  // Add this widget to your investor_profile_page.dart - matches your _buildSectionCard style
+
+  Widget _buildInvestmentPreferencesCard(InvestorProfileProvider provider) {
+    final selectedCount =
+        provider.selectedIndustries.length +
+        provider.selectedGeographicFocus.length +
+        provider.selectedPreferredStages.length;
+
+    return _buildSectionCard(
+      title: 'Investment Preferences',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Status and action button row
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  selectedCount > 0
+                      ? '$selectedCount preferences configured'
+                      : 'Set your preferred industries, regions, and investment stages to help startups find you',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[300],
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF65c6f4), Color(0xFF2476C9)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF65c6f4).withValues(alpha: 0.3),
+                      blurRadius: 15,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () async {
+                      // Navigate to preferences page
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const InvestorPreferencesPage(),
+                        ),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            selectedCount > 0 ? Icons.edit : Icons.add,
+                            size: 16,
+                            color: Colors.black,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            selectedCount > 0 ? 'Edit' : 'Set Up',
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Show summary if preferences are set
+          if (selectedCount > 0) ...[
+            const SizedBox(height: 20),
+            _buildPreferencesSummary(provider),
+          ],
+
+          // Show empty state if no preferences
+          if (selectedCount == 0) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[800]!.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[700]!),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.tune, color: Colors.grey[400], size: 32),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No preferences set',
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Tap "Set Up" to configure your investment preferences',
+                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPreferencesSummary(InvestorProfileProvider provider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Industries Section
+        if (provider.selectedIndustries.isNotEmpty) ...[
+          Row(
+            children: [
+              Icon(Icons.business_center, color: Colors.grey[500], size: 16),
+              const SizedBox(width: 8),
+              Text(
+                'Industries (${provider.selectedIndustries.length}):',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[400],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children:
+                provider.selectedIndustries.map((industry) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF65c6f4).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFF65c6f4).withOpacity(0.3),
+                      ),
+                    ),
+                    child: Text(
+                      industry,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF65c6f4),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  );
+                }).toList(), // REMOVED .take(3) and "+X more" logic
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Geographic Focus Section
+        if (provider.selectedGeographicFocus.isNotEmpty) ...[
+          Row(
+            children: [
+              Icon(Icons.public, color: Colors.grey[500], size: 16),
+              const SizedBox(width: 8),
+              Text(
+                'Regions (${provider.selectedGeographicFocus.length}):',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[400],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children:
+                provider.selectedGeographicFocus.map((region) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                    ),
+                    child: Text(
+                      region,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.lightBlue,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  );
+                }).toList(), // REMOVED .take(3) and "+X more" logic
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Investment Stages Section
+        if (provider.selectedPreferredStages.isNotEmpty) ...[
+          Row(
+            children: [
+              Icon(Icons.trending_up, color: Colors.grey[500], size: 16),
+              const SizedBox(width: 8),
+              Text(
+                'Investment Stages (${provider.selectedPreferredStages.length}):',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[400],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children:
+                provider.selectedPreferredStages.map((stage) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.withOpacity(0.3)),
+                    ),
+                    child: Text(
+                      stage,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.lightGreen,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  );
+                }).toList(), // REMOVED .take(3) and "+X more" logic
+          ),
+        ],
+      ],
     );
   }
 }
