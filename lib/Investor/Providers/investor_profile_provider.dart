@@ -10,10 +10,10 @@ class InvestorProfileProvider extends ChangeNotifier {
 
   // Form controllers
   final TextEditingController _bioController = TextEditingController();
-  final TextEditingController _companyNameController = TextEditingController();
-  final TextEditingController _titleController = TextEditingController();
   final TextEditingController _linkedinUrlController = TextEditingController();
-  final TextEditingController _websiteUrlController = TextEditingController();
+  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _placeOfResidenceController =
+      TextEditingController();
 
   // Private state variables
   String? _profileImageUrl;
@@ -22,6 +22,7 @@ class InvestorProfileProvider extends ChangeNotifier {
   List<String> _selectedGeographicFocus = [];
   List<String> _selectedPreferredStages = [];
   int? _portfolioSize;
+  int? _age;
   bool _isVerified = false;
   bool _isInitialized = false;
   bool _isInitializing = false;
@@ -94,20 +95,22 @@ class InvestorProfileProvider extends ChangeNotifier {
 
   // Getters
   TextEditingController get bioController => _bioController;
-  TextEditingController get companyNameController => _companyNameController;
-  TextEditingController get titleController => _titleController;
   TextEditingController get linkedinUrlController => _linkedinUrlController;
-  TextEditingController get websiteUrlController => _websiteUrlController;
+  TextEditingController get fullNameController => _fullNameController;
+  TextEditingController get placeOfResidenceController =>
+      _placeOfResidenceController;
 
   String? get bio => _bioController.text.isEmpty ? null : _bioController.text;
-  String? get companyName =>
-      _companyNameController.text.isEmpty ? null : _companyNameController.text;
-  String? get title =>
-      _titleController.text.isEmpty ? null : _titleController.text;
   String? get linkedinUrl =>
       _linkedinUrlController.text.isEmpty ? null : _linkedinUrlController.text;
-  String? get websiteUrl =>
-      _websiteUrlController.text.isEmpty ? null : _websiteUrlController.text;
+
+  String? get fullName =>
+      _fullNameController.text.isEmpty ? null : _fullNameController.text;
+  String? get placeOfResidence =>
+      _placeOfResidenceController.text.isEmpty
+          ? null
+          : _placeOfResidenceController.text;
+  int? get age => _age;
 
   List<String> get selectedIndustries => List.unmodifiable(_selectedIndustries);
   List<String> get selectedGeographicFocus =>
@@ -134,8 +137,9 @@ class InvestorProfileProvider extends ChangeNotifier {
   // Profile completion status
   bool get isProfileComplete {
     return bio != null &&
-        companyName != null &&
-        title != null &&
+        bio!.trim().isNotEmpty &&
+        fullName != null && // NEW: Include full name in completion
+        fullName!.trim().isNotEmpty &&
         _selectedIndustries.isNotEmpty &&
         _selectedGeographicFocus.isNotEmpty;
   }
@@ -143,16 +147,16 @@ class InvestorProfileProvider extends ChangeNotifier {
   double get completionPercentage {
     int completed = 0;
     int total =
-        6; // bio, company, title, industries, geographic focus, profile image
+        6; // bio, full name, industries, geographic focus, profile image, age
 
-    if (bio != null) completed++;
-    if (companyName != null) completed++;
-    if (title != null) completed++;
+    if (bio != null && bio!.trim().isNotEmpty) completed++;
+    if (fullName != null && fullName!.trim().isNotEmpty) completed++; // NEW
+    if (_age != null) completed++; // NEW
     if (_selectedIndustries.isNotEmpty) completed++;
     if (_selectedGeographicFocus.isNotEmpty) completed++;
     if (hasProfileImage) completed++;
 
-    return completed / total;
+    return (completed / total) * 100;
   }
 
   // Initialize provider
@@ -198,95 +202,104 @@ class InvestorProfileProvider extends ChangeNotifier {
       // Temporarily remove listeners to prevent auto-save during load
       _removeListeners();
 
-      // FIXED: Use direct queries instead of RPC to handle multiple rows
-      // Step 1: Get investor basic info
-      final investorResponse =
+      // FIXED: Load data directly from tables instead of using RPC
+      // First check if investor record exists
+      final investorRecord =
           await _supabase
               .from('investors')
-              .select('is_verified, avatar_url')
+              .select('*, avatar_url')
               .eq('id', currentUser.id)
               .maybeSingle();
 
-      // Step 2: Get investor profile info (handle multiple rows)
-      final profileResponse = await _supabase
-          .from('investor_profiles')
-          .select(
-            'bio, linkedin_url, industries, geographic_focus, portfolio_size, preferred_stages',
-          )
-          .eq('investor_id', currentUser.id)
-          .order('created_at', ascending: false) // Get the most recent one
-          .limit(1);
+      if (investorRecord != null) {
+        _isVerified = investorRecord['is_verified'] ?? false;
+        _profileImageUrl = investorRecord['avatar_url'];
 
-      // Step 3: Get company info (if needed for this provider)
-      final companyResponse = await _supabase
-          .from('investor_companies')
-          .select('company_name, investor_title_in_company, website_url')
-          .eq('investor_id', currentUser.id)
-          .order('created_at', ascending: false) // Get the most recent one
-          .limit(1);
-
-      debugPrint(
-        '✅ Investor basic info: ${investorResponse != null ? "Found" : "Not found"}',
-      );
-      debugPrint('✅ Profile records found: ${profileResponse.length}');
-      debugPrint('✅ Company records found: ${companyResponse.length}');
-
-      // Handle multiple profiles issue
-      if (profileResponse.length > 1) {
-        debugPrint(
-          '⚠️ Found ${profileResponse.length} investor profiles, cleaning up duplicates...',
-        );
-        await _cleanupDuplicateProfiles(currentUser.id);
-      }
-
-      // Load data from responses
-      if (investorResponse != null) {
-        _isVerified = investorResponse['is_verified'] ?? false;
-        _profileImageUrl = investorResponse['avatar_url'];
-      }
-
-      if (profileResponse.isNotEmpty) {
-        final profile = profileResponse.first;
-        _bioController.text = profile['bio'] ?? '';
-        _linkedinUrlController.text = profile['linkedin_url'] ?? '';
-        _portfolioSize = profile['portfolio_size'];
-
-        // Load investment preferences
-        final List<dynamic>? industries = profile['industries'];
-        _selectedIndustries = industries?.cast<String>() ?? [];
-
-        final List<dynamic>? geographicFocus = profile['geographic_focus'];
-        _selectedGeographicFocus = geographicFocus?.cast<String>() ?? [];
-
-        final List<dynamic>? preferredStages = profile['preferred_stages'];
-        _selectedPreferredStages = preferredStages?.cast<String>() ?? [];
-      }
-
-      if (companyResponse.isNotEmpty) {
-        final company = companyResponse.first;
-        _companyNameController.text = company['company_name'] ?? '';
-        _titleController.text = company['investor_title_in_company'] ?? '';
-        _websiteUrlController.text = company['website_url'] ?? '';
-      }
-
-      debugPrint('✅ Investor profile data loaded successfully');
-      debugPrint('   - Company: ${companyName ?? "Not Set"}');
-      debugPrint('   - Title: ${title ?? "Not Set"}');
-      debugPrint('   - Bio: ${bio != null ? "✓" : "✗"}');
-      debugPrint('   - Industries: ${_selectedIndustries.length}');
-      debugPrint('   - Geographic Focus: ${_selectedGeographicFocus.length}');
-      debugPrint('   - Portfolio Size: ${_portfolioSize ?? "Not Set"}');
-      debugPrint('   - Profile Image: ${_profileImageUrl != null ? "✓" : "✗"}');
-
-      // Create initial records if they don't exist
-      if (investorResponse == null) {
-        debugPrint('🔄 Creating initial investor record...');
+        debugPrint('✅ Investor record found');
+      } else {
+        debugPrint('⚠️ Creating initial investor record...');
         await _createInitialInvestorRecord(currentUser);
       }
 
-      if (profileResponse.isEmpty) {
-        debugPrint('🔄 Creating initial investor profile...');
-        await _createInitialInvestorProfile(currentUser.id);
+      // Load investor profile data
+      final profileData =
+          await _supabase
+              .from('investor_profiles')
+              .select('*')
+              .eq('investor_id', currentUser.id)
+              .maybeSingle();
+
+      if (profileData != null) {
+        debugPrint('✅ Profile data found, loading...');
+
+        // Load basic investor info
+        _portfolioSize = profileData['portfolio_size'];
+
+        // Load professional information (removed company_name and title)
+        _bioController.text = profileData['bio'] ?? '';
+        _linkedinUrlController.text = profileData['linkedin_url'] ?? '';
+
+        _fullNameController.text = profileData['full_name'] ?? '';
+        _placeOfResidenceController.text = profileData['country'] ?? '';
+        _age = profileData['age'];
+
+        // CRITICAL: Load investment preferences with proper casting
+        try {
+          final industriesData = profileData['industries'];
+          if (industriesData is List) {
+            _selectedIndustries = industriesData.cast<String>();
+            debugPrint(
+              '✅ Loaded ${_selectedIndustries.length} industries: $_selectedIndustries',
+            );
+          } else {
+            _selectedIndustries = [];
+            debugPrint('⚠️ No industries data found or invalid format');
+          }
+        } catch (e) {
+          debugPrint('❌ Error loading industries: $e');
+          _selectedIndustries = [];
+        }
+
+        try {
+          final geographicData = profileData['geographic_focus'];
+          if (geographicData is List) {
+            _selectedGeographicFocus = geographicData.cast<String>();
+            debugPrint(
+              '✅ Loaded ${_selectedGeographicFocus.length} geographic focus: $_selectedGeographicFocus',
+            );
+          } else {
+            _selectedGeographicFocus = [];
+            debugPrint('⚠️ No geographic focus data found or invalid format');
+          }
+        } catch (e) {
+          debugPrint('❌ Error loading geographic focus: $e');
+          _selectedGeographicFocus = [];
+        }
+
+        try {
+          final stagesData = profileData['preferred_stages'];
+          if (stagesData is List) {
+            _selectedPreferredStages = stagesData.cast<String>();
+            debugPrint(
+              '✅ Loaded ${_selectedPreferredStages.length} preferred stages: $_selectedPreferredStages',
+            );
+          } else {
+            _selectedPreferredStages = [];
+            debugPrint('⚠️ No preferred stages data found or invalid format');
+          }
+        } catch (e) {
+          debugPrint('❌ Error loading preferred stages: $e');
+          _selectedPreferredStages = [];
+        }
+
+        debugPrint('✅ Investor profile data loaded successfully');
+        debugPrint('   - Full Name: ${fullName ?? "Not Set"}');
+        debugPrint('   - Age: ${_age ?? "Not Set"}');
+        debugPrint('   - Place of Residence: ${placeOfResidence ?? "Not Set"}');
+        debugPrint('   - Bio: ${bio != null ? "✓" : "✗"}');
+      } else {
+        debugPrint('⚠️ No profile data found, creating initial profile...');
+        await _createInitialInvestorProfile(currentUser);
       }
 
       // Re-add listeners
@@ -298,43 +311,6 @@ class InvestorProfileProvider extends ChangeNotifier {
       // Re-add listeners even on error
       _addListeners();
       rethrow;
-    }
-  }
-
-  Future<void> _cleanupDuplicateProfiles(String userId) async {
-    try {
-      debugPrint(
-        '🧹 Cleaning up duplicate investor profiles for user: $userId',
-      );
-
-      // Get all profiles for this user
-      final profiles = await _supabase
-          .from('investor_profiles')
-          .select('id, created_at')
-          .eq('investor_id', userId)
-          .order('created_at', ascending: false);
-
-      if (profiles.length <= 1) {
-        debugPrint('✅ No duplicates found');
-        return;
-      }
-
-      // Keep the most recent one, delete the rest
-      final keepId = profiles.first['id'];
-      final deleteIds = profiles.skip(1).map((p) => p['id']).toList();
-
-      debugPrint('🔄 Keeping profile: $keepId');
-      debugPrint('🗑️ Deleting profiles: $deleteIds');
-
-      // Delete duplicate profiles
-      for (final id in deleteIds) {
-        await _supabase.from('investor_profiles').delete().eq('id', id);
-      }
-
-      debugPrint('✅ Cleaned up ${deleteIds.length} duplicate profiles');
-    } catch (e) {
-      debugPrint('❌ Error cleaning up duplicate profiles: $e');
-      // Don't throw - this is a cleanup operation
     }
   }
 
@@ -377,26 +353,21 @@ class InvestorProfileProvider extends ChangeNotifier {
   }
 
   // NEW: Create initial investor profile
-  Future<void> _createInitialInvestorProfile(String userId) async {
+  Future<void> _createInitialInvestorProfile(User user) async {
     try {
-      debugPrint('🔄 Creating initial investor profile for user: $userId');
+      debugPrint('🔄 Creating initial investor profile for user: ${user.id}');
 
-      // Check if profile already exists
-      final existing =
-          await _supabase
-              .from('investor_profiles')
-              .select('id')
-              .eq('investor_id', userId)
-              .maybeSingle();
-
-      if (existing != null) {
-        debugPrint('✅ Investor profile already exists');
-        return;
-      }
-
-      // Create new profile
       await _supabase.from('investor_profiles').insert({
-        'investor_id': userId,
+        'investor_id': user.id,
+        'bio': null,
+        'linkedin_url': null,
+        'full_name': null,
+        'age': null,
+        'country': null,
+        'industries': <String>[],
+        'geographic_focus': <String>[],
+        'preferred_stages': <String>[],
+        'portfolio_size': null,
         'created_at': DateTime.now().toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
       });
@@ -404,10 +375,7 @@ class InvestorProfileProvider extends ChangeNotifier {
       debugPrint('✅ Initial investor profile created successfully');
     } catch (e) {
       debugPrint('❌ Error creating initial investor profile: $e');
-      // Don't throw if it's a duplicate key error
-      if (!e.toString().contains('duplicate key')) {
-        rethrow;
-      }
+      rethrow;
     }
   }
 
@@ -425,34 +393,43 @@ class InvestorProfileProvider extends ChangeNotifier {
         case 'bio':
           await _saveToInvestorProfiles({'bio': bio});
           break;
-        case 'companyName':
-          await _saveToInvestorCompanies({'company_name': companyName});
-          break;
-        case 'title':
-          await _saveToInvestorCompanies({'investor_title_in_compnay': title});
-          break;
+
         case 'linkedinUrl':
           await _saveToInvestorProfiles({'linkedin_url': linkedinUrl});
           break;
-        case 'websiteUrl':
-          await _saveToInvestorCompanies({'website_url': websiteUrl});
+
+        case 'fullName': // NEW
+          await _saveToInvestorProfiles({'full_name': fullName});
           break;
+
+        case 'age': // NEW
+          await _saveToInvestorProfiles({'age': _age});
+          break;
+
+        case 'placeOfResidence': // NEW
+          await _saveToInvestorProfiles({'country': placeOfResidence});
+          break;
+
         case 'industries':
           await _saveToInvestorProfiles({'industries': _selectedIndustries});
           break;
+
         case 'geographicFocus':
           await _saveToInvestorProfiles({
             'geographic_focus': _selectedGeographicFocus,
           });
           break;
+
         case 'preferredStages':
           await _saveToInvestorProfiles({
             'preferred_stages': _selectedPreferredStages,
           });
           break;
+
         case 'portfolioSize':
           await _saveToInvestorProfiles({'portfolio_size': _portfolioSize});
           break;
+
         case 'profileImage':
           await _saveProfileImage();
           break;
@@ -492,25 +469,6 @@ class InvestorProfileProvider extends ChangeNotifier {
   }
 
   // Save to investor_companies table
-  Future<void> _saveToInvestorCompanies(Map<String, dynamic> data) async {
-    final User? currentUser = _supabase.auth.currentUser;
-    if (currentUser == null) return;
-
-    data['updated_at'] = DateTime.now().toIso8601String();
-
-    // First get the investor_profile_id
-    final profile =
-        await _supabase
-            .from('investor_profiles')
-            .select('id')
-            .eq('investor_id', currentUser.id)
-            .single();
-
-    await _supabase.from('investor_companies').upsert({
-      'investor_id': profile['id'],
-      ...data,
-    });
-  }
 
   // Save profile image
   Future<void> _saveProfileImage() async {
@@ -542,24 +500,29 @@ class InvestorProfileProvider extends ChangeNotifier {
     _onFieldChanged('bio');
   }
 
-  void updateCompanyName(String value) {
-    _companyNameController.text = value;
-    _onFieldChanged('companyName');
-  }
-
-  void updateTitle(String value) {
-    _titleController.text = value;
-    _onFieldChanged('title');
-  }
-
   void updateLinkedinUrl(String value) {
     _linkedinUrlController.text = value;
     _onFieldChanged('linkedinUrl');
   }
 
-  void updateWebsiteUrl(String value) {
-    _websiteUrlController.text = value;
-    _onFieldChanged('websiteUrl');
+  void updateFullName(String value) {
+    _fullNameController.text = value;
+    _onFieldChanged('fullName');
+  }
+
+  void updateAge(int? value) {
+    _age = value;
+    _dirtyFields.add('age');
+    notifyListeners();
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(seconds: 1), () {
+      saveField('age');
+    });
+  }
+
+  void updatePlaceOfResidence(String value) {
+    _placeOfResidenceController.text = value;
+    _onFieldChanged('placeOfResidence');
   }
 
   void updatePortfolioSize(int? size) {
@@ -701,22 +664,37 @@ class InvestorProfileProvider extends ChangeNotifier {
     return null;
   }
 
-  String? validateCompanyName(String? value) {
+  String? validateFullName(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Please enter your company/firm name';
+      return 'Please enter your full name';
     }
     if (value.trim().length < 2) {
-      return 'Company name must be at least 2 characters';
+      return 'Full name must be at least 2 characters';
     }
     return null;
   }
 
-  String? validateTitle(String? value) {
+  String? validateAge(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Please enter your job title';
+      return null; // Age is optional
+    }
+
+    final age = int.tryParse(value);
+    if (age == null) {
+      return 'Please enter a valid age';
+    }
+    if (age < 18 || age > 120) {
+      return 'Age must be between 18 and 120';
+    }
+    return null;
+  }
+
+  String? validatePlaceOfResidence(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return null; // Optional field
     }
     if (value.trim().length < 2) {
-      return 'Title must be at least 2 characters';
+      return 'Place of residence must be at least 2 characters';
     }
     return null;
   }
@@ -795,18 +773,22 @@ class InvestorProfileProvider extends ChangeNotifier {
 
   void _addListeners() {
     _bioController.addListener(() => _onFieldChanged('bio'));
-    _companyNameController.addListener(() => _onFieldChanged('companyName'));
-    _titleController.addListener(() => _onFieldChanged('title'));
     _linkedinUrlController.addListener(() => _onFieldChanged('linkedinUrl'));
-    _websiteUrlController.addListener(() => _onFieldChanged('websiteUrl'));
+    _fullNameController.addListener(() => _onFieldChanged('fullName')); // NEW
+    _placeOfResidenceController.addListener(
+      () => _onFieldChanged('placeOfResidence'),
+    ); // NEW
   }
 
   void _removeListeners() {
     _bioController.removeListener(() => _onFieldChanged('bio'));
-    _companyNameController.removeListener(() => _onFieldChanged('companyName'));
-    _titleController.removeListener(() => _onFieldChanged('title'));
     _linkedinUrlController.removeListener(() => _onFieldChanged('linkedinUrl'));
-    _websiteUrlController.removeListener(() => _onFieldChanged('websiteUrl'));
+    _fullNameController.removeListener(
+      () => _onFieldChanged('fullName'),
+    ); // NEW
+    _placeOfResidenceController.removeListener(
+      () => _onFieldChanged('placeOfResidence'),
+    );
   }
 
   // Reset provider state
@@ -815,12 +797,12 @@ class InvestorProfileProvider extends ChangeNotifier {
     _removeListeners();
 
     _bioController.clear();
-    _companyNameController.clear();
-    _titleController.clear();
     _linkedinUrlController.clear();
-    _websiteUrlController.clear();
     _profileImage = null;
     _profileImageUrl = null;
+    _fullNameController.clear(); // NEW
+    _placeOfResidenceController.clear(); // NEW
+    _age = null; // NEW
     _selectedIndustries.clear();
     _selectedGeographicFocus.clear();
     _portfolioSize = null;
@@ -848,10 +830,9 @@ class InvestorProfileProvider extends ChangeNotifier {
     _removeListeners();
     _saveTimer?.cancel();
     _bioController.dispose();
-    _companyNameController.dispose();
-    _titleController.dispose();
+    _fullNameController.dispose(); // NEW
+    _placeOfResidenceController.dispose();
     _linkedinUrlController.dispose();
-    _websiteUrlController.dispose();
     super.dispose();
   }
 }

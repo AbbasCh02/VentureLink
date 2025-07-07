@@ -164,11 +164,11 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
 
       // Check if profile is complete
       if (!provider.isProfileComplete) {
-        // Show specific validation errors
+        // Show specific validation errors - REMOVED company name and title
         List<String> missingFields = [];
-        if (provider.bio == null) missingFields.add('Professional Bio');
-        if (provider.companyName == null) missingFields.add('Company Name');
-        if (provider.title == null) missingFields.add('Job Title');
+        if (provider.bio == null || provider.bio!.trim().isEmpty) {
+          missingFields.add('Professional Bio');
+        }
         if (provider.selectedIndustries.isEmpty) {
           missingFields.add('Preferred Industries');
         }
@@ -192,10 +192,10 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
       // Save profile
       await provider.saveProfile();
 
-      // Call callback if provided
+      // Call callback if provided - UPDATED to not pass companyName
       widget.onProfileUpdate?.call(
         provider.portfolioSize,
-        provider.companyName,
+        null, // No longer passing company name since it's in companies table
       );
 
       // Show success message
@@ -381,6 +381,19 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
                                 },
                               ),
                             ),
+                            const SizedBox(height: 24),
+                            _buildSectionCard(
+                              title: 'Personal Info',
+                              child: Column(
+                                children: [
+                                  _buildFullnameField(provider),
+                                  const SizedBox(height: 20),
+                                  _buildAgeSelector(provider),
+                                  const SizedBox(height: 20),
+                                  _buildCountryField(provider),
+                                ],
+                              ),
+                            ),
 
                             // Investment Preferences Section
                             const SizedBox(height: 24),
@@ -416,6 +429,258 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
           ),
         );
       },
+    );
+  }
+
+  Widget _buildAgeSelector(InvestorProfileProvider provider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Age',
+          style: TextStyle(
+            color: Colors.grey[300],
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          initialValue: provider.portfolioSize?.toString() ?? '',
+          keyboardType: TextInputType.number,
+          cursorColor: const Color(0xFF65c6f4),
+          style: const TextStyle(color: Colors.white, fontSize: 16),
+          decoration: InputDecoration(
+            labelText: 'Enter your age.',
+            labelStyle: TextStyle(
+              color: Colors.grey[400],
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+            prefixIcon: const Icon(
+              Icons.numbers,
+              color: Color(0xFF65c6f4),
+              size: 20,
+            ),
+            filled: true,
+            fillColor: Colors.grey[800]!.withAlpha(204), // same as 0.8
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: Color(0xFF65c6f4), width: 2),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: Colors.red, width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 16,
+            ),
+          ),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Please enter your age.';
+            }
+            final number = int.tryParse(value);
+            if (number == null) {
+              return 'Please enter a valid number.';
+            }
+            if (number < 0) {
+              return 'You did that and still not even born CRAZY!';
+            }
+            if (number > 1000) {
+              return 'Come on no lives that much but noah.';
+            }
+            return null;
+          },
+          onChanged: (value) {
+            final number = int.tryParse(value);
+            if (number != null) {
+              provider.updatePortfolioSize(number);
+            }
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFullnameField(InvestorProfileProvider provider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Additional Information',
+          style: TextStyle(
+            color: Colors.grey[300],
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(25),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: TextFormField(
+            keyboardType: TextInputType.text,
+            cursorColor: const Color(0xFF65c6f4),
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+            decoration: InputDecoration(
+              labelText: 'Enter additional information',
+              labelStyle: TextStyle(
+                color: Colors.grey[400],
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+              hintText: 'Any additional details you\'d like to share',
+              hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+              prefixIcon: const Icon(
+                Icons.text_fields,
+                color: Color(0xFF65c6f4),
+                size: 20,
+              ),
+              filled: true,
+              fillColor: Colors.grey[800]!.withAlpha(204), // same as 0.8
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(
+                  color: Color(0xFF65c6f4),
+                  width: 2,
+                ),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Colors.red, width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 16,
+              ),
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return null; // Optional field
+              }
+
+              final trimmedValue = value.trim();
+
+              // Basic text validation
+              if (trimmedValue.length < 2) {
+                return 'Please enter at least 2 characters';
+              }
+
+              if (trimmedValue.length > 500) {
+                return 'Please keep it under 500 characters';
+              }
+
+              return null;
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCountryField(InvestorProfileProvider provider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Additional Information',
+          style: TextStyle(
+            color: Colors.grey[300],
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(25),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: TextFormField(
+            keyboardType: TextInputType.text,
+            cursorColor: const Color(0xFF65c6f4),
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+            decoration: InputDecoration(
+              labelText: 'Place of Origin',
+              labelStyle: TextStyle(
+                color: Colors.grey[400],
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+              hintText: 'Enter your country ',
+              hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+              prefixIcon: const Icon(
+                Icons.text_fields,
+                color: Color(0xFF65c6f4),
+                size: 20,
+              ),
+              filled: true,
+              fillColor: Colors.grey[800]!.withAlpha(204), // same as 0.8
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(
+                  color: Color(0xFF65c6f4),
+                  width: 2,
+                ),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Colors.red, width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 16,
+              ),
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return null; // Optional field
+              }
+
+              final trimmedValue = value.trim();
+
+              // Basic text validation
+              if (trimmedValue.length < 2) {
+                return 'Please enter at least 2 characters';
+              }
+
+              if (trimmedValue.length > 500) {
+                return 'Please keep it under 500 characters';
+              }
+
+              return null;
+            },
+          ),
+        ),
+      ],
     );
   }
 

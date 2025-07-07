@@ -265,8 +265,9 @@ class InvestorCompaniesProvider with ChangeNotifier {
       return;
     }
 
-    if (_investorProfileId == null) {
-      _error = 'Investor profile not found';
+    final User? currentUser = _supabase.auth.currentUser;
+    if (currentUser == null) {
+      _error = 'No authenticated user found';
       notifyListeners();
       return;
     }
@@ -279,7 +280,7 @@ class InvestorCompaniesProvider with ChangeNotifier {
       debugPrint('🔄 Adding new company: ${_companyNameController.text}');
 
       final companyData = {
-        'investor_id': _investorProfileId!,
+        'investor_id': currentUser.id,
         'company_name': _companyNameController.text.trim(),
         'investor_title_in_company': _titleController.text.trim(),
         'website_url':
