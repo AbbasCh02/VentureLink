@@ -12,8 +12,7 @@ class InvestorProfileProvider extends ChangeNotifier {
   final TextEditingController _bioController = TextEditingController();
   final TextEditingController _linkedinUrlController = TextEditingController();
   final TextEditingController _fullNameController = TextEditingController();
-  final TextEditingController _placeOfResidenceController =
-      TextEditingController();
+  final TextEditingController _originController = TextEditingController();
 
   // Private state variables
   String? _profileImageUrl;
@@ -97,8 +96,7 @@ class InvestorProfileProvider extends ChangeNotifier {
   TextEditingController get bioController => _bioController;
   TextEditingController get linkedinUrlController => _linkedinUrlController;
   TextEditingController get fullNameController => _fullNameController;
-  TextEditingController get placeOfResidenceController =>
-      _placeOfResidenceController;
+  TextEditingController get originController => _originController;
 
   String? get bio => _bioController.text.isEmpty ? null : _bioController.text;
   String? get linkedinUrl =>
@@ -106,10 +104,8 @@ class InvestorProfileProvider extends ChangeNotifier {
 
   String? get fullName =>
       _fullNameController.text.isEmpty ? null : _fullNameController.text;
-  String? get placeOfResidence =>
-      _placeOfResidenceController.text.isEmpty
-          ? null
-          : _placeOfResidenceController.text;
+  String? get origin =>
+      _originController.text.isEmpty ? null : _originController.text;
   int? get age => _age;
 
   List<String> get selectedIndustries => List.unmodifiable(_selectedIndustries);
@@ -240,7 +236,7 @@ class InvestorProfileProvider extends ChangeNotifier {
         _linkedinUrlController.text = profileData['linkedin_url'] ?? '';
 
         _fullNameController.text = profileData['full_name'] ?? '';
-        _placeOfResidenceController.text = profileData['country'] ?? '';
+        _originController.text = profileData['country'] ?? '';
         _age = profileData['age'];
 
         // CRITICAL: Load investment preferences with proper casting
@@ -295,7 +291,7 @@ class InvestorProfileProvider extends ChangeNotifier {
         debugPrint('✅ Investor profile data loaded successfully');
         debugPrint('   - Full Name: ${fullName ?? "Not Set"}');
         debugPrint('   - Age: ${_age ?? "Not Set"}');
-        debugPrint('   - Place of Residence: ${placeOfResidence ?? "Not Set"}');
+        debugPrint('   - Place of Residence: ${origin ?? "Not Set"}');
         debugPrint('   - Bio: ${bio != null ? "✓" : "✗"}');
       } else {
         debugPrint('⚠️ No profile data found, creating initial profile...');
@@ -406,8 +402,8 @@ class InvestorProfileProvider extends ChangeNotifier {
           await _saveToInvestorProfiles({'age': _age});
           break;
 
-        case 'placeOfResidence': // NEW
-          await _saveToInvestorProfiles({'country': placeOfResidence});
+        case 'origin': // NEW
+          await _saveToInvestorProfiles({'country': origin});
           break;
 
         case 'industries':
@@ -520,9 +516,9 @@ class InvestorProfileProvider extends ChangeNotifier {
     });
   }
 
-  void updatePlaceOfResidence(String value) {
-    _placeOfResidenceController.text = value;
-    _onFieldChanged('placeOfResidence');
+  void updateorigin(String value) {
+    _originController.text = value;
+    _onFieldChanged('origin');
   }
 
   void updatePortfolioSize(int? size) {
@@ -689,7 +685,7 @@ class InvestorProfileProvider extends ChangeNotifier {
     return null;
   }
 
-  String? validatePlaceOfResidence(String? value) {
+  String? validateorigin(String? value) {
     if (value == null || value.trim().isEmpty) {
       return null; // Optional field
     }
@@ -775,9 +771,7 @@ class InvestorProfileProvider extends ChangeNotifier {
     _bioController.addListener(() => _onFieldChanged('bio'));
     _linkedinUrlController.addListener(() => _onFieldChanged('linkedinUrl'));
     _fullNameController.addListener(() => _onFieldChanged('fullName')); // NEW
-    _placeOfResidenceController.addListener(
-      () => _onFieldChanged('placeOfResidence'),
-    ); // NEW
+    _originController.addListener(() => _onFieldChanged('origin')); // NEW
   }
 
   void _removeListeners() {
@@ -786,9 +780,7 @@ class InvestorProfileProvider extends ChangeNotifier {
     _fullNameController.removeListener(
       () => _onFieldChanged('fullName'),
     ); // NEW
-    _placeOfResidenceController.removeListener(
-      () => _onFieldChanged('placeOfResidence'),
-    );
+    _originController.removeListener(() => _onFieldChanged('origin'));
   }
 
   // Reset provider state
@@ -801,7 +793,7 @@ class InvestorProfileProvider extends ChangeNotifier {
     _profileImage = null;
     _profileImageUrl = null;
     _fullNameController.clear(); // NEW
-    _placeOfResidenceController.clear(); // NEW
+    _originController.clear(); // NEW
     _age = null; // NEW
     _selectedIndustries.clear();
     _selectedGeographicFocus.clear();
@@ -831,7 +823,7 @@ class InvestorProfileProvider extends ChangeNotifier {
     _saveTimer?.cancel();
     _bioController.dispose();
     _fullNameController.dispose(); // NEW
-    _placeOfResidenceController.dispose();
+    _originController.dispose();
     _linkedinUrlController.dispose();
     super.dispose();
   }

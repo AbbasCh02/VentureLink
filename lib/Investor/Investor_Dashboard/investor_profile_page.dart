@@ -164,35 +164,49 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
 
       // Check if profile is complete
       if (!provider.isProfileComplete) {
-        // Show specific validation errors - REMOVED company name and title
+        // Show specific validation errors - INCLUDING full name
         List<String> missingFields = [];
+
+        // Check Full Name (was missing before)
+        if (provider.fullName == null || provider.fullName!.trim().isEmpty) {
+          missingFields.add('Full Name');
+        }
+
+        // Check Professional Bio
         if (provider.bio == null || provider.bio!.trim().isEmpty) {
           missingFields.add('Professional Bio');
         }
+
+        // Check Preferred Industries
         if (provider.selectedIndustries.isEmpty) {
           missingFields.add('Preferred Industries');
         }
+
+        // Check Geographic Focus
         if (provider.selectedGeographicFocus.isEmpty) {
           missingFields.add('Geographic Focus');
         }
 
-        String errorMessage =
-            'Please complete the following fields:\n• ${missingFields.join('\n• ')}';
+        // Only show error if there are actually missing fields
+        if (missingFields.isNotEmpty) {
+          String errorMessage =
+              'Please complete the following fields:\n• ${missingFields.join('\n• ')}';
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-        return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+          return;
+        }
       }
 
       // Save profile
       await provider.saveProfile();
 
-      // Call callback if provided - UPDATED to not pass companyName
+      // Call callback if provided
       widget.onProfileUpdate?.call(
         provider.portfolioSize,
         null, // No longer passing company name since it's in companies table
@@ -386,7 +400,7 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
                               title: 'Personal Info',
                               child: Column(
                                 children: [
-                                  _buildFullnameField(provider),
+                                  _buildActualFullNameField(provider),
                                   const SizedBox(height: 20),
                                   _buildAgeSelector(provider),
                                   const SizedBox(height: 20),
@@ -446,24 +460,28 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
         ),
         const SizedBox(height: 12),
         TextFormField(
-          initialValue: provider.portfolioSize?.toString() ?? '',
+          initialValue:
+              provider.age?.toString() ??
+              '', // FIXED: Use age instead of portfolioSize
           keyboardType: TextInputType.number,
           cursorColor: const Color(0xFF65c6f4),
           style: const TextStyle(color: Colors.white, fontSize: 16),
           decoration: InputDecoration(
-            labelText: 'Enter your age.',
+            labelText: 'Enter your age',
             labelStyle: TextStyle(
               color: Colors.grey[400],
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
+            hintText: 'e.g., 28',
+            hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
             prefixIcon: const Icon(
-              Icons.numbers,
+              Icons.cake,
               color: Color(0xFF65c6f4),
               size: 20,
             ),
             filled: true,
-            fillColor: Colors.grey[800]!.withAlpha(204), // same as 0.8
+            fillColor: Colors.grey[800]!.withAlpha(204),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide.none,
@@ -481,127 +499,23 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
               vertical: 16,
             ),
           ),
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return 'Please enter your age.';
-            }
-            final number = int.tryParse(value);
-            if (number == null) {
-              return 'Please enter a valid number.';
-            }
-            if (number < 0) {
-              return 'You did that and still not even born CRAZY!';
-            }
-            if (number > 1000) {
-              return 'Come on no lives that much but noah.';
-            }
-            return null;
-          },
+          validator: provider.validateAge,
           onChanged: (value) {
-            final number = int.tryParse(value);
-            if (number != null) {
-              provider.updatePortfolioSize(number);
-            }
+            final age = int.tryParse(value);
+            provider.updateAge(age); // This will save automatically
           },
         ),
       ],
     );
   }
 
-  Widget _buildFullnameField(InvestorProfileProvider provider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Additional Information',
-          style: TextStyle(
-            color: Colors.grey[300],
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(25),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: TextFormField(
-            keyboardType: TextInputType.text,
-            cursorColor: const Color(0xFF65c6f4),
-            style: const TextStyle(color: Colors.white, fontSize: 16),
-            decoration: InputDecoration(
-              labelText: 'Enter additional information',
-              labelStyle: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-              hintText: 'Any additional details you\'d like to share',
-              hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
-              prefixIcon: const Icon(
-                Icons.text_fields,
-                color: Color(0xFF65c6f4),
-                size: 20,
-              ),
-              filled: true,
-              fillColor: Colors.grey[800]!.withAlpha(204), // same as 0.8
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(
-                  color: Color(0xFF65c6f4),
-                  width: 2,
-                ),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Colors.red, width: 2),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 16,
-              ),
-            ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return null; // Optional field
-              }
-
-              final trimmedValue = value.trim();
-
-              // Basic text validation
-              if (trimmedValue.length < 2) {
-                return 'Please enter at least 2 characters';
-              }
-
-              if (trimmedValue.length > 500) {
-                return 'Please keep it under 500 characters';
-              }
-
-              return null;
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
+  // Fix 2: Update the place of residence field to use correct controller
   Widget _buildCountryField(InvestorProfileProvider provider) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Additional Information',
+          'Place of Residence',
           style: TextStyle(
             color: Colors.grey[300],
             fontSize: 15,
@@ -621,25 +535,28 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
             ],
           ),
           child: TextFormField(
+            controller:
+                provider
+                    .originController, // CRITICAL: Use the correct controller
             keyboardType: TextInputType.text,
             cursorColor: const Color(0xFF65c6f4),
             style: const TextStyle(color: Colors.white, fontSize: 16),
             decoration: InputDecoration(
-              labelText: 'Place of Origin',
+              labelText: 'Enter your location',
               labelStyle: TextStyle(
                 color: Colors.grey[400],
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
-              hintText: 'Enter your country ',
+              hintText: 'e.g., New York, USA',
               hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
               prefixIcon: const Icon(
-                Icons.text_fields,
+                Icons.location_on,
                 color: Color(0xFF65c6f4),
                 size: 20,
               ),
               filled: true,
-              fillColor: Colors.grey[800]!.withAlpha(204), // same as 0.8
+              fillColor: Colors.grey[800]!.withAlpha(204),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide.none,
@@ -660,24 +577,82 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
                 vertical: 16,
               ),
             ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return null; // Optional field
-              }
+            validator: provider.validateorigin,
+          ),
+        ),
+      ],
+    );
+  }
 
-              final trimmedValue = value.trim();
-
-              // Basic text validation
-              if (trimmedValue.length < 2) {
-                return 'Please enter at least 2 characters';
-              }
-
-              if (trimmedValue.length > 500) {
-                return 'Please keep it under 500 characters';
-              }
-
-              return null;
-            },
+  Widget _buildActualFullNameField(InvestorProfileProvider provider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Full Name',
+          style: TextStyle(
+            color: Colors.grey[300],
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(25),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: TextFormField(
+            controller:
+                provider
+                    .fullNameController, // CRITICAL: Use the correct controller
+            keyboardType: TextInputType.text,
+            cursorColor: const Color(0xFF65c6f4),
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+            decoration: InputDecoration(
+              labelText: 'Enter your full name',
+              labelStyle: TextStyle(
+                color: Colors.grey[400],
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+              hintText: 'e.g., John Doe',
+              hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+              prefixIcon: const Icon(
+                Icons.person,
+                color: Color(0xFF65c6f4),
+                size: 20,
+              ),
+              filled: true,
+              fillColor: Colors.grey[800]!.withAlpha(204),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(
+                  color: Color(0xFF65c6f4),
+                  width: 2,
+                ),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Colors.red, width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 16,
+              ),
+            ),
+            validator:
+                provider.validateFullName, // Use the provider's validation
           ),
         ),
       ],

@@ -319,101 +319,43 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                   ),
                 ),
               ),
-
-              // NEW: Full Name Section (if available)
-              if (provider.fullName != null &&
-                  provider.fullName!.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Center(
-                  child: Text(
-                    provider.fullName!,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-
-              // NEW: Age and Location row (if available)
-              if ((provider.age != null) ||
-                  (provider.placeOfResidence != null &&
-                      provider.placeOfResidence!.isNotEmpty)) ...[
-                const SizedBox(height: 8),
-                Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (provider.age != null) ...[
-                        Icon(Icons.cake, color: Colors.grey[400], size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${provider.age} years old',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[400],
-                          ),
-                        ),
-                      ],
-                      if (provider.age != null &&
-                          provider.placeOfResidence != null &&
-                          provider.placeOfResidence!.isNotEmpty) ...[
-                        const SizedBox(width: 16),
-                        Text('•', style: TextStyle(color: Colors.grey[400])),
-                        const SizedBox(width: 16),
-                      ],
-                      if (provider.placeOfResidence != null &&
-                          provider.placeOfResidence!.isNotEmpty) ...[
-                        Icon(
-                          Icons.location_on,
-                          color: Colors.grey[400],
-                          size: 16,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          provider.placeOfResidence!,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[400],
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-
               const SizedBox(height: 24),
 
-              // Bio Section
+              // Full Name Section (separate line)
               _buildInfoSection(
-                icon: Icons.person_outline,
-                title: 'Professional Bio',
-                content: provider.bio ?? 'Not Set',
+                icon: Icons.person,
+                title: 'Full Name',
+                content: provider.fullName ?? 'Not Set',
                 borderColor: const Color(0xFF65c6f4),
-                isSet: provider.bio != null && provider.bio!.isNotEmpty,
+                isSet:
+                    provider.fullName != null && provider.fullName!.isNotEmpty,
               ),
               const SizedBox(height: 16),
 
-              // Two-column layout for LinkedIn and Portfolio
+              // Place of Residence Section (separate line)
+              _buildInfoSection(
+                icon: Icons.location_on,
+                title: 'Origin',
+                content: provider.origin ?? 'Not Set',
+                borderColor: const Color(0xFF4CAF50),
+                isSet: provider.origin != null && provider.origin!.isNotEmpty,
+              ),
+              const SizedBox(height: 16),
+
+              // Age and Portfolio Size Row (same row)
               Row(
                 children: [
-                  // LinkedIn Section
+                  // Age Section
                   Expanded(
                     child: _buildInfoSection(
-                      icon: Icons.link,
-                      title: 'LinkedIn',
+                      icon: Icons.cake,
+                      title: 'Age',
                       content:
-                          provider.linkedinUrl != null &&
-                                  provider.linkedinUrl!.isNotEmpty
-                              ? 'Connected'
+                          provider.age != null
+                              ? '${provider.age} years'
                               : 'Not Set',
-                      borderColor: const Color(0xFF4CAF50),
-                      isSet:
-                          provider.linkedinUrl != null &&
-                          provider.linkedinUrl!.isNotEmpty,
+                      borderColor: const Color(0xFFFF9800),
+                      isSet: provider.age != null,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -428,6 +370,32 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+
+              // Bio Section (separate line)
+              _buildInfoSection(
+                icon: Icons.person_outline,
+                title: 'Professional Bio',
+                content: provider.bio ?? 'Not Set',
+                borderColor: const Color(0xFF65c6f4),
+                isSet: provider.bio != null && provider.bio!.isNotEmpty,
+              ),
+              const SizedBox(height: 16),
+
+              // LinkedIn Section (separate line)
+              _buildInfoSection(
+                icon: Icons.link,
+                title: 'LinkedIn',
+                content:
+                    provider.linkedinUrl != null &&
+                            provider.linkedinUrl!.isNotEmpty
+                        ? 'Connected'
+                        : 'Not Set',
+                borderColor: const Color(0xFF4CAF50),
+                isSet:
+                    provider.linkedinUrl != null &&
+                    provider.linkedinUrl!.isNotEmpty,
               ),
               const SizedBox(height: 24),
 
