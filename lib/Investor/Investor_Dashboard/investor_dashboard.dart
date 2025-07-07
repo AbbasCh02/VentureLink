@@ -229,271 +229,412 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     return Consumer<InvestorProfileProvider>(
       builder: (context, provider, child) {
         return Container(
-          margin: const EdgeInsets.only(bottom: 24),
-          padding: const EdgeInsets.all(24),
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.grey[900]!, Colors.grey[850]!],
+              colors: [
+                const Color(0xFF1a1a1a),
+                Colors.grey[900]!,
+                Colors.grey[850]!,
+              ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
+              stops: const [0.0, 0.5, 1.0],
             ),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: const Color(0xFF65c6f4).withValues(alpha: 0.3),
-              width: 1,
+              color: const Color(0xFF65c6f4).withValues(alpha: 0.2),
+              width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF65c6f4).withValues(alpha: 0.2),
+                color: const Color(0xFF65c6f4).withValues(alpha: 0.15),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+                spreadRadius: 1,
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Profile Section with Better Layout
+                _buildProfileSection(provider),
+                const SizedBox(height: 24),
+
+                // Personal Info Grid
+                _buildPersonalInfoGrid(provider),
+
+                const SizedBox(height: 24),
+
+                // Companies Section
+                _buildElegantCompaniesSection(),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildProfileSection(InvestorProfileProvider provider) {
+    return Row(
+      children: [
+        // Profile Picture
+        Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [
+                const Color(0xFF65c6f4).withValues(alpha: 0.3),
+                const Color(0xFF65c6f4).withValues(alpha: 0.1),
+              ],
+            ),
+            border: Border.all(color: const Color(0xFF65c6f4), width: 2.5),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF65c6f4).withValues(alpha: 0.3),
                 blurRadius: 15,
                 offset: const Offset(0, 8),
               ),
             ],
           ),
+          child: ClipOval(
+            child:
+                provider.profileImageUrl != null &&
+                        provider.profileImageUrl!.isNotEmpty
+                    ? Image.network(
+                      provider.profileImageUrl!,
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return _buildAvatarPlaceholder();
+                      },
+                    )
+                    : _buildAvatarPlaceholder(),
+          ),
+        ),
+        const SizedBox(width: 20),
+
+        // Name and Basic Info
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
+              // Full Name
+              if (provider.fullName != null &&
+                  provider.fullName!.isNotEmpty) ...[
+                Text(
+                  provider.fullName!,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+              ],
+
+              // Age and Location in a compact row
+              if ((provider.age != null) ||
+                  (provider.origin != null && provider.origin!.isNotEmpty)) ...[
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 6,
+                  children: [
+                    if (provider.age != null)
+                      _buildCompactInfoChip(
+                        icon: Icons.cake_outlined,
+                        label: '${provider.age} years',
+                        color: const Color(0xFFFF9800),
+                      ),
+                    if (provider.origin != null && provider.origin!.isNotEmpty)
+                      _buildCompactInfoChip(
+                        icon: Icons.location_on_outlined,
+                        label: provider.origin!,
+                        color: const Color(0xFF4CAF50),
+                      ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompactInfoChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: color,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPersonalInfoGrid(InvestorProfileProvider provider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Bio Section
+        _buildElegantInfoCard(
+          icon: Icons.person_outline,
+          title: 'Professional Bio',
+          content: provider.bio ?? 'Add your professional background...',
+          isSet: provider.bio != null && provider.bio!.isNotEmpty,
+          color: const Color(0xFF65c6f4),
+          maxLines: 3,
+        ),
+        const SizedBox(height: 12),
+
+        // Two column layout for LinkedIn and Portfolio
+        IntrinsicHeight(
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildElegantInfoCard(
+                  icon: Icons.link_outlined,
+                  title: 'LinkedIn',
+                  content:
+                      provider.linkedinUrl != null &&
+                              provider.linkedinUrl!.isNotEmpty
+                          ? 'Connected'
+                          : 'Not connected',
+                  isSet:
+                      provider.linkedinUrl != null &&
+                      provider.linkedinUrl!.isNotEmpty,
+                  color: const Color(0xFF0077B5),
+                  isCompact: true,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildElegantInfoCard(
+                  icon: Icons.account_balance_wallet_outlined,
+                  title: 'Portfolio Size',
+                  content: provider.portfolioSize?.toString() ?? 'Not set',
+                  isSet: provider.portfolioSize != null,
+                  color: const Color(0xFFFF9800),
+                  isCompact: true,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildElegantInfoCard({
+    required IconData icon,
+    required String title,
+    required String content,
+    required bool isSet,
+    required Color color,
+    bool isCompact = false,
+    int maxLines = 1,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(isCompact ? 14 : 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1a1a1a),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color:
+              isSet
+                  ? color.withValues(alpha: 0.4)
+                  : Colors.grey.withValues(alpha: 0.2),
+          width: 1.5,
+        ),
+        boxShadow: [
+          if (isSet)
+            BoxShadow(
+              color: color.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: isCompact ? 16 : 18, color: color),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: isCompact ? 12 : 13,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: isCompact ? 8 : 10),
+          Text(
+            content,
+            style: TextStyle(
+              fontSize: isCompact ? 11 : 12,
+              color: isSet ? Colors.grey[300] : Colors.grey[500],
+              fontWeight: isSet ? FontWeight.w500 : FontWeight.normal,
+              height: 1.3,
+            ),
+            maxLines: maxLines,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildElegantCompaniesSection() {
+    return Consumer<InvestorCompaniesProvider>(
+      builder: (context, companiesProvider, child) {
+        return Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                const Color(0xFF1a1a1a),
+                Colors.grey[900]!.withValues(alpha: 0.8),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: const Color(0xFF9C27B0).withValues(alpha: 0.4),
+              width: 1.5,
+            ),
+          ),
+          child: Column(
+            children: [
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF65c6f4).withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
+                      color: const Color(0xFF9C27B0).withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
-                      Icons.account_circle,
-                      color: Color(0xFF65c6f4),
-                      size: 24,
+                      Icons.business_outlined,
+                      color: Color(0xFF9C27B0),
+                      size: 18,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   const Expanded(
                     child: Text(
-                      'Investor Profile',
+                      'Companies & Positions',
                       style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF65c6f4),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF9C27B0),
                       ),
                     ),
                   ),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
+                    color: Colors.grey[400],
+                  ),
                 ],
               ),
-              const SizedBox(height: 24),
-
-              // Profile Picture Section
-              Center(
-                child: Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFF65c6f4),
-                      width: 3,
+              const SizedBox(height: 12),
+              Text(
+                companiesProvider.hasCompanies
+                    ? '${companiesProvider.companiesCount} companies added'
+                    : 'No companies added yet',
+                style: TextStyle(fontSize: 13, color: Colors.grey[400]),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const InvestorCompanyPage(),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF9C27B0),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF65c6f4).withValues(alpha: 0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
+                    elevation: 0,
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.visibility_outlined, size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'View Companies',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
-                  child: ClipOval(
-                    child:
-                        provider.profileImageUrl != null &&
-                                provider.profileImageUrl!.isNotEmpty
-                            ? Image.network(
-                              provider.profileImageUrl!,
-                              width: 120,
-                              height: 120,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return _buildAvatarPlaceholder();
-                              },
-                            )
-                            : _buildAvatarPlaceholder(),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Full Name Section (separate line)
-              _buildInfoSection(
-                icon: Icons.person,
-                title: 'Full Name',
-                content: provider.fullName ?? 'Not Set',
-                borderColor: const Color(0xFF65c6f4),
-                isSet:
-                    provider.fullName != null && provider.fullName!.isNotEmpty,
-              ),
-              const SizedBox(height: 16),
-
-              // Place of Residence Section (separate line)
-              _buildInfoSection(
-                icon: Icons.location_on,
-                title: 'Origin',
-                content: provider.origin ?? 'Not Set',
-                borderColor: const Color(0xFF4CAF50),
-                isSet: provider.origin != null && provider.origin!.isNotEmpty,
-              ),
-              const SizedBox(height: 16),
-
-              // Age and Portfolio Size Row (same row)
-              Row(
-                children: [
-                  // Age Section
-                  Expanded(
-                    child: _buildInfoSection(
-                      icon: Icons.cake,
-                      title: 'Age',
-                      content:
-                          provider.age != null
-                              ? '${provider.age} years'
-                              : 'Not Set',
-                      borderColor: const Color(0xFFFF9800),
-                      isSet: provider.age != null,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  // Portfolio Size Section
-                  Expanded(
-                    child: _buildInfoSection(
-                      icon: Icons.account_balance_wallet,
-                      title: 'Portfolio Size',
-                      content: provider.portfolioSize?.toString() ?? 'Not Set',
-                      borderColor: const Color(0xFFFF9800),
-                      isSet: provider.portfolioSize != null,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Bio Section (separate line)
-              _buildInfoSection(
-                icon: Icons.person_outline,
-                title: 'Professional Bio',
-                content: provider.bio ?? 'Not Set',
-                borderColor: const Color(0xFF65c6f4),
-                isSet: provider.bio != null && provider.bio!.isNotEmpty,
-              ),
-              const SizedBox(height: 16),
-
-              // LinkedIn Section (separate line)
-              _buildInfoSection(
-                icon: Icons.link,
-                title: 'LinkedIn',
-                content:
-                    provider.linkedinUrl != null &&
-                            provider.linkedinUrl!.isNotEmpty
-                        ? 'Connected'
-                        : 'Not Set',
-                borderColor: const Color(0xFF4CAF50),
-                isSet:
-                    provider.linkedinUrl != null &&
-                    provider.linkedinUrl!.isNotEmpty,
-              ),
-              const SizedBox(height: 24),
-
-              // Companies Button Section
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1a1a1a),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: const Color(0xFF9C27B0).withValues(alpha: 0.5),
-                    width: 2,
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF9C27B0,
-                            ).withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.business,
-                            color: Color(0xFF9C27B0),
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Text(
-                            'Companies & Positions',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF9C27B0),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Consumer<InvestorCompaniesProvider>(
-                      builder: (context, companiesProvider, child) {
-                        return Text(
-                          companiesProvider.hasCompanies
-                              ? '${companiesProvider.companiesCount} companies added'
-                              : 'No companies added yet',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[400],
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const InvestorCompanyPage(),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF9C27B0),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.arrow_forward, size: 20),
-                            SizedBox(width: 8),
-                            Text(
-                              'View Companies',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ),
             ],
@@ -503,75 +644,25 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     );
   }
 
-  // Helper widget for avatar placeholder
   Widget _buildAvatarPlaceholder() {
     return Container(
-      width: 120,
-      height: 120,
-      color: const Color(0xFF2a2a2a),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.person, color: Color(0xFF65c6f4), size: 40),
-          const SizedBox(height: 8),
-          Text(
-            'No Photo',
-            style: TextStyle(
-              color: Colors.grey[400],
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Helper widget for info sections
-  Widget _buildInfoSection({
-    required IconData icon,
-    required String title,
-    required String content,
-    required Color borderColor,
-    required bool isSet,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      width: 100,
+      height: 100,
       decoration: BoxDecoration(
-        color: const Color(0xFF1a1a1a),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor.withValues(alpha: 0.5), width: 2),
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF65c6f4).withValues(alpha: 0.3),
+            const Color(0xFF65c6f4).withValues(alpha: 0.1),
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: borderColor, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: borderColor,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            content,
-            style: TextStyle(
-              fontSize: 14,
-              color: isSet ? Colors.grey[300] : Colors.grey[500],
-              fontWeight: isSet ? FontWeight.w500 : FontWeight.normal,
-            ),
-            maxLines: content.length > 50 ? 3 : 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+      child: const Icon(
+        Icons.person_outline,
+        size: 36,
+        color: Color(0xFF65c6f4),
       ),
     );
   }

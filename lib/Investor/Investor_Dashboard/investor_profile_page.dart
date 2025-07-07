@@ -885,10 +885,6 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
     );
   }
 
-  // Add this widget to your investor_profile_page.dart
-
-  // Add this widget to your investor_profile_page.dart - matches your _buildSectionCard style
-
   Widget _buildInvestmentPreferencesCard(InvestorProfileProvider provider) {
     final selectedCount =
         provider.selectedIndustries.length +

@@ -115,43 +115,43 @@ class MyApp extends StatelessWidget {
         // CRITICAL: Unified Authentication Provider MUST be first
         ChangeNotifierProvider(
           create: (context) => UnifiedAuthProvider(),
-          lazy: false, // Initialize immediately
+          lazy: true, // Initialize immediately
         ),
 
         // Profile Overview Provider (company details: name, tagline, industry, region)
         ChangeNotifierProvider(
           create: (context) => StartupProfileOverviewProvider(),
-          lazy: false,
+          lazy: true,
         ),
 
         // Startup Profile Provider (funding, idea, pitch deck, profile image)
         ChangeNotifierProvider(
           create: (context) => StartupProfileProvider(),
-          lazy: false,
+          lazy: true,
         ),
 
         // Team Members Provider (team management)
         ChangeNotifierProvider(
           create: (context) => TeamMembersProvider(),
-          lazy: false,
+          lazy: true,
         ),
 
         // Business Model Canvas Provider
         ChangeNotifierProvider(
           create: (context) => BusinessModelCanvasProvider(),
-          lazy: false,
+          lazy: true,
         ),
 
         // Investor Profile Provider
         ChangeNotifierProvider(
           create: (context) => InvestorProfileProvider(),
-          lazy: false,
+          lazy: true,
         ),
 
         // ADD THIS: Investor Companies Provider
         ChangeNotifierProvider(
           create: (context) => InvestorCompaniesProvider(),
-          lazy: false,
+          lazy: true,
         ),
       ],
       child: MaterialApp(

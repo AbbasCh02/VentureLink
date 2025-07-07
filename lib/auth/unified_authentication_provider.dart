@@ -194,6 +194,7 @@ class UnifiedAuthProvider with ChangeNotifier {
   }
 
   /// Handle existing user by detecting their type and setting up the session
+  /// OPTIMIZED: Only update user record if actually needed
   Future<void> _handleExistingUser(User user) async {
     try {
       final userTypeString = await UserTypeService.detectUserType(user.id);
@@ -205,20 +206,64 @@ class UnifiedAuthProvider with ChangeNotifier {
         _isLoggedIn = true;
         _selectedUserType = userType;
 
-        // Update user record in appropriate table
-        await _createOrUpdateUserRecord(_currentUser!);
+        // OPTIMIZATION: Only update user record if it's been more than 1 hour since last login
+        final shouldUpdateRecord = await _shouldUpdateUserRecord(
+          user.id,
+          userType,
+        );
+
+        if (shouldUpdateRecord) {
+          debugPrint('🔄 Updating user record (last update was > 1 hour ago)');
+          await _createOrUpdateUserRecord(_currentUser!);
+        } else {
+          debugPrint('✅ Skipping user record update (recently updated)');
+        }
 
         _logger.i(
           '✅ Existing user loaded: ${_currentUser!.email} (${userType.name})',
         );
+        debugPrint(
+          '✅ Existing user loaded: ${_currentUser!.email} (${userType.name})',
+        );
       } else {
-        // User exists in auth but not in our tables - sign them out
+        // User not found in either table
         await _supabase.auth.signOut();
-        _logger.w('User found in auth but not in database tables - signed out');
+        _error = 'User account not found. Please contact support.';
       }
     } catch (e) {
-      _logger.e('Error handling existing user: $e');
-      await _supabase.auth.signOut();
+      _logger.e('Error handling signed in user: $e');
+      _error = 'Failed to load user data';
+    }
+  }
+
+  /// Check if we should update the user record
+  /// OPTIMIZATION: Only update if last_login_at is older than 1 hour
+  Future<bool> _shouldUpdateUserRecord(String userId, UserType userType) async {
+    try {
+      final tableName = userType == UserType.startup ? 'users' : 'investors';
+
+      final result =
+          await _supabase
+              .from(tableName)
+              .select('last_login_at')
+              .eq('id', userId)
+              .maybeSingle();
+
+      if (result != null && result['last_login_at'] != null) {
+        final lastLogin = DateTime.parse(result['last_login_at']);
+        final now = DateTime.now();
+        final difference = now.difference(lastLogin);
+
+        // Only update if last login was more than 1 hour ago
+        return difference.inHours >= 1;
+      }
+
+      // If no last_login_at found, we should update
+      return true;
+    } catch (e) {
+      debugPrint('❌ Error checking last login time: $e');
+      // If there's an error, err on the side of not updating
+      return false;
     }
   }
 
@@ -359,6 +404,7 @@ class UnifiedAuthProvider with ChangeNotifier {
   /// Create or update user record in the appropriate table based on user type
   /// Replace your existing _createOrUpdateUserRecord method with this fixed version
   /// Alternative version without storing results (simpler)
+  /// OPTIMIZED: Create or update user record only when necessary
   Future<void> _createOrUpdateUserRecord(AppUser user) async {
     if (_isCreatingUserRecord) {
       debugPrint('🔍 User record creation already in progress, skipping...');
@@ -366,29 +412,23 @@ class UnifiedAuthProvider with ChangeNotifier {
     }
 
     _isCreatingUserRecord = true;
-
     final tableName = user.userType == UserType.startup ? 'users' : 'investors';
 
     debugPrint(
-      '🔥 Starting user record creation for ${user.id} (${user.userType.name})',
+      '🔄 Starting user record update for ${user.id} (${user.userType.name})',
     );
-    debugPrint('🔍 Target table: $tableName');
 
     try {
       // Check if user record exists
       final existingUser =
           await _supabase
               .from(tableName)
-              .select('id, email, created_at')
+              .select('id, email, created_at, last_login_at')
               .eq('id', user.id)
               .maybeSingle();
 
-      debugPrint(
-        '🔍 Existing user check: ${existingUser != null ? "Found" : "Not found"}',
-      );
-
       if (existingUser == null) {
-        // Create new user record
+        // Create new user record (this should be rare for existing users)
         final insertData = <String, dynamic>{
           'id': user.id,
           'email': user.email,
@@ -402,95 +442,53 @@ class UnifiedAuthProvider with ChangeNotifier {
           'updated_at': DateTime.now().toIso8601String(),
         };
 
-        // Add user type specific fields
         if (user.userType == UserType.startup) {
           insertData['user_type'] = 'startup';
         } else if (user.userType == UserType.investor) {
           insertData['user_type'] = 'investor';
         }
 
-        debugPrint('🔥 Attempting INSERT into $tableName...');
-
-        try {
-          // Don't store result, just execute
-          await _supabase.from(tableName).insert(insertData);
-
-          debugPrint('✅ INSERT successful for ${user.email}');
-          _logger.i(
-            '✅ Created new ${user.userType.name} record for: ${user.email}',
-          );
-        } catch (insertError) {
-          debugPrint('❌ INSERT failed: $insertError');
-
-          // Handle duplicate key gracefully
-          if (insertError.toString().contains('duplicate key') ||
-              insertError.toString().contains('23505')) {
-            debugPrint('🔍 User record already exists (duplicate key)');
-            _logger.i('User record already exists for: ${user.email}');
-            return;
-          }
-
-          throw Exception(
-            'Failed to insert ${user.userType.name} user: $insertError',
-          );
-        }
+        await _supabase.from(tableName).insert(insertData);
+        debugPrint('✅ Created new user record for ${user.email}');
+        _logger.i(
+          '✅ Created new ${user.userType.name} record for: ${user.email}',
+        );
       } else {
-        // Update existing user record
-        debugPrint('🔄 Updating existing user record...');
+        // Update existing user record with minimal data
+        final updateData = <String, dynamic>{
+          'last_login_at': user.lastLoginAt.toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        };
 
-        try {
-          final updateData = <String, dynamic>{
-            'last_login_at': user.lastLoginAt.toIso8601String(),
-          };
-
-          // Only update username if we have a full name
-          if (user.fullName.isNotEmpty) {
+        // Only update username if we have a full name and it's different
+        if (user.fullName.isNotEmpty) {
+          final currentUsername = existingUser['username'] ?? '';
+          if (currentUsername != user.fullName) {
             updateData['username'] = user.fullName;
-          }
-
-          // Don't store result, just execute
-          await _supabase.from(tableName).update(updateData).eq('id', user.id);
-
-          debugPrint('✅ UPDATE successful for ${user.email}');
-          _logger.i(
-            '✅ Updated ${user.userType.name} record for: ${user.email}',
-          );
-        } catch (updateError) {
-          debugPrint('❌ UPDATE failed: $updateError');
-
-          // Handle trigger errors gracefully
-          if (updateError.toString().contains('last_activity_at') ||
-              updateError.toString().contains('has no field')) {
             debugPrint(
-              '⚠️ Database trigger error detected - continuing anyway',
+              '🔄 Updating username from "$currentUsername" to "${user.fullName}"',
             );
-            debugPrint('⚠️ This indicates a database schema/trigger issue');
-            _logger.w(
-              'Database trigger error for user ${user.email}: $updateError',
-            );
-            return;
           }
-
-          throw Exception(
-            'Failed to update ${user.userType.name} user: $updateError',
-          );
         }
+
+        await _supabase.from(tableName).update(updateData).eq('id', user.id);
+        debugPrint('✅ Updated user record for ${user.email}');
+        _logger.i('✅ Updated ${user.userType.name} record for: ${user.email}');
       }
     } catch (e) {
-      debugPrint('❌ Database operation failed:');
-      debugPrint('   Error: $e');
-      debugPrint('   User Type: ${user.userType.name}');
-      debugPrint('   Table: $tableName');
-      debugPrint('   User ID: ${user.id}');
-      debugPrint('   Email: ${user.email}');
+      debugPrint('❌ Error in user record operation: $e');
 
-      _error = 'Failed to create user record: ${e.toString()}';
-      _logger.e('Error creating/updating user record: $e');
+      // Handle duplicate key gracefully
+      if (e.toString().contains('duplicate key') ||
+          e.toString().contains('23505')) {
+        debugPrint('🔍 User record already exists (duplicate key)');
+        _logger.i('User record already exists for: ${user.email}');
+        return;
+      }
 
-      notifyListeners();
+      throw Exception('Failed to manage ${user.userType.name} user record: $e');
     } finally {
       _isCreatingUserRecord = false;
-      debugPrint('🔄 User record creation process completed');
     }
   }
 
