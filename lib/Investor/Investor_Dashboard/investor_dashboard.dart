@@ -1,7 +1,5 @@
 // lib/Investor/investor_dashboard.dart
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../auth/unified_authentication_provider.dart';
 import 'investor_profile_page.dart';
 
 class InvestorDashboard extends StatefulWidget {

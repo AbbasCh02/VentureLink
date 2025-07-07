@@ -1,6 +1,7 @@
 // lib/Investor/Investor_Dashboard/investor_bio.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:venturelink/Investor/Investor_Dashboard/investor_company_page.dart';
 import '../Providers/investor_profile_provider.dart';
 
 class InvestorBio extends StatefulWidget {
@@ -135,11 +136,11 @@ class _InvestorBioState extends State<InvestorBio>
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF65c6f4), Color(0xFF5bb3e8)],
+          colors: [Color(0xFF65c6f4), Color(0xFF2476C9)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF65c6f4).withValues(alpha: 0.3),
@@ -153,7 +154,7 @@ class _InvestorBioState extends State<InvestorBio>
         children: [
           Row(
             children: [
-              const Icon(Icons.account_circle, color: Colors.black, size: 28),
+              const Icon(Icons.account_circle, color: Colors.white, size: 28),
               const SizedBox(width: 12),
               const Expanded(
                 child: Text(
@@ -161,7 +162,7 @@ class _InvestorBioState extends State<InvestorBio>
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    color: Colors.white,
                   ),
                 ),
               ),
@@ -174,11 +175,64 @@ class _InvestorBioState extends State<InvestorBio>
                 : 'Complete your professional bio to showcase your expertise and attract quality startups.',
             style: const TextStyle(
               fontSize: 14,
-              color: Colors.black87,
+              color: Colors.white,
               height: 1.4,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStyledButton({
+    required String text,
+    required IconData icon,
+    required VoidCallback onPressed,
+    bool isFullWidth = false,
+  }) {
+    return Container(
+      width: isFullWidth ? double.infinity : null,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF65c6f4), Color(0xFF2476C9)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF65c6f4).withValues(alpha: 0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+            child: Row(
+              mainAxisSize: isFullWidth ? MainAxisSize.max : MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: Colors.black, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  text,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -188,8 +242,7 @@ class _InvestorBioState extends State<InvestorBio>
       title: 'Professional Bio',
       child: _buildStyledTextFormField(
         controller: provider.bioController,
-        labelText:
-            'Tell us about your investment philosophy, experience, and what you bring to startups...',
+        labelText: 'Tell us about yourself',
         maxLines: 6,
         validator: provider.validateBio,
       ),
@@ -198,19 +251,21 @@ class _InvestorBioState extends State<InvestorBio>
 
   Widget _buildCompanyInfoSection(InvestorProfileProvider provider) {
     return _buildSectionCard(
-      title: 'Company Information',
+      title: 'Companies Information',
       child: Column(
         children: [
-          _buildStyledTextFormField(
-            controller: provider.companyNameController,
-            labelText: 'Company/Firm Name',
-            validator: provider.validateCompanyName,
-          ),
-          const SizedBox(height: 16),
-          _buildStyledTextFormField(
-            controller: provider.titleController,
-            labelText: 'Your Title/Position',
-            validator: provider.validateTitle,
+          _buildStyledButton(
+            text: 'Add Companies',
+            icon: Icons.add_business,
+            isFullWidth: true,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const InvestorCompaniesPage(),
+                ),
+              );
+            },
           ),
         ],
       ),
