@@ -21,7 +21,7 @@ class InvestorCompany {
 
   factory InvestorCompany.fromSupabaseMap(Map<String, dynamic> map) {
     return InvestorCompany(
-      id: map['id'] ?? '',
+      id: map['id']?.toString() ?? '',
       companyName: map['company_name'] ?? '',
       title: map['investor_title_in_company'] ?? '',
       website: map['website_url'] ?? '',
@@ -79,6 +79,9 @@ class InvestorCompaniesProvider with ChangeNotifier {
   bool _isInitialized = false;
   final Set<String> _dirtyFields = {};
 
+  // Cache for investor profile ID
+  String? _investorProfileId;
+
   // Getters
   List<InvestorCompany> get companies => List.unmodifiable(_companies);
   int get companiesCount => _companies.length;
@@ -113,10 +116,10 @@ class InvestorCompaniesProvider with ChangeNotifier {
     return _companies
         .where(
           (company) =>
-              company.title.toLowerCase().contains('current') ||
               company.title.toLowerCase().contains('ceo') ||
               company.title.toLowerCase().contains('founder') ||
-              company.title.toLowerCase().contains('managing'),
+              company.title.toLowerCase().contains('managing') ||
+              company.title.toLowerCase().contains('partner'),
         )
         .toList();
   }
@@ -127,6 +130,7 @@ class InvestorCompaniesProvider with ChangeNotifier {
 
     try {
       _error = null;
+      await _getInvestorProfileId();
       await _loadCompaniesData();
       _addListeners();
       _isInitialized = true;
@@ -136,6 +140,51 @@ class InvestorCompaniesProvider with ChangeNotifier {
       rethrow;
     } finally {
       notifyListeners();
+    }
+  }
+
+  // Get investor profile ID
+  Future<void> _getInvestorProfileId() async {
+    final User? currentUser = _supabase.auth.currentUser;
+    if (currentUser == null) {
+      throw Exception('No authenticated user found');
+    }
+
+    try {
+      final response =
+          await _supabase
+              .from('investor_profiles')
+              .select('id')
+              .eq('investor_id', currentUser.id)
+              .single();
+
+      _investorProfileId = response['id'];
+      debugPrint('✅ Found investor profile ID: $_investorProfileId');
+    } catch (e) {
+      // If no profile exists, create one
+      debugPrint('⚠️ No investor profile found, creating one...');
+      await _createInvestorProfile(currentUser.id);
+    }
+  }
+
+  // Create investor profile if it doesn't exist
+  Future<void> _createInvestorProfile(String userId) async {
+    try {
+      final response =
+          await _supabase
+              .from('investor_profiles')
+              .insert({
+                'investor_id': userId,
+                'created_at': DateTime.now().toIso8601String(),
+              })
+              .select('id')
+              .single();
+
+      _investorProfileId = response['id'];
+      debugPrint('✅ Created investor profile with ID: $_investorProfileId');
+    } catch (e) {
+      debugPrint('❌ Error creating investor profile: $e');
+      throw Exception('Failed to create investor profile: $e');
     }
   }
 
@@ -172,36 +221,28 @@ class InvestorCompaniesProvider with ChangeNotifier {
 
   // Load companies data from database
   Future<void> _loadCompaniesData() async {
-    final User? currentUser = _supabase.auth.currentUser;
-    if (currentUser == null) {
-      throw Exception('No authenticated user found');
+    if (_investorProfileId == null) {
+      throw Exception('Investor profile ID not found');
     }
 
     _isLoading = true;
     notifyListeners();
 
     try {
-      debugPrint('🔄 Loading investor companies for user: ${currentUser.id}');
+      debugPrint(
+        '🔄 Loading investor companies for profile: $_investorProfileId',
+      );
 
       final response = await _supabase
           .from('investor_companies')
           .select('*')
-          .eq('investor_id', currentUser.id)
+          .eq('investor_id', _investorProfileId!)
           .order('created_at', ascending: false);
 
       _companies.clear();
 
       for (final companyData in response) {
-        final company = InvestorCompany(
-          id: companyData['id'] ?? '',
-          companyName: companyData['company_name'] ?? '',
-          title: companyData['investor_title_in_company'] ?? '',
-          website: companyData['website_url'] ?? '',
-          dateAdded:
-              companyData['created_at'] != null
-                  ? DateTime.parse(companyData['created_at'])
-                  : DateTime.now(),
-        );
+        final company = InvestorCompany.fromSupabaseMap(companyData);
         _companies.add(company);
       }
 
@@ -224,9 +265,8 @@ class InvestorCompaniesProvider with ChangeNotifier {
       return;
     }
 
-    final User? currentUser = _supabase.auth.currentUser;
-    if (currentUser == null) {
-      _error = 'No authenticated user found';
+    if (_investorProfileId == null) {
+      _error = 'Investor profile not found';
       notifyListeners();
       return;
     }
@@ -239,10 +279,13 @@ class InvestorCompaniesProvider with ChangeNotifier {
       debugPrint('🔄 Adding new company: ${_companyNameController.text}');
 
       final companyData = {
-        'investor_id': currentUser.id,
+        'investor_id': _investorProfileId!,
         'company_name': _companyNameController.text.trim(),
         'investor_title_in_company': _titleController.text.trim(),
-        'website_url': _websiteController.text.trim(),
+        'website_url':
+            _websiteController.text.trim().isNotEmpty
+                ? _websiteController.text.trim()
+                : null,
         'created_at': DateTime.now().toIso8601String(),
       };
 
@@ -285,7 +328,8 @@ class InvestorCompaniesProvider with ChangeNotifier {
       final updateData = {
         'company_name': company.companyName,
         'investor_title_in_company': company.title,
-        'website_url': company.website,
+        'website_url': company.website.isNotEmpty ? company.website : null,
+        'updated_at': DateTime.now().toIso8601String(),
       };
 
       await _supabase
@@ -334,6 +378,18 @@ class InvestorCompaniesProvider with ChangeNotifier {
     }
   }
 
+  // Refresh companies data
+  Future<void> refreshCompanies() async {
+    try {
+      await _getInvestorProfileId();
+      await _loadCompaniesData();
+    } catch (e) {
+      _error = 'Failed to refresh companies: $e';
+      debugPrint('❌ Error refreshing companies: $e');
+      notifyListeners();
+    }
+  }
+
   // Validation methods
   String? validateCompanyName(String? value) {
     if (value == null || value.trim().isEmpty) {
@@ -356,26 +412,28 @@ class InvestorCompaniesProvider with ChangeNotifier {
   }
 
   String? validateWebsite(String? value) {
-    if (value != null && value.isNotEmpty) {
-      final urlRegex = RegExp(
-        r'^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$',
-        caseSensitive: false,
-      );
-      if (!urlRegex.hasMatch(value)) {
-        return 'Please enter a valid website URL';
-      }
+    if (value == null || value.trim().isEmpty) {
+      return null; // Website is optional
     }
-    return null; // Website is optional
+
+    final websiteRegex = RegExp(
+      r'^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$',
+      caseSensitive: false,
+    );
+
+    if (!websiteRegex.hasMatch(value.trim())) {
+      return 'Please enter a valid website URL';
+    }
+    return null;
   }
 
-  // Clean up
   @override
   void dispose() {
     _removeListeners();
-    _saveTimer?.cancel();
     _companyNameController.dispose();
     _titleController.dispose();
     _websiteController.dispose();
+    _saveTimer?.cancel();
     super.dispose();
   }
 }

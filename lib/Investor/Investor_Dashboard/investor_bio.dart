@@ -154,7 +154,7 @@ class _InvestorBioState extends State<InvestorBio>
         children: [
           Row(
             children: [
-              const Icon(Icons.account_circle, color: Colors.white, size: 28),
+              const Icon(Icons.account_circle, color: Colors.black, size: 28),
               const SizedBox(width: 12),
               const Expanded(
                 child: Text(
@@ -162,7 +162,7 @@ class _InvestorBioState extends State<InvestorBio>
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Colors.black,
                   ),
                 ),
               ),
@@ -175,7 +175,7 @@ class _InvestorBioState extends State<InvestorBio>
                 : 'Complete your professional bio to showcase your expertise and attract quality startups.',
             style: const TextStyle(
               fontSize: 14,
-              color: Colors.white,
+              color: Colors.black87,
               height: 1.4,
             ),
           ),
@@ -262,7 +262,7 @@ class _InvestorBioState extends State<InvestorBio>
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const InvestorCompaniesPage(),
+                  builder: (context) => const InvestorCompanyPage(),
                 ),
               );
             },
@@ -486,15 +486,24 @@ class _InvestorBioState extends State<InvestorBio>
   }
 
   Widget _buildSaveButton(InvestorProfileProvider provider) {
-    return SizedBox(
+    return Container(
       width: double.infinity,
       height: 56,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF65c6f4), Color(0xFF2476C9)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: ElevatedButton(
         onPressed: _saveBio,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF65c6f4),
+          backgroundColor: Colors.transparent,
           foregroundColor: Colors.black,
           elevation: 0,
+          shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),

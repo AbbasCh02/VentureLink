@@ -168,7 +168,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
             children: [
               const Icon(
                 Icons.card_membership_rounded,
-                color: Colors.white,
+                color: Colors.black,
                 size: 28,
               ),
               const SizedBox(width: 12),
@@ -178,7 +178,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Colors.black,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -188,7 +188,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
           const SizedBox(height: 12),
           const Text(
             'Discover promising startups, manage your portfolio, and track investment opportunities all in one place.',
-            style: TextStyle(fontSize: 14, color: Colors.white, height: 1.4),
+            style: TextStyle(fontSize: 14, color: Colors.black87, height: 1.4),
           ),
         ],
       ),

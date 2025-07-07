@@ -7,45 +7,102 @@ import "Startup/Providers/startup_profile_overview_provider.dart";
 import "Startup/Providers/startup_profile_provider.dart";
 import "Startup/Providers/team_members_provider.dart";
 import 'Startup/Providers/business_model_canvas_provider.dart';
-import 'auth/unified_authentication_provider.dart'; // NEW: Import unified provider
+import 'auth/unified_authentication_provider.dart';
 import 'Startup/Startup_Dashboard/profile_overview.dart';
 import 'Startup/Startup_Dashboard/startup_profile_page.dart';
 import 'Startup/Startup_Dashboard/team_members_page.dart';
 import 'Startup/Startup_Dashboard/Business_Model_Canvas/business_model_canvas.dart';
 import 'Startup/Startup_Dashboard/startup_dashboard.dart';
-import 'Investor/Investor_Dashboard/investor_dashboard.dart'; // Add investor dashboard
+import 'Investor/Investor_Dashboard/investor_dashboard.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'auth/unified_login.dart';
 import 'auth/unified_signup.dart';
 import 'Investor/Investor_Dashboard/investor_profile_page.dart';
 import 'Investor/Providers/investor_profile_provider.dart';
+import 'Investor/Providers/investor_company_provider.dart'; // ADD THIS IMPORT
 import 'Investor/Investor_Dashboard/investor_bio.dart';
 
 Future<void> main() async {
-  // Ensure Flutter is initialized
-  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    // Ensure Flutter is initialized
+    WidgetsFlutterBinding.ensureInitialized();
 
-  // Load environment variables FIRST
-  await dotenv.load(fileName: ".env");
+    // Load environment variables FIRST
+    await dotenv.load(fileName: ".env");
 
-  // Verify environment variables are loaded
-  final supabaseUrl = dotenv.env['SUPABASE_URL'];
-  final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'];
+    // Verify environment variables are loaded
+    final supabaseUrl = dotenv.env['SUPABASE_URL'];
+    final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'];
 
-  if (supabaseUrl == null || supabaseAnonKey == null) {
-    throw Exception(
-      'Missing Supabase environment variables. Please check your .env file.',
+    if (supabaseUrl == null || supabaseAnonKey == null) {
+      throw Exception(
+        'Missing Supabase environment variables. Please check your .env file.',
+      );
+    }
+
+    // Initialize Supabase
+    await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+
+    debugPrint('✅ Supabase initialized successfully');
+    debugPrint('✅ Environment variables loaded');
+
+    runApp(const MyApp());
+  } catch (e) {
+    debugPrint('❌ Error during app initialization: $e');
+    // Still run the app but with error handling
+    runApp(ErrorApp(error: e.toString()));
+  }
+}
+
+// Error app to show initialization errors
+class ErrorApp extends StatelessWidget {
+  final String error;
+
+  const ErrorApp({super.key, required this.error});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red, size: 64),
+                const SizedBox(height: 20),
+                const Text(
+                  'Initialization Error',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  error,
+                  style: const TextStyle(color: Colors.white70, fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    // Restart the app
+                    main();
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
-
-  // Initialize Supabase
-  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
-
-  debugPrint('✅ Supabase initialized successfully');
-  debugPrint('✅ Environment variables loaded');
-
-  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -56,7 +113,6 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         // CRITICAL: Unified Authentication Provider MUST be first
-        // This replaces both StartupAuthProvider and InvestorAuthProvider
         ChangeNotifierProvider(
           create: (context) => UnifiedAuthProvider(),
           lazy: false, // Initialize immediately
@@ -91,6 +147,12 @@ class MyApp extends StatelessWidget {
           create: (context) => InvestorProfileProvider(),
           lazy: false,
         ),
+
+        // ADD THIS: Investor Companies Provider
+        ChangeNotifierProvider(
+          create: (context) => InvestorCompaniesProvider(),
+          lazy: false,
+        ),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -115,8 +177,9 @@ class MyApp extends StatelessWidget {
           '/investor_dashboard': (context) => const InvestorDashboard(),
           '/investor_profile': (context) => const InvestorProfilePage(),
           '/investor_bio': (context) => const InvestorBio(),
-          '/investor_companies': (context) => const InvestorCompaniesPage(),
-
+          '/investor_companies':
+              (context) =>
+                  const InvestorCompanyPage(), // FIX: Use correct class name
           // Unified Authentication Routes
           '/signup': (context) => const UnifiedSignupPage(),
           '/login': (context) => const UnifiedLoginPage(),
@@ -144,6 +207,57 @@ class AuthWrapper extends StatelessWidget {
             body: Center(
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF65c6f4)),
+              ),
+            ),
+          );
+        }
+
+        // Show error if there's an authentication error
+        if (authProvider.error != null) {
+          return Scaffold(
+            backgroundColor: Colors.black,
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 64,
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Authentication Error',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      authProvider.error!,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 16,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () {
+                        authProvider.clearError();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF65c6f4),
+                        foregroundColor: Colors.black,
+                      ),
+                      child: const Text('Try Again'),
+                    ),
+                  ],
+                ),
               ),
             ),
           );

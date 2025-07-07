@@ -198,54 +198,95 @@ class InvestorProfileProvider extends ChangeNotifier {
       // Temporarily remove listeners to prevent auto-save during load
       _removeListeners();
 
-      // Use the helper function to get complete investor profile
-      final response =
+      // FIXED: Use direct queries instead of RPC to handle multiple rows
+      // Step 1: Get investor basic info
+      final investorResponse =
           await _supabase
-              .rpc(
-                'get_complete_investor_profile',
-                params: {'investor_user_id': currentUser.id},
-              )
+              .from('investors')
+              .select('is_verified, avatar_url')
+              .eq('id', currentUser.id)
               .maybeSingle();
 
-      if (response != null) {
-        // Load basic investor info
-        _portfolioSize = response['portfolio_size'];
-        _isVerified = response['is_verified'] ?? false;
-        _profileImageUrl = response['avatar_url'];
+      // Step 2: Get investor profile info (handle multiple rows)
+      final profileResponse = await _supabase
+          .from('investor_profiles')
+          .select(
+            'bio, linkedin_url, industries, geographic_focus, portfolio_size, preferred_stages',
+          )
+          .eq('investor_id', currentUser.id)
+          .order('created_at', ascending: false) // Get the most recent one
+          .limit(1);
 
-        // Load professional information
-        _companyNameController.text = response['company_name'] ?? '';
-        _titleController.text = response['title'] ?? '';
-        _bioController.text = response['bio'] ?? '';
-        _linkedinUrlController.text = response['linkedin_url'] ?? '';
-        _websiteUrlController.text = response['website_url'] ?? '';
+      // Step 3: Get company info (if needed for this provider)
+      final companyResponse = await _supabase
+          .from('investor_companies')
+          .select('company_name, investor_title_in_company, website_url')
+          .eq('investor_id', currentUser.id)
+          .order('created_at', ascending: false) // Get the most recent one
+          .limit(1);
+
+      debugPrint(
+        '✅ Investor basic info: ${investorResponse != null ? "Found" : "Not found"}',
+      );
+      debugPrint('✅ Profile records found: ${profileResponse.length}');
+      debugPrint('✅ Company records found: ${companyResponse.length}');
+
+      // Handle multiple profiles issue
+      if (profileResponse.length > 1) {
+        debugPrint(
+          '⚠️ Found ${profileResponse.length} investor profiles, cleaning up duplicates...',
+        );
+        await _cleanupDuplicateProfiles(currentUser.id);
+      }
+
+      // Load data from responses
+      if (investorResponse != null) {
+        _isVerified = investorResponse['is_verified'] ?? false;
+        _profileImageUrl = investorResponse['avatar_url'];
+      }
+
+      if (profileResponse.isNotEmpty) {
+        final profile = profileResponse.first;
+        _bioController.text = profile['bio'] ?? '';
+        _linkedinUrlController.text = profile['linkedin_url'] ?? '';
+        _portfolioSize = profile['portfolio_size'];
 
         // Load investment preferences
-        final List<dynamic>? industries = response['industries'];
+        final List<dynamic>? industries = profile['industries'];
         _selectedIndustries = industries?.cast<String>() ?? [];
 
-        final List<dynamic>? geographicFocus = response['geographic_focus'];
+        final List<dynamic>? geographicFocus = profile['geographic_focus'];
         _selectedGeographicFocus = geographicFocus?.cast<String>() ?? [];
 
-        final List<dynamic>? preferredStages = response['preferred_stages'];
+        final List<dynamic>? preferredStages = profile['preferred_stages'];
         _selectedPreferredStages = preferredStages?.cast<String>() ?? [];
+      }
 
-        debugPrint('✅ Investor profile data loaded successfully');
-        debugPrint('   - Company: ${companyName ?? "Not Set"}');
-        debugPrint('   - Title: ${title ?? "Not Set"}');
-        debugPrint('   - Bio: ${bio != null ? "✓" : "✗"}');
-        debugPrint('   - Industries: ${_selectedIndustries.length}');
-        debugPrint('   - Geographic Focus: ${_selectedGeographicFocus.length}');
-        debugPrint('   - Portfolio Size: ${_portfolioSize ?? "Not Set"}');
-        debugPrint(
-          '   - Profile Image: ${_profileImageUrl != null ? "✓" : "✗"}',
-        );
-      } else {
-        debugPrint(
-          'No investor profile data found for user: ${currentUser.id}',
-        );
-        // Create initial investor record if it doesn't exist
+      if (companyResponse.isNotEmpty) {
+        final company = companyResponse.first;
+        _companyNameController.text = company['company_name'] ?? '';
+        _titleController.text = company['investor_title_in_company'] ?? '';
+        _websiteUrlController.text = company['website_url'] ?? '';
+      }
+
+      debugPrint('✅ Investor profile data loaded successfully');
+      debugPrint('   - Company: ${companyName ?? "Not Set"}');
+      debugPrint('   - Title: ${title ?? "Not Set"}');
+      debugPrint('   - Bio: ${bio != null ? "✓" : "✗"}');
+      debugPrint('   - Industries: ${_selectedIndustries.length}');
+      debugPrint('   - Geographic Focus: ${_selectedGeographicFocus.length}');
+      debugPrint('   - Portfolio Size: ${_portfolioSize ?? "Not Set"}');
+      debugPrint('   - Profile Image: ${_profileImageUrl != null ? "✓" : "✗"}');
+
+      // Create initial records if they don't exist
+      if (investorResponse == null) {
+        debugPrint('🔄 Creating initial investor record...');
         await _createInitialInvestorRecord(currentUser);
+      }
+
+      if (profileResponse.isEmpty) {
+        debugPrint('🔄 Creating initial investor profile...');
+        await _createInitialInvestorProfile(currentUser.id);
       }
 
       // Re-add listeners
@@ -260,10 +301,60 @@ class InvestorProfileProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> _cleanupDuplicateProfiles(String userId) async {
+    try {
+      debugPrint(
+        '🧹 Cleaning up duplicate investor profiles for user: $userId',
+      );
+
+      // Get all profiles for this user
+      final profiles = await _supabase
+          .from('investor_profiles')
+          .select('id, created_at')
+          .eq('investor_id', userId)
+          .order('created_at', ascending: false);
+
+      if (profiles.length <= 1) {
+        debugPrint('✅ No duplicates found');
+        return;
+      }
+
+      // Keep the most recent one, delete the rest
+      final keepId = profiles.first['id'];
+      final deleteIds = profiles.skip(1).map((p) => p['id']).toList();
+
+      debugPrint('🔄 Keeping profile: $keepId');
+      debugPrint('🗑️ Deleting profiles: $deleteIds');
+
+      // Delete duplicate profiles
+      for (final id in deleteIds) {
+        await _supabase.from('investor_profiles').delete().eq('id', id);
+      }
+
+      debugPrint('✅ Cleaned up ${deleteIds.length} duplicate profiles');
+    } catch (e) {
+      debugPrint('❌ Error cleaning up duplicate profiles: $e');
+      // Don't throw - this is a cleanup operation
+    }
+  }
+
   // Create initial investor record
   Future<void> _createInitialInvestorRecord(User user) async {
     try {
       debugPrint('🔄 Creating initial investor record for user: ${user.id}');
+
+      // Check if investor record already exists
+      final existing =
+          await _supabase
+              .from('investors')
+              .select('id')
+              .eq('id', user.id)
+              .maybeSingle();
+
+      if (existing != null) {
+        debugPrint('✅ Investor record already exists');
+        return;
+      }
 
       // Insert into investors table
       await _supabase.from('investors').insert({
@@ -275,16 +366,48 @@ class InvestorProfileProvider extends ChangeNotifier {
         'updated_at': DateTime.now().toIso8601String(),
       });
 
-      // Create investor profile using the helper function
-      await _supabase.rpc(
-        'ensure_investor_profile',
-        params: {'investor_user_id': user.id},
-      );
-
       debugPrint('✅ Initial investor record created successfully');
     } catch (e) {
       debugPrint('❌ Error creating initial investor record: $e');
-      rethrow;
+      // Don't throw if it's a duplicate key error
+      if (!e.toString().contains('duplicate key')) {
+        rethrow;
+      }
+    }
+  }
+
+  // NEW: Create initial investor profile
+  Future<void> _createInitialInvestorProfile(String userId) async {
+    try {
+      debugPrint('🔄 Creating initial investor profile for user: $userId');
+
+      // Check if profile already exists
+      final existing =
+          await _supabase
+              .from('investor_profiles')
+              .select('id')
+              .eq('investor_id', userId)
+              .maybeSingle();
+
+      if (existing != null) {
+        debugPrint('✅ Investor profile already exists');
+        return;
+      }
+
+      // Create new profile
+      await _supabase.from('investor_profiles').insert({
+        'investor_id': userId,
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+
+      debugPrint('✅ Initial investor profile created successfully');
+    } catch (e) {
+      debugPrint('❌ Error creating initial investor profile: $e');
+      // Don't throw if it's a duplicate key error
+      if (!e.toString().contains('duplicate key')) {
+        rethrow;
+      }
     }
   }
 

@@ -357,27 +357,24 @@ class UnifiedAuthProvider with ChangeNotifier {
   }
 
   /// Create or update user record in the appropriate table based on user type
+  /// Replace your existing _createOrUpdateUserRecord method with this fixed version
+  /// Alternative version without storing results (simpler)
   Future<void> _createOrUpdateUserRecord(AppUser user) async {
-    // CRITICAL FIX: Check if already creating, but allow retry if previous attempt failed
     if (_isCreatingUserRecord) {
       debugPrint('🔍 User record creation already in progress, skipping...');
       return;
     }
 
     _isCreatingUserRecord = true;
+
+    final tableName = user.userType == UserType.startup ? 'users' : 'investors';
+
     debugPrint(
       '🔥 Starting user record creation for ${user.id} (${user.userType.name})',
     );
+    debugPrint('🔍 Target table: $tableName');
 
     try {
-      final tableName =
-          user.userType == UserType.startup ? 'users' : 'investors';
-
-      debugPrint('🔍 Attempting to create/update record in table: $tableName');
-      debugPrint('   User ID: ${user.id}');
-      debugPrint('   User Type: ${user.userType.name}');
-      debugPrint('   Email: ${user.email}');
-
       // Check if user record exists
       final existingUser =
           await _supabase
@@ -387,11 +384,11 @@ class UnifiedAuthProvider with ChangeNotifier {
               .maybeSingle();
 
       debugPrint(
-        '🔍 Existing user check result: ${existingUser != null ? "Found" : "Not found"}',
+        '🔍 Existing user check: ${existingUser != null ? "Found" : "Not found"}',
       );
 
       if (existingUser == null) {
-        // Create new user record - using correct field names from your database schema
+        // Create new user record
         final insertData = <String, dynamic>{
           'id': user.id,
           'email': user.email,
@@ -405,128 +402,95 @@ class UnifiedAuthProvider with ChangeNotifier {
           'updated_at': DateTime.now().toIso8601String(),
         };
 
-        // Add fields specific to each table type
+        // Add user type specific fields
         if (user.userType == UserType.startup) {
-          // For users table - CRITICAL: Include all required fields from DB schema
-          insertData.addAll({
-            'user_type': 'startup', // Required field from schema
-          });
-          debugPrint('📝 Preparing startup user insert with data: $insertData');
+          insertData['user_type'] = 'startup';
+        } else if (user.userType == UserType.investor) {
+          insertData['user_type'] = 'investor';
         }
 
-        debugPrint('🔥 Attempting INSERT into $tableName table...');
+        debugPrint('🔥 Attempting INSERT into $tableName...');
 
-        // CRITICAL FIX: Add error handling and debugging for the insert operation
         try {
-          debugPrint('🔥 Executing INSERT query...');
-          final insertResult =
-              await _supabase.from(tableName).insert(insertData).select();
-          debugPrint('✅ INSERT successful! Result: $insertResult');
+          // Don't store result, just execute
+          await _supabase.from(tableName).insert(insertData);
 
-          if (insertResult.isNotEmpty) {
-            debugPrint(
-              '✅ Database record created successfully for ${user.email}',
-            );
-            debugPrint('   Record ID: ${insertResult[0]['id']}');
-            debugPrint('   Email: ${insertResult[0]['email']}');
-            debugPrint('   User Type: ${user.userType.name}');
-          }
+          debugPrint('✅ INSERT successful for ${user.email}');
+          _logger.i(
+            '✅ Created new ${user.userType.name} record for: ${user.email}',
+          );
         } catch (insertError) {
-          debugPrint('❌ INSERT failed with error: $insertError');
-          debugPrint('❌ Insert data was: $insertData');
-          debugPrint('❌ Table name: $tableName');
+          debugPrint('❌ INSERT failed: $insertError');
 
-          // CRITICAL FIX: Handle duplicate key error gracefully
+          // Handle duplicate key gracefully
           if (insertError.toString().contains('duplicate key') ||
               insertError.toString().contains('23505')) {
-            debugPrint(
-              '🔍 User record already exists, this is expected in some cases',
-            );
-            // Don't throw error for duplicate key, just log it
+            debugPrint('🔍 User record already exists (duplicate key)');
             _logger.i('User record already exists for: ${user.email}');
             return;
           }
 
-          // Check if it's a policy issue
-          if (insertError.toString().contains('policy')) {
-            debugPrint(
-              '🔒 This appears to be a Row Level Security (RLS) policy issue',
-            );
-            debugPrint(
-              '🔒 Ensure the INSERT policy exists for table: $tableName',
-            );
-          }
-
-          // Re-throw the error with more context for non-duplicate errors
           throw Exception(
             'Failed to insert ${user.userType.name} user: $insertError',
           );
         }
-
-        _logger.i(
-          '✅ Created new ${user.userType.name} record for: ${user.email}',
-        );
-        debugPrint(
-          '✅ Created ${user.userType.name} user record for ID: ${user.id}',
-        );
       } else {
-        // Update existing user record - using only fields that exist
-        final updateData = <String, dynamic>{
-          'last_login_at': user.lastLoginAt.toIso8601String(),
-          'is_verified': user.isVerified,
-          'updated_at': DateTime.now().toIso8601String(),
-        };
-
-        // Update username if we have a full name
-        if (user.fullName.isNotEmpty) {
-          updateData['username'] = user.fullName;
-        }
-
-        debugPrint('🔄 Updating existing user with data: $updateData');
+        // Update existing user record
+        debugPrint('🔄 Updating existing user record...');
 
         try {
-          final updateResult =
-              await _supabase
-                  .from(tableName)
-                  .update(updateData)
-                  .eq('id', user.id)
-                  .select();
+          final updateData = <String, dynamic>{
+            'last_login_at': user.lastLoginAt.toIso8601String(),
+          };
 
-          debugPrint('✅ UPDATE successful! Result: $updateResult');
+          // Only update username if we have a full name
+          if (user.fullName.isNotEmpty) {
+            updateData['username'] = user.fullName;
+          }
+
+          // Don't store result, just execute
+          await _supabase.from(tableName).update(updateData).eq('id', user.id);
+
+          debugPrint('✅ UPDATE successful for ${user.email}');
           _logger.i(
             '✅ Updated ${user.userType.name} record for: ${user.email}',
           );
-          debugPrint(
-            '✅ Updated ${user.userType.name} user record for ID: ${user.id}',
-          );
         } catch (updateError) {
-          debugPrint('❌ UPDATE failed with error: $updateError');
+          debugPrint('❌ UPDATE failed: $updateError');
+
+          // Handle trigger errors gracefully
+          if (updateError.toString().contains('last_activity_at') ||
+              updateError.toString().contains('has no field')) {
+            debugPrint(
+              '⚠️ Database trigger error detected - continuing anyway',
+            );
+            debugPrint('⚠️ This indicates a database schema/trigger issue');
+            _logger.w(
+              'Database trigger error for user ${user.email}: $updateError',
+            );
+            return;
+          }
+
           throw Exception(
             'Failed to update ${user.userType.name} user: $updateError',
           );
         }
       }
     } catch (e) {
-      _logger.e('❌ Error creating/updating user record: $e');
-      debugPrint('❌ Database error for user ${user.id}: $e');
-      debugPrint(
-        '❌ Table: ${user.userType == UserType.startup ? 'users' : 'investors'}',
-      );
-
-      // Enhanced error reporting
-      debugPrint('❌ Full error details:');
+      debugPrint('❌ Database operation failed:');
+      debugPrint('   Error: $e');
       debugPrint('   User Type: ${user.userType.name}');
-      debugPrint(
-        '   Table Name: ${user.userType == UserType.startup ? 'users' : 'investors'}',
-      );
+      debugPrint('   Table: $tableName');
       debugPrint('   User ID: ${user.id}');
       debugPrint('   Email: ${user.email}');
 
-      // Don't throw error to not break authentication flow, but log extensively
       _error = 'Failed to create user record: ${e.toString()}';
+      _logger.e('Error creating/updating user record: $e');
+
       notifyListeners();
     } finally {
-      _isCreatingUserRecord = false; // Always reset the flag
+      _isCreatingUserRecord = false;
+      debugPrint('🔄 User record creation process completed');
     }
   }
 
