@@ -87,10 +87,6 @@ class _InvestorBioState extends State<InvestorBio>
                       _buildPortfolioSection(provider),
                       const SizedBox(height: 24),
 
-                      // Contact Information Section
-                      _buildContactSection(provider),
-                      const SizedBox(height: 32),
-
                       // Save Button
                       _buildSaveButton(provider),
                       const SizedBox(height: 24),
@@ -275,30 +271,97 @@ class _InvestorBioState extends State<InvestorBio>
   Widget _buildPortfolioSection(InvestorProfileProvider provider) {
     return _buildSectionCard(
       title: 'Portfolio Information',
-      child: _buildPortfolioSizeSelector(provider),
+      child: Column(
+        children: [
+          _buildPortfolioSizeSelector(provider),
+          const SizedBox(height: 20),
+          _buildLinkedInProfileSelector(provider),
+        ],
+      ),
     );
   }
 
-  Widget _buildContactSection(InvestorProfileProvider provider) {
-    return _buildSectionCard(
-      title: 'Contact Information',
-      child: Column(
-        children: [
-          _buildStyledTextFormField(
-            controller: provider.linkedinUrlController,
-            labelText: 'LinkedIn Profile',
-            keyboardType: TextInputType.url,
-            validator: provider.validateUrl,
+  Widget _buildLinkedInProfileSelector(InvestorProfileProvider provider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'LinkedIn Profile',
+          style: TextStyle(
+            color: Colors.grey[300],
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
           ),
-          const SizedBox(height: 16),
-          _buildStyledTextFormField(
-            controller: provider.websiteUrlController,
-            labelText: 'Company Website',
-            keyboardType: TextInputType.url,
-            validator: provider.validateUrl,
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          initialValue: provider.linkedinUrl ?? '',
+          keyboardType: TextInputType.url,
+          cursorColor: const Color(0xFF65c6f4),
+          style: const TextStyle(color: Colors.white, fontSize: 16),
+          decoration: InputDecoration(
+            labelText: 'Enter your LinkedIn profile URL',
+            labelStyle: TextStyle(
+              color: Colors.grey[400],
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+            hintText: 'https://linkedin.com/in/username',
+            hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+            prefixIcon: const Icon(
+              Icons.link,
+              color: Color(0xFF65c6f4),
+              size: 20,
+            ),
+            filled: true,
+            fillColor: Colors.grey[800]!.withAlpha(204), // same as 0.8
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: Color(0xFF65c6f4), width: 2),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: Colors.red, width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 16,
+            ),
           ),
-        ],
-      ),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return null; // LinkedIn is optional
+            }
+
+            final trimmedValue = value.trim();
+
+            // Check if it's a valid URL
+            final Uri? uri = Uri.tryParse(trimmedValue);
+            if (uri == null) {
+              return 'Please enter a valid URL';
+            }
+
+            // Check if it's a LinkedIn URL
+            if (!trimmedValue.toLowerCase().contains('linkedin.com')) {
+              return 'Please enter a valid LinkedIn URL';
+            }
+
+            // Check for valid scheme
+            if (uri.scheme != 'http' && uri.scheme != 'https') {
+              return 'URL must start with http:// or https://';
+            }
+
+            return null;
+          },
+          onChanged: (value) {
+            provider.updateLinkedinUrl(value.trim());
+          },
+        ),
+      ],
     );
   }
 
@@ -438,6 +501,11 @@ class _InvestorBioState extends State<InvestorBio>
               color: Colors.grey[400],
               fontSize: 14,
               fontWeight: FontWeight.w500,
+            ),
+            prefixIcon: const Icon(
+              Icons.numbers,
+              color: Color(0xFF65c6f4),
+              size: 20,
             ),
             filled: true,
             fillColor: Colors.grey[800]!.withAlpha(204), // same as 0.8
