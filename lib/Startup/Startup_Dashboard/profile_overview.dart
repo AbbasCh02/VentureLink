@@ -43,12 +43,6 @@ class _ProfileOverviewState extends State<ProfileOverview>
 
     _fadeController.forward();
     _slideController.forward();
-
-    // Initialize the profile provider
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final profileProvider = context.read<StartupProfileOverviewProvider>();
-      profileProvider.initialize();
-    });
   }
 
   @override

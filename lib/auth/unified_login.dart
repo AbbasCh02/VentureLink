@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../auth/unified_authentication_provider.dart';
 import 'unified_signup.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class UnifiedLoginPage extends StatefulWidget {
   const UnifiedLoginPage({super.key});
@@ -760,129 +761,94 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
   }
 
   Future<void> _handleSignIn() async {
-    final authProvider = Provider.of<UnifiedAuthProvider>(
-      context,
-      listen: false,
-    );
+    final authProvider = context.read<UnifiedAuthProvider>();
 
-    // Enable real-time validation
-    authProvider.enableRealTimeValidation();
+    if (!authProvider.loginFormKey.currentState!.validate()) return;
 
-    // Validate form first
-    if (!authProvider.validateForm()) {
-      // If validation fails, show errors but don't proceed
-      return;
-    }
+    final email = authProvider.emailController.text.trim();
+    final password = authProvider.passwordController.text.trim();
 
     try {
-      final success = await authProvider.signIn();
+      // First check which table the email exists in
+      final userType = await _checkUserType(email);
 
-      if (success && mounted) {
-        // Show success message
+      if (userType == null) {
+        // Email not found in either table
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Welcome back! Redirecting to your dashboard...',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        );
-
-        // Get the current user after successful authentication
-        final user = authProvider.currentUser;
-
-        if (user != null) {
-          debugPrint(
-            '🚀 User authenticated: ${user.email} (${user.userType.name})',
-          );
-          debugPrint('🔄 Routing to ${user.userType.name} dashboard');
-
-          // Navigate to the appropriate dashboard based on user type
-          switch (user.userType) {
-            case UserType.startup:
-              debugPrint('📱 Navigating to StartupDashboard');
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                '/startup_dashboard',
-                (route) => false, // Remove all previous routes
-              );
-              break;
-
-            case UserType.investor:
-              debugPrint('📱 Navigating to InvestorDashboard');
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                '/investor_dashboard',
-                (route) => false, // Remove all previous routes
-              );
-              break;
-          }
-        }
-      } else if (!success && mounted) {
-        // Show error message if sign-in failed
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    authProvider.error ??
-                        'Sign-in failed. Please check your credentials.',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
+          const SnackBar(
+            content: Text(
+              'Email not found. Please check your email or sign up.',
             ),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
           ),
         );
+        return;
+      }
+
+      // Proceed with authentication
+      final success = await authProvider.signIn(
+        email: email,
+        password: password,
+        rememberMe: authProvider.rememberMe,
+      );
+
+      if (success && mounted) {
+        // Route based on user type
+        if (userType == 'investor') {
+          Navigator.of(
+            context,
+          ).pushNamedAndRemoveUntil('/investor-dashboard', (route) => false);
+        } else if (userType == 'startup') {
+          Navigator.of(
+            context,
+          ).pushNamedAndRemoveUntil('/startup-dashboard', (route) => false);
+        }
       }
     } catch (e) {
-      // Handle any unexpected errors
-      debugPrint('❌ Unexpected error during sign-in: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'An unexpected error occurred. Please try again.',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
+            content: Text('Sign in failed: ${e.toString()}'),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
           ),
         );
       }
+    }
+  }
+
+  // FIXED: Added method to check user type by email
+  Future<String?> _checkUserType(String email) async {
+    try {
+      final supabase = Supabase.instance.client;
+
+      // Check investors table first
+      final investorResult =
+          await supabase
+              .from('investors')
+              .select('email')
+              .eq('email', email)
+              .maybeSingle();
+
+      if (investorResult != null) {
+        return 'investor';
+      }
+
+      // Check users table (startup users)
+      final userResult =
+          await supabase
+              .from('users')
+              .select('email')
+              .eq('email', email)
+              .maybeSingle();
+
+      if (userResult != null) {
+        return 'startup';
+      }
+
+      return null; // Email not found in either table
+    } catch (e) {
+      debugPrint('Error checking user type: $e');
+      return null;
     }
   }
 

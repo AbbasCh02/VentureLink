@@ -46,12 +46,6 @@ class _StartupDashboardState extends State<StartupDashboard>
 
     _fadeController.forward();
     _slideController.forward();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final bmcProvider = context.read<BusinessModelCanvasProvider>();
-      // Force initialization of BMC provider if not already initialized
-      bmcProvider.initialize();
-    });
   }
 
   @override

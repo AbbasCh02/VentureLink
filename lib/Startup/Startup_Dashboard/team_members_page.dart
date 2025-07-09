@@ -43,12 +43,6 @@ class _TeamMembersPageState extends State<TeamMembersPage>
 
     _fadeController.forward();
     _slideController.forward();
-
-    // Initialize the team members provider
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final teamProvider = context.read<TeamMembersProvider>();
-      teamProvider.initialize();
-    });
   }
 
   @override

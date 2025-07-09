@@ -51,12 +51,6 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
 
     _fadeController.forward();
     _slideController.forward();
-
-    // Initialize the BMC provider
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final bmcProvider = context.read<BusinessModelCanvasProvider>();
-      bmcProvider.initialize();
-    });
   }
 
   @override

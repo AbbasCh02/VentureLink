@@ -23,6 +23,12 @@ class _InvestorDashboardState extends State<InvestorDashboard>
   @override
   void initState() {
     super.initState();
+
+    // Initialize investor providers immediately
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeInvestorProviders();
+    });
+
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
@@ -52,6 +58,23 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     _fadeController.dispose();
     _slideController.dispose();
     super.dispose();
+  }
+
+  Future<void> _initializeInvestorProviders() async {
+    try {
+      final investorProfileProvider = context.read<InvestorProfileProvider>();
+      final investorCompanyProvider = context.read<InvestorCompaniesProvider>();
+
+      // Initialize providers if not already initialized
+      if (!investorProfileProvider.isInitialized) {
+        await investorProfileProvider.initialize();
+      }
+      if (!investorCompanyProvider.isInitialized) {
+        await investorCompanyProvider.initialize();
+      }
+    } catch (e) {
+      debugPrint('Error initializing investor providers: $e');
+    }
   }
 
   @override

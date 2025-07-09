@@ -13,13 +13,6 @@ class _FundingState extends State<Funding> {
   @override
   void initState() {
     super.initState();
-    // Ensure provider is initialized when this widget is created
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<StartupProfileProvider>();
-      if (!provider.isInitialized) {
-        provider.initialize();
-      }
-    });
   }
 
   @override

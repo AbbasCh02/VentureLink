@@ -171,13 +171,13 @@ class MyApp extends StatelessWidget {
           '/startup-profile': (context) => const StartupProfilePage(),
           '/team-members': (context) => const TeamMembersPage(),
           '/business_model': (context) => const BusinessModelCanvas(),
-          '/startup_dashboard': (context) => const StartupDashboard(),
+          '/startup-dashboard': (context) => const StartupDashboard(),
 
           // Investor Routes
-          '/investor_dashboard': (context) => const InvestorDashboard(),
-          '/investor_profile': (context) => const InvestorProfilePage(),
-          '/investor_bio': (context) => const InvestorBio(),
-          '/investor_companies':
+          '/investor-dashboard': (context) => const InvestorDashboard(),
+          '/investor-profile': (context) => const InvestorProfilePage(),
+          '/investor-bio': (context) => const InvestorBio(),
+          '/investor-companies':
               (context) =>
                   const InvestorCompanyPage(), // FIX: Use correct class name
           // Unified Authentication Routes
@@ -268,8 +268,16 @@ class AuthWrapper extends StatelessWidget {
           final userType = authProvider.currentUser!.userType;
 
           if (userType == UserType.startup) {
+            // Initialize investor providers before showing dashboard
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _initializeStartupProvidersOnLogin(context);
+            });
             return const StartupDashboard();
           } else if (userType == UserType.investor) {
+            // Initialize investor providers before showing dashboard
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _initializeInvestorProvidersOnLogin(context);
+            });
             return const InvestorDashboard();
           }
         }
@@ -278,5 +286,36 @@ class AuthWrapper extends StatelessWidget {
         return const WelcomePage();
       },
     );
+  }
+
+  Future<void> _initializeInvestorProvidersOnLogin(BuildContext context) async {
+    try {
+      final profileProvider = context.read<InvestorProfileProvider>();
+      final companyProvider = context.read<InvestorCompaniesProvider>();
+
+      // Load both providers simultaneously
+      Future.wait([profileProvider.initialize(), companyProvider.initialize()]);
+    } catch (e) {
+      debugPrint('Error initializing investor providers on login: $e');
+    }
+  }
+
+  void _initializeStartupProvidersOnLogin(BuildContext context) {
+    try {
+      final profileProvider = context.read<StartupProfileProvider>();
+      final profileOverviewProvider =
+          context.read<StartupProfileOverviewProvider>();
+      final bmcProvider = context.read<BusinessModelCanvasProvider>();
+      final teamMembersProvider = context.read<TeamMembersProvider>();
+
+      Future.wait([
+        profileProvider.initialize(),
+        profileOverviewProvider.initialize(),
+        bmcProvider.initialize(),
+        teamMembersProvider.initialize(),
+      ]);
+    } catch (e) {
+      debugPrint('Error initializing investor providers on login: $e');
+    }
   }
 }

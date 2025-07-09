@@ -332,7 +332,7 @@ class StartupProfileProvider with ChangeNotifier {
           await _supabase
               .from('users')
               .select(
-                'funding_goal, funding_stage, avatar_url, idea_description, pitch_deck_id',
+                'funding_goal, funding_stage, avatar_url, idea_description',
               )
               .eq('id', currentUser.id) // THIS IS THE KEY FIX
               .maybeSingle();
@@ -352,13 +352,8 @@ class StartupProfileProvider with ChangeNotifier {
         // Load profile image URL
         _profileImageUrl = userResponse['avatar_url'];
 
-        // Load pitch deck ID
-        _pitchDeckId = userResponse['pitch_deck_id'];
-
         // If there's a pitch deck ID, load pitch deck data
-        if (_pitchDeckId != null) {
-          await _loadPitchDeckData(_pitchDeckId!);
-        }
+        await _loadPitchDeckData(_pitchDeckId!);
 
         debugPrint(
           '✅ Startup profile data loaded successfully for user: ${currentUser.id}',
@@ -416,25 +411,20 @@ class StartupProfileProvider with ChangeNotifier {
         final List<dynamic>? fileUrls = pitchDeckResponse['file_urls'];
         final List<dynamic>? originalNames = pitchDeckResponse['file_names'];
 
-        if (fileUrls != null && fileUrls.isNotEmpty) {
-          debugPrint(
-            '📁 Found ${fileUrls.length} stored pitch deck files for user: ${currentUser.id}',
-          );
-
-          // Clear existing thumbnails to avoid duplicates
+        if (fileUrls != null && originalNames != null) {
+          // Clear existing thumbnails
           _pitchDeckThumbnails.clear();
 
-          // Create thumbnails for each stored file
+          // Recreate thumbnails for stored files
           for (int i = 0; i < fileUrls.length; i++) {
-            final String url = fileUrls[i].toString();
-            final String displayName =
-                originalNames != null && i < originalNames.length
-                    ? originalNames[i].toString()
-                    : 'File ${i + 1}';
-
-            _pitchDeckThumbnails.add(
-              _createStoredFileThumbnail(url, displayName, i),
-            );
+            if (i < originalNames.length) {
+              final thumbnail = _createStoredFileThumbnail(
+                fileUrls[i],
+                originalNames[i],
+                i,
+              );
+              _pitchDeckThumbnails.add(thumbnail);
+            }
           }
 
           debugPrint(
@@ -754,11 +744,20 @@ class StartupProfileProvider with ChangeNotifier {
     }
 
     const validPhases = [
+      'idea',
       'Pre-Seed',
       'Seed',
+      'MVP',
+      'Product-Market Fit',
+      'Early Growth',
       'Series A',
       'Series B',
       'Series C',
+      'Series D+',
+      'Scaling',
+      'Late Stage',
+      'Revenue-Generating',
+      'IPO Ready',
     ];
     if (!validPhases.contains(value)) {
       return 'Please select a valid funding phase';
