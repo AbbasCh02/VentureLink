@@ -228,16 +228,16 @@ class _FundingState extends State<Funding> {
                     ),
                   ),
                   DropdownMenuItem(
-                    value: 'Scaling ',
+                    value: 'Scaling',
                     child: Text(
-                      'Scaling ',
+                      'Scaling',
                       style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ),
                   DropdownMenuItem(
-                    value: 'Late Stage ',
+                    value: 'Late Stage',
                     child: Text(
-                      'Late Stage ',
+                      'Late Stage',
                       style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ),
@@ -256,9 +256,9 @@ class _FundingState extends State<Funding> {
                     ),
                   ),
                   DropdownMenuItem(
-                    value: 'Bridge ',
+                    value: 'Bridge',
                     child: Text(
-                      'Bridge ',
+                      'Bridge',
                       style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ),

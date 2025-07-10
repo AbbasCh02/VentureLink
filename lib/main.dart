@@ -300,7 +300,7 @@ class AuthWrapper extends StatelessWidget {
     }
   }
 
-  void _initializeStartupProvidersOnLogin(BuildContext context) {
+  Future<void> _initializeStartupProvidersOnLogin(BuildContext context) async {
     try {
       final profileProvider = context.read<StartupProfileProvider>();
       final profileOverviewProvider =

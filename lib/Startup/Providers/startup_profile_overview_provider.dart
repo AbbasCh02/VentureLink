@@ -177,17 +177,14 @@ class StartupProfileOverviewProvider with ChangeNotifier {
 
       // Get current user
       final User? currentUser = _supabase.auth.currentUser;
-      if (currentUser == null) {
-        debugPrint('No authenticated user found');
-        return;
-      }
+      if (currentUser == null) return;
 
-      // Load user profile data - CRITICAL: Filter by current user ID
+      // Load from startup_profiles table
       final userResponse =
           await _supabase
-              .from('users')
-              .select('company_name, tagline, industry, region')
-              .eq('id', currentUser.id) // THIS IS THE KEY FIX
+              .from('startup_profiles')
+              .select('*')
+              .eq('startup_id', currentUser.id)
               .maybeSingle();
 
       if (userResponse != null) {
@@ -266,7 +263,6 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Get current user
       final User? currentUser = _supabase.auth.currentUser;
       if (currentUser == null) {
         throw Exception('User not authenticated');
@@ -295,11 +291,25 @@ class StartupProfileOverviewProvider with ChangeNotifier {
 
       updateData['updated_at'] = DateTime.now().toIso8601String();
 
-      // Update in Supabase - CRITICAL: Filter by current user ID
-      await _supabase
-          .from('users')
-          .update(updateData)
-          .eq('id', currentUser.id); // THIS IS THE KEY FIX
+      // FIXED: Check if record exists first
+      final existingRecord =
+          await _supabase
+              .from('startup_profiles')
+              .select('id')
+              .eq('startup_id', currentUser.id)
+              .maybeSingle();
+
+      if (existingRecord != null) {
+        // Record exists - UPDATE it
+        await _supabase
+            .from('startup_profiles')
+            .update(updateData)
+            .eq('startup_id', currentUser.id);
+      } else {
+        // Record doesn't exist - INSERT it
+        updateData['startup_id'] = currentUser.id;
+        await _supabase.from('startup_profiles').insert(updateData);
+      }
 
       _dirtyFields.remove(fieldName);
       debugPrint(
@@ -316,7 +326,6 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     }
   }
 
-  // Save all dirty fields to Supabase
   Future<bool> saveAllFields() async {
     if (_dirtyFields.isEmpty) return true;
 
@@ -325,7 +334,6 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Get current user
       final User? currentUser = _supabase.auth.currentUser;
       if (currentUser == null) {
         throw Exception('User not authenticated');
@@ -347,14 +355,27 @@ class StartupProfileOverviewProvider with ChangeNotifier {
         updateData['region'] = _regionController.text.trim();
       }
 
-      // Always update timestamp
       updateData['updated_at'] = DateTime.now().toIso8601String();
 
-      // Update in Supabase - CRITICAL: Filter by current user ID
-      await _supabase
-          .from('users')
-          .update(updateData)
-          .eq('id', currentUser.id); // THIS IS THE KEY FIX
+      // FIXED: Check if record exists first
+      final existingRecord =
+          await _supabase
+              .from('startup_profiles')
+              .select('id')
+              .eq('startup_id', currentUser.id)
+              .maybeSingle();
+
+      if (existingRecord != null) {
+        // Record exists - UPDATE it
+        await _supabase
+            .from('startup_profiles')
+            .update(updateData)
+            .eq('startup_id', currentUser.id);
+      } else {
+        // Record doesn't exist - INSERT it
+        updateData['startup_id'] = currentUser.id;
+        await _supabase.from('startup_profiles').insert(updateData);
+      }
 
       _dirtyFields.clear();
       debugPrint(

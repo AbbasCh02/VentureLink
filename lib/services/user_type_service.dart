@@ -19,7 +19,7 @@ class UserTypeService {
       // Check startup users table first
       final startupCheck =
           await _supabase
-              .from('users')
+              .from('startups')
               .select('id, email, username')
               .eq('id', userId)
               .maybeSingle();

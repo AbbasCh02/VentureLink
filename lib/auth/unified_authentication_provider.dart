@@ -240,7 +240,7 @@ class UnifiedAuthProvider with ChangeNotifier {
   /// OPTIMIZATION: Only update if last_login_at is older than 1 hour
   Future<bool> _shouldUpdateUserRecord(String userId, UserType userType) async {
     try {
-      final tableName = userType == UserType.startup ? 'users' : 'investors';
+      final tableName = userType == UserType.startup ? 'startups' : 'investors';
 
       final result =
           await _supabase
@@ -412,7 +412,8 @@ class UnifiedAuthProvider with ChangeNotifier {
     }
 
     _isCreatingUserRecord = true;
-    final tableName = user.userType == UserType.startup ? 'users' : 'investors';
+    final tableName =
+        user.userType == UserType.startup ? 'startups' : 'investors';
 
     debugPrint(
       '🔄 Starting user record update for ${user.id} (${user.userType.name})',

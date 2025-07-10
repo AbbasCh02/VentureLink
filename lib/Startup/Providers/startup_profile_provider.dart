@@ -330,30 +330,25 @@ class StartupProfileProvider with ChangeNotifier {
       // Load user data from Supabase - CRITICAL: Filter by current user ID
       final userResponse =
           await _supabase
-              .from('users')
+              .from('startup_profiles')
               .select(
-                'funding_goal, funding_stage, avatar_url, idea_description',
+                'idea_description, funding_goal, funding_stage, avatar_url',
               )
-              .eq('id', currentUser.id) // THIS IS THE KEY FIX
+              .eq('startup_id', currentUser.id)
               .maybeSingle();
 
       if (userResponse != null) {
-        // Load idea description
         _ideaDescriptionController.text =
             userResponse['idea_description'] ?? '';
-
-        // Load funding goal
         _fundingGoalAmount = userResponse['funding_goal'];
-        _fundingGoalController.text = _fundingGoalAmount?.toString() ?? '';
-
-        // Load funding phase
+        if (_fundingGoalAmount != null) {
+          _fundingGoalController.text =
+              _fundingGoalAmount.toString(); // ADD THIS LINE
+        } else {
+          _fundingGoalController.clear(); // Clear if null
+        }
         _selectedFundingPhase = userResponse['funding_stage'];
-
-        // Load profile image URL
         _profileImageUrl = userResponse['avatar_url'];
-
-        // If there's a pitch deck ID, load pitch deck data
-        await _loadPitchDeckData(_pitchDeckId!);
 
         debugPrint(
           '✅ Startup profile data loaded successfully for user: ${currentUser.id}',
@@ -384,95 +379,21 @@ class StartupProfileProvider with ChangeNotifier {
     }
   }
 
-  // Load pitch deck data from database
-  Future<void> _loadPitchDeckData(String pitchDeckId) async {
+  // Method to get startup profile data
+  Future<Map<String, dynamic>?> getStartupProfile() async {
+    final User? currentUser = _supabase.auth.currentUser;
+    if (currentUser == null) return null;
+
     try {
-      debugPrint('🔄 Loading pitch deck data for ID: $pitchDeckId');
-
-      // CRITICAL: Filter by pitch deck ID AND ensure it belongs to current user
-      final User? currentUser = _supabase.auth.currentUser;
-      if (currentUser == null) return;
-
-      final pitchDeckResponse =
-          await _supabase
-              .from('pitch_decks')
-              .select('*')
-              .eq('id', pitchDeckId) // THIS IS THE KEY FIX
-              .maybeSingle();
-
-      if (pitchDeckResponse != null) {
-        _isPitchDeckSubmitted = pitchDeckResponse['is_submitted'] ?? false;
-        _pitchDeckSubmissionDate =
-            pitchDeckResponse['submission_date'] != null
-                ? DateTime.parse(pitchDeckResponse['submission_date'])
-                : null;
-
-        // Load stored files and recreate thumbnails
-        final List<dynamic>? fileUrls = pitchDeckResponse['file_urls'];
-        final List<dynamic>? originalNames = pitchDeckResponse['file_names'];
-
-        if (fileUrls != null && originalNames != null) {
-          // Clear existing thumbnails
-          _pitchDeckThumbnails.clear();
-
-          // Recreate thumbnails for stored files
-          for (int i = 0; i < fileUrls.length; i++) {
-            if (i < originalNames.length) {
-              final thumbnail = _createStoredFileThumbnail(
-                fileUrls[i],
-                originalNames[i],
-                i,
-              );
-              _pitchDeckThumbnails.add(thumbnail);
-            }
-          }
-
-          debugPrint(
-            '✅ Created ${_pitchDeckThumbnails.length} thumbnails for stored files',
-          );
-        }
-      }
+      return await _supabase
+          .from('startup_profiles')
+          .select('*')
+          .eq('startup_id', currentUser.id)
+          .maybeSingle();
     } catch (e) {
-      debugPrint('❌ Error loading pitch deck data: $e');
+      debugPrint('❌ Error getting startup profile: $e');
+      return null;
     }
-  }
-
-  // Create thumbnail widget for stored files
-  Widget _createStoredFileThumbnail(String url, String displayName, int index) {
-    final isVideo =
-        url.toLowerCase().contains('.mp4') ||
-        url.toLowerCase().contains('.avi') ||
-        url.toLowerCase().contains('.mov');
-
-    return Container(
-      margin: const EdgeInsets.all(4.0),
-      child: Column(
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: Colors.grey[800],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey[600]!),
-            ),
-            child: Icon(
-              isVideo ? Icons.play_circle_fill : Icons.picture_as_pdf,
-              color: Colors.orange,
-              size: 40,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            displayName.length > 10
-                ? '${displayName.substring(0, 10)}...'
-                : displayName,
-            style: const TextStyle(fontSize: 10, color: Colors.white),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
   }
 
   // Save specific field to Supabase
@@ -493,9 +414,6 @@ class StartupProfileProvider with ChangeNotifier {
       switch (fieldName) {
         case 'ideaDescription':
           await _saveIdeaDescription(currentUser.id);
-          break;
-        case 'fundingGoal':
-          await _saveFundingGoal(currentUser.id);
           break;
         case 'fundingGoalAmount':
           await _saveFundingGoalAmount(currentUser.id);
@@ -534,60 +452,101 @@ class StartupProfileProvider with ChangeNotifier {
 
   // Save idea description
   Future<void> _saveIdeaDescription(String userId) async {
-    await _supabase
-        .from('users')
-        .update({
-          'idea_description': _ideaDescriptionController.text,
-          'updated_at': DateTime.now().toIso8601String(),
-        })
-        .eq('id', userId); // CRITICAL: Filter by user ID
+    final existingRecord =
+        await _supabase
+            .from('startup_profiles')
+            .select('id')
+            .eq('startup_id', userId)
+            .maybeSingle();
+
+    if (existingRecord != null) {
+      await _supabase
+          .from('startup_profiles')
+          .update({
+            'idea_description': _ideaDescriptionController.text.trim(),
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('startup_id', userId);
+    } else {
+      await _supabase.from('startup_profiles').insert({
+        'startup_id': userId,
+        'idea_description': _ideaDescriptionController.text.trim(),
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+    }
   }
 
   // Save funding goal (from text controller)
-  Future<void> _saveFundingGoal(String userId) async {
-    final amount = int.tryParse(
-      _fundingGoalController.text.replaceAll(',', ''),
-    );
-    _fundingGoalAmount = amount;
-
-    await _supabase
-        .from('users')
-        .update({
-          'funding_goal': amount,
-          'updated_at': DateTime.now().toIso8601String(),
-        })
-        .eq('id', userId); // CRITICAL: Filter by user ID
-  }
-
-  // Save funding goal amount (from direct setter)
   Future<void> _saveFundingGoalAmount(String userId) async {
-    await _supabase
-        .from('users')
-        .update({
-          'funding_goal': _fundingGoalAmount,
-          'updated_at': DateTime.now().toIso8601String(),
-        })
-        .eq('id', userId); // CRITICAL: Filter by user ID
+    final existingRecord =
+        await _supabase
+            .from('startup_profiles')
+            .select('id')
+            .eq('startup_id', userId)
+            .maybeSingle();
+
+    if (existingRecord != null) {
+      await _supabase
+          .from('startup_profiles')
+          .update({
+            'funding_goal': _fundingGoalAmount,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('startup_id', userId);
+    } else {
+      await _supabase.from('startup_profiles').insert({
+        'startup_id': userId,
+        'funding_goal': _fundingGoalAmount,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+    }
   }
 
-  // Save funding phase
   Future<void> _saveFundingPhase(String userId) async {
-    await _supabase
-        .from('users')
-        .update({
-          'funding_stage': _selectedFundingPhase,
-          'updated_at': DateTime.now().toIso8601String(),
-        })
-        .eq('id', userId); // CRITICAL: Filter by user ID
+    debugPrint(
+      '🔍 Attempting to save funding phase: "$_selectedFundingPhase"',
+    ); // ADD THIS
+    debugPrint('🔍 Type: ${_selectedFundingPhase.runtimeType}'); // ADD THIS
+
+    if (_selectedFundingPhase == null) {
+      debugPrint('❌ Selected funding phase is null');
+      return;
+    }
+    final existingRecord =
+        await _supabase
+            .from('startup_profiles')
+            .select('id')
+            .eq('startup_id', userId)
+            .maybeSingle();
+
+    if (existingRecord != null) {
+      await _supabase
+          .from('startup_profiles')
+          .update({
+            'funding_stage':
+                _selectedFundingPhase, // or whatever your variable name is
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('startup_id', userId);
+    } else {
+      await _supabase.from('startup_profiles').insert({
+        'startup_id': userId,
+        'funding_stage': _selectedFundingPhase,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+    }
   }
 
-  // Save profile image using StorageService
   Future<void> _saveProfileImage(String userId) async {
+    final User? currentUser = _supabase.auth.currentUser;
+    if (currentUser == null) {
+      throw Exception('User not authenticated');
+    }
+
     String? newImageUrl;
 
     if (_profileImage != null) {
       try {
-        // Upload new image to Supabase storage
         newImageUrl = await StorageService.uploadAvatar(
           file: _profileImage!,
           userId: userId,
@@ -599,14 +558,28 @@ class StartupProfileProvider with ChangeNotifier {
       }
     }
 
-    // Update user record with new avatar URL
-    await _supabase
-        .from('users')
-        .update({
-          'avatar_url': _profileImageUrl,
-          'updated_at': DateTime.now().toIso8601String(),
-        })
-        .eq('id', userId); // CRITICAL: Filter by user ID
+    final existingRecord =
+        await _supabase
+            .from('startup_profiles')
+            .select('id')
+            .eq('startup_id', currentUser.id)
+            .maybeSingle();
+
+    if (existingRecord != null) {
+      await _supabase
+          .from('startup_profiles')
+          .update({
+            'avatar_url': _profileImageUrl,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('startup_id', currentUser.id);
+    } else {
+      await _supabase.from('startup_profiles').insert({
+        'startup_id': currentUser.id,
+        'avatar_url': _profileImageUrl,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+    }
   }
 
   // Save pitch deck files and submission status
@@ -739,12 +712,8 @@ class StartupProfileProvider with ChangeNotifier {
   }
 
   String? validateFundingPhase(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Please select a funding phase';
-    }
-
-    const validPhases = [
-      'idea',
+    final validStages = [
+      'Idea',
       'Pre-Seed',
       'Seed',
       'MVP',
@@ -758,8 +727,14 @@ class StartupProfileProvider with ChangeNotifier {
       'Late Stage',
       'Revenue-Generating',
       'IPO Ready',
+      'Bridge',
     ];
-    if (!validPhases.contains(value)) {
+
+    if (value == null || value.isEmpty) {
+      return 'Please select a valid funding phase';
+    }
+
+    if (!validStages.contains(value)) {
       return 'Please select a valid funding phase';
     }
 
