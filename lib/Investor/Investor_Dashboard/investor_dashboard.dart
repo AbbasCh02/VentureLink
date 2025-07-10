@@ -467,7 +467,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                   isSet:
                       provider.linkedinUrl != null &&
                       provider.linkedinUrl!.isNotEmpty,
-                  color: const Color(0xFF0077B5),
+                  color: const Color(0xFF4CAF50),
                   isCompact: true,
                 ),
               ),
@@ -581,7 +581,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
             ),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: const Color(0xFF4CAF50).withValues(alpha: 0.4),
+              color: const Color(0xFF65c6f4).withValues(alpha: 0.4),
               width: 1.5,
             ),
           ),
@@ -592,12 +592,12 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF4CAF50).withValues(alpha: 0.2),
+                      color: const Color(0xFF65c6f4).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
                       Icons.business_outlined,
-                      color: Color(0xFF4CAF50),
+                      color: Color(0xFF65c6f4),
                       size: 18,
                     ),
                   ),
@@ -608,7 +608,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF4CAF50),
+                        color: Color(0xFF65c6f4),
                       ),
                     ),
                   ),
@@ -639,7 +639,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4CAF50),
+                    backgroundColor: const Color(0xFF65c6f4),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
