@@ -105,7 +105,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Profile picture updated successfully!'),
-              backgroundColor: Color(0xFFffa500),
+              backgroundColor: Colors.green,
             ),
           );
         }
@@ -151,7 +151,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
             'Profile saved successfully!',
             style: TextStyle(color: Colors.black),
           ),
-          backgroundColor: const Color(0xFFffa500),
+          backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),

@@ -549,7 +549,7 @@ class _ProfileOverviewState extends State<ProfileOverview>
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Profile data cleared'),
-                            backgroundColor: Colors.orange,
+                            backgroundColor: Colors.green,
                           ),
                         );
                       }
@@ -564,7 +564,7 @@ class _ProfileOverviewState extends State<ProfileOverview>
                   ),
                   child: Text(
                     'Clear All',
-                    style: TextStyle(color: Colors.grey[300]),
+                    style: TextStyle(color: Colors.white),
                   ),
                 ),
               ),
@@ -578,7 +578,7 @@ class _ProfileOverviewState extends State<ProfileOverview>
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Profile data refreshed'),
-                        backgroundColor: Color(0xFFffa500),
+                        backgroundColor: Colors.blueAccent,
                       ),
                     );
                   }
@@ -633,7 +633,7 @@ class _ProfileOverviewState extends State<ProfileOverview>
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Profile saved successfully!'),
-              backgroundColor: Color(0xFFffa500),
+              backgroundColor: Colors.green,
             ),
           );
 
@@ -669,12 +669,18 @@ class _ProfileOverviewState extends State<ProfileOverview>
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Cancel'),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
               ElevatedButton(
                 onPressed: () => Navigator.of(context).pop(true),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                child: const Text('Clear All'),
+                child: const Text(
+                  'Clear All',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ],
           ),

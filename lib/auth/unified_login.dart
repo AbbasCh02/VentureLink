@@ -836,7 +836,7 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
       // Check users table (startup users)
       final userResult =
           await supabase
-              .from('users')
+              .from('startups')
               .select('email')
               .eq('email', email)
               .maybeSingle();

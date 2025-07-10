@@ -5,6 +5,7 @@ import '../Providers/startup_profile_overview_provider.dart';
 import '../Providers/startup_profile_provider.dart';
 import '../Providers/business_model_canvas_provider.dart';
 import '../Providers/team_members_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class StartupDashboard extends StatefulWidget {
   const StartupDashboard({super.key});
@@ -439,112 +440,138 @@ class _StartupDashboardState extends State<StartupDashboard>
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 20),
 
               if (teamProvider.hasTeamMembers) ...[
                 // Team members preview (horizontal scroll)
                 SizedBox(
-                  height: 100,
-                  child: SingleChildScrollView(
+                  height: 90, // Increased height to accommodate role text
+                  child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children:
-                          teamProvider.teamMembers.asMap().entries.map((entry) {
-                            var member = entry.value;
-                            return Container(
-                              width: 80,
-                              margin: const EdgeInsets.only(right: 8),
-                              child: _buildTeamMemberPreview(member),
-                            );
-                          }).toList(),
-                    ),
+                    itemCount: teamProvider.teamMembers.length,
+                    itemBuilder: (context, index) {
+                      final member = teamProvider.teamMembers[index];
+                      return GestureDetector(
+                        onTap:
+                            member.linkedin.isNotEmpty
+                                ? () => _launchLinkedIn(member.linkedin)
+                                : null,
+                        child: MouseRegion(
+                          cursor:
+                              member.linkedin.isNotEmpty
+                                  ? SystemMouseCursors.click
+                                  : SystemMouseCursors.basic,
+                          child: Container(
+                            width: 80,
+                            margin: const EdgeInsets.only(right: 12),
+                            child: Column(
+                              children: [
+                                Container(
+                                  width: 50,
+                                  height: 50,
+                                  decoration: BoxDecoration(
+                                    color:
+                                        member.linkedin.isNotEmpty
+                                            ? const Color(
+                                              0xFF4CAF50,
+                                            ).withValues(alpha: 0.2)
+                                            : Colors.grey.withValues(
+                                              alpha: 0.2,
+                                            ),
+                                    borderRadius: BorderRadius.circular(25),
+                                    border: Border.all(
+                                      color:
+                                          member.linkedin.isNotEmpty
+                                              ? const Color(0xFF4CAF50)
+                                              : Colors.grey,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: Stack(
+                                    children: [
+                                      Center(
+                                        child: CircleAvatar(
+                                          radius: 20,
+                                          backgroundColor: Colors.grey[700],
+                                          child: Icon(
+                                            // CHANGED: Use default profile icon
+                                            Icons.person,
+                                            color: Colors.grey[400],
+                                            size: 24,
+                                          ),
+                                        ),
+                                      ),
+                                      // LinkedIn indicator
+                                      if (member.linkedin.isNotEmpty)
+                                        Positioned(
+                                          bottom: 0,
+                                          right: 0,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(2),
+                                            decoration: const BoxDecoration(
+                                              color: Colors.blue,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.link,
+                                              color: Colors.white,
+                                              size: 12,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                // Name
+                                Text(
+                                  member.name,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color:
+                                        member.linkedin.isNotEmpty
+                                            ? const Color(0xFF4CAF50)
+                                            : Colors.grey[400],
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(
+                                  height: 2,
+                                ), // ADDED: Space between name and role
+                                // Position/Role - ADDED
+                                Text(
+                                  member.role,
+                                  style: TextStyle(
+                                    fontSize: 8,
+                                    color: Colors.grey[500],
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ] else ...[
-                // No team members state - simplified
+                // No team members message
                 Text(
-                  'No team members',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[500],
-                    height: 1.0,
-                  ),
+                  'No team members added yet',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                 ),
               ],
             ],
           ),
         );
       },
-    );
-  }
-
-  // Helper widget for individual team member preview
-  Widget _buildTeamMemberPreview(TeamMember member) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Avatar
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [
-                  const Color(0xFF4CAF50).withValues(alpha: 0.3),
-                  const Color(0xFF45a049).withValues(alpha: 0.2),
-                ],
-              ),
-              border: Border.all(
-                color: const Color(0xFF4CAF50).withValues(alpha: 0.5),
-                width: 1,
-              ),
-            ),
-            child: ClipOval(
-              child: Image.network(
-                member.avatar,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(
-                    Icons.person,
-                    color: Color(0xFF4CAF50),
-                    size: 20,
-                  );
-                },
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          // Name
-          Text(
-            member.name,
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 2),
-          // Role
-          Text(
-            member.role,
-            style: TextStyle(
-              fontSize: 8,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF4CAF50),
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
     );
   }
 
@@ -1420,6 +1447,62 @@ class _StartupDashboardState extends State<StartupDashboard>
         ],
       ),
     );
+  }
+
+  Future<void> _launchLinkedIn(String url) async {
+    try {
+      // Clean and validate URL
+      String cleanUrl = url.trim();
+      if (cleanUrl.isEmpty) {
+        _showErrorSnackBar('LinkedIn URL is empty');
+        return;
+      }
+
+      // Add protocol if missing
+      if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+        cleanUrl = 'https://$cleanUrl';
+      }
+
+      // Validate URL format
+      final uri = Uri.tryParse(cleanUrl);
+      if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+        _showErrorSnackBar('Invalid LinkedIn URL format');
+        return;
+      }
+
+      // Check if URL can be launched
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('Error launching LinkedIn: $e');
+      _showErrorSnackBar('Failed to open LinkedIn: ${e.toString()}');
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red[700],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   @override

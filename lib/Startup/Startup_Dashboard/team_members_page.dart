@@ -774,11 +774,10 @@ class _TeamMembersPageState extends State<TeamMembersPage>
                                     : 'Failed to save team: ${provider.error}',
                               ),
                               backgroundColor:
-                                  success
-                                      ? const Color(0xFFffa500)
-                                      : Colors.red,
+                                  success ? Colors.green : Colors.red,
                             ),
                           );
+                          Navigator.of(context).pop();
                         }
                       },
               style: ElevatedButton.styleFrom(
@@ -831,7 +830,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('All team members cleared'),
-                            backgroundColor: Colors.orange,
+                            backgroundColor: Colors.green,
                           ),
                         );
                       }
@@ -860,7 +859,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Team data refreshed'),
-                        backgroundColor: Color(0xFFffa500),
+                        backgroundColor: Colors.blueAccent,
                       ),
                     );
                   }
@@ -893,7 +892,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Team member added successfully!'),
-              backgroundColor: Color(0xFFffa500),
+              backgroundColor: Colors.green,
             ),
           );
         } else {
@@ -939,7 +938,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
                               ? '${member.name} removed from team'
                               : 'Failed to remove team member',
                         ),
-                        backgroundColor: success ? Colors.orange : Colors.red,
+                        backgroundColor: success ? Colors.green : Colors.red,
                       ),
                     );
                   }
