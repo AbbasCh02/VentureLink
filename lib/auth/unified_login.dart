@@ -772,7 +772,7 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
       // First check which table the email exists in
       final userType = await _checkUserType(email);
 
-      if (userType == null) {
+      if (userType == null && mounted) {
         // Email not found in either table
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

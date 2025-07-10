@@ -398,7 +398,7 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
             const SizedBox(height: 16),
             _buildStyledFormField(
               label: 'Company Website (Optional)',
-              hint: 'https://company.com/in/username...',
+              hint: 'www.company.com',
               icon: Icons.link,
               controller: provider.websiteController,
               validator: provider.validateWebsite,
@@ -481,6 +481,7 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
         TextFormField(
           controller: controller,
           style: const TextStyle(color: Colors.white),
+          cursorColor: Color(0xFF65c6f4),
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.grey[800]!.withValues(alpha: 0.5),
@@ -747,9 +748,10 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
                             content: Text(
                               'Save Companies (${provider.companiesCount} companies)',
                             ),
-                            backgroundColor: const Color(0xFF65c6f4),
+                            backgroundColor: Colors.green,
                           ),
                         );
+                        Navigator.pop(context);
                       },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
@@ -798,7 +800,7 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
                               for (final company in provider.companies) {
                                 await provider.deleteCompany(company.id);
                               }
-                              if (context.mounted) {
+                              if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text('All companies cleared'),
@@ -863,7 +865,7 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Company added successfully!'),
-              backgroundColor: Color(0xFF65c6f4),
+              backgroundColor: Colors.green,
             ),
           );
         }
@@ -900,11 +902,13 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
               ElevatedButton(
                 onPressed: () async {
-                  Navigator.of(context).pop();
                   try {
                     await provider.deleteCompany(company.id);
                     if (context.mounted) {
@@ -913,9 +917,10 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
                           content: Text(
                             '${company.companyName} removed from profile',
                           ),
-                          backgroundColor: Colors.orange,
+                          backgroundColor: Colors.green,
                         ),
                       );
+                      Navigator.of(context).pop();
                     }
                   } catch (e) {
                     if (context.mounted) {
@@ -929,7 +934,10 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
                   }
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                child: const Text('Remove'),
+                child: const Text(
+                  'Remove',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ],
           ),

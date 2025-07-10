@@ -5,6 +5,7 @@ import '../Providers/investor_profile_provider.dart';
 import '../Providers/investor_company_provider.dart';
 import 'investor_profile_page.dart';
 import 'company_list_page.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class InvestorDashboard extends StatefulWidget {
   const InvestorDashboard({super.key});
@@ -450,25 +451,32 @@ class _InvestorDashboardState extends State<InvestorDashboard>
         const SizedBox(height: 12),
 
         // Two column layout for LinkedIn and Portfolio
-        // Two column layout for LinkedIn and Portfolio
         IntrinsicHeight(
           child: Row(
             children: [
               Expanded(
                 flex: 2, // LinkedIn takes 2 parts
-                child: _buildElegantInfoCard(
-                  icon: Icons.link_outlined,
-                  title: 'LinkedIn',
-                  content:
-                      provider.linkedinUrl != null &&
-                              provider.linkedinUrl!.isNotEmpty
-                          ? 'Connected'
-                          : 'Not connected',
-                  isSet:
-                      provider.linkedinUrl != null &&
-                      provider.linkedinUrl!.isNotEmpty,
-                  color: const Color(0xFF4CAF50),
-                  isCompact: true,
+                child: GestureDetector(
+                  onTap: () {
+                    if (provider.linkedinUrl != null &&
+                        provider.linkedinUrl!.isNotEmpty) {
+                      _launchLinkedIn(provider.linkedinUrl!);
+                    }
+                  },
+                  child: _buildElegantInfoCard(
+                    icon: Icons.link_outlined,
+                    title: 'LinkedIn',
+                    content:
+                        provider.linkedinUrl != null &&
+                                provider.linkedinUrl!.isNotEmpty
+                            ? 'Connected'
+                            : 'Not connected',
+                    isSet:
+                        provider.linkedinUrl != null &&
+                        provider.linkedinUrl!.isNotEmpty,
+                    color: const Color(0xFF4CAF50),
+                    isCompact: true,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -488,6 +496,19 @@ class _InvestorDashboardState extends State<InvestorDashboard>
         ),
       ],
     );
+  }
+
+  Future<void> _launchLinkedIn(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open LinkedIn profile')),
+        );
+      }
+    }
   }
 
   Widget _buildElegantInfoCard({

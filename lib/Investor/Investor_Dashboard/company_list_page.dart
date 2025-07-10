@@ -136,7 +136,7 @@ class _CompaniesListPageState extends State<CompaniesListPage>
 
   Widget _buildSliverAppBar(InvestorCompaniesProvider provider) {
     return SliverAppBar(
-      expandedHeight: 120,
+      expandedHeight: 160,
       floating: false,
       pinned: true,
       backgroundColor: const Color(0xFF0a0a0a),
@@ -144,11 +144,21 @@ class _CompaniesListPageState extends State<CompaniesListPage>
       leading: Container(
         margin: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: const Color(0xFF1a1a1a),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: const Color(0xFF65c6f4).withValues(alpha: 0.3),
+          gradient: LinearGradient(
+            colors: [const Color(0xFF1a1a1a), const Color(0xFF2a2a2a)],
           ),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: const Color(0xFF65c6f4).withValues(alpha: 0.4),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF65c6f4).withValues(alpha: 0.2),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: IconButton(
           icon: const Icon(
@@ -159,6 +169,7 @@ class _CompaniesListPageState extends State<CompaniesListPage>
           onPressed: () => Navigator.pop(context),
         ),
       ),
+
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: BoxDecoration(
@@ -166,58 +177,127 @@ class _CompaniesListPageState extends State<CompaniesListPage>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                const Color(0xFF65c6f4).withValues(alpha: 0.1),
-                const Color(0xFF2196F3).withValues(alpha: 0.05),
+                const Color(0xFF65c6f4).withValues(alpha: 0.15),
+                const Color(0xFF2196F3).withValues(alpha: 0.08),
+                const Color(0xFF1a1a1a).withValues(alpha: 0.3),
                 Colors.transparent,
               ],
+              stops: const [0.0, 0.3, 0.7, 1.0],
             ),
           ),
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(80, 20, 20, 20),
+              padding: const EdgeInsets.fromLTRB(80, 24, 20, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  const Text(
-                    'Companies Portfolio',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      height: 1.0,
-                    ),
+                  Row(
+                    children: [
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Companies & Positions',
+                              style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                                height: 1.0,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.black.withValues(alpha: 0.5),
+                                    offset: const Offset(0, 2),
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
+                          horizontal: 16,
+                          vertical: 8,
                         ),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
                             colors: [Color(0xFF65c6f4), Color(0xFF2196F3)],
                           ),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(25),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(
+                                0xFF65c6f4,
+                              ).withValues(alpha: 0.4),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
-                        child: Text(
-                          '${provider.companiesCount} Companies',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.pie_chart_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${provider.companiesCount} Companies',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '• ${provider.currentCompanies.length} Active',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[400],
-                          fontWeight: FontWeight.w500,
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4CAF50).withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: const Color(
+                              0xFF4CAF50,
+                            ).withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.trending_up_rounded,
+                              color: Color(0xFF4CAF50),
+                              size: 14,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${provider.currentCompanies.length} Active',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF4CAF50),
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],

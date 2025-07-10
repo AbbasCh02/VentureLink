@@ -611,7 +611,7 @@ class _InvestorBioState extends State<InvestorBio>
                 Text('Professional bio saved successfully!'),
               ],
             ),
-            backgroundColor: Color(0xFF65c6f4),
+            backgroundColor: Colors.green,
             duration: Duration(seconds: 2),
           ),
         );

@@ -220,6 +220,7 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
             backgroundColor: Colors.green,
           ),
         );
+        Navigator.pop(context);
       }
     } catch (e) {
       _logger.e('Error saving profile: $e');
@@ -1048,10 +1049,10 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF65c6f4).withOpacity(0.2),
+                      color: const Color(0xFF65c6f4).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: const Color(0xFF65c6f4).withOpacity(0.3),
+                        color: const Color(0xFF65c6f4).withValues(alpha: 0.3),
                       ),
                     ),
                     child: Text(
@@ -1096,9 +1097,11 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.2),
+                      color: Colors.blue.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                      border: Border.all(
+                        color: Colors.blue.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Text(
                       region,
@@ -1142,9 +1145,11 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.2),
+                      color: Colors.green.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.green.withOpacity(0.3)),
+                      border: Border.all(
+                        color: Colors.green.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Text(
                       stage,
