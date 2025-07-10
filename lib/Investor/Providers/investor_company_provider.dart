@@ -1,4 +1,4 @@
-// lib/Investor/Providers/investor_companies_provider.dart
+// lib/Investor/Providers/investor_company_provider.dart
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
@@ -79,9 +79,6 @@ class InvestorCompaniesProvider with ChangeNotifier {
   bool _isInitialized = false;
   final Set<String> _dirtyFields = {};
 
-  // Cache for investor profile ID
-  String? _investorProfileId;
-
   // Getters
   List<InvestorCompany> get companies => List.unmodifiable(_companies);
   int get companiesCount => _companies.length;
@@ -128,115 +125,38 @@ class InvestorCompaniesProvider with ChangeNotifier {
   Future<void> initialize() async {
     if (_isInitialized) return;
 
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
     try {
-      _error = null;
-      await _getInvestorProfileId();
       await _loadCompaniesData();
       _addListeners();
       _isInitialized = true;
+      debugPrint('✅ InvestorCompaniesProvider initialized successfully');
     } catch (e) {
       _error = 'Failed to initialize companies data: $e';
       debugPrint('❌ Error initializing companies: $e');
-      rethrow;
     } finally {
+      _isLoading = false;
       notifyListeners();
     }
   }
 
-  // Get investor profile ID
-  Future<void> _getInvestorProfileId() async {
+  // Load companies data from database
+  Future<void> _loadCompaniesData() async {
     final User? currentUser = _supabase.auth.currentUser;
     if (currentUser == null) {
       throw Exception('No authenticated user found');
     }
 
     try {
-      final response =
-          await _supabase
-              .from('investor_profiles')
-              .select('id')
-              .eq('investor_id', currentUser.id)
-              .single();
-
-      _investorProfileId = response['id'];
-      debugPrint('✅ Found investor profile ID: $_investorProfileId');
-    } catch (e) {
-      // If no profile exists, create one
-      debugPrint('⚠️ No investor profile found, creating one...');
-      await _createInvestorProfile(currentUser.id);
-    }
-  }
-
-  // Create investor profile if it doesn't exist
-  Future<void> _createInvestorProfile(String userId) async {
-    try {
-      final response =
-          await _supabase
-              .from('investor_profiles')
-              .insert({
-                'investor_id': userId,
-                'created_at': DateTime.now().toIso8601String(),
-              })
-              .select('id')
-              .single();
-
-      _investorProfileId = response['id'];
-      debugPrint('✅ Created investor profile with ID: $_investorProfileId');
-    } catch (e) {
-      debugPrint('❌ Error creating investor profile: $e');
-      throw Exception('Failed to create investor profile: $e');
-    }
-  }
-
-  // Add listeners to controllers
-  void _addListeners() {
-    _companyNameController.addListener(_onFieldChanged);
-    _titleController.addListener(_onFieldChanged);
-    _websiteController.addListener(_onFieldChanged);
-  }
-
-  // Remove listeners
-  void _removeListeners() {
-    _companyNameController.removeListener(_onFieldChanged);
-    _titleController.removeListener(_onFieldChanged);
-    _websiteController.removeListener(_onFieldChanged);
-  }
-
-  // Handle field changes
-  void _onFieldChanged() {
-    _dirtyFields.add('company_form');
-    _debounceSave();
-    notifyListeners();
-  }
-
-  // Debounced save
-  void _debounceSave() {
-    _saveTimer?.cancel();
-    _saveTimer = Timer(const Duration(seconds: 2), () {
-      if (isFormValid) {
-        // Auto-save would go here if needed
-      }
-    });
-  }
-
-  // Load companies data from database
-  Future<void> _loadCompaniesData() async {
-    if (_investorProfileId == null) {
-      throw Exception('Investor profile ID not found');
-    }
-
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      debugPrint(
-        '🔄 Loading investor companies for profile: $_investorProfileId',
-      );
+      debugPrint('🔄 Loading investor companies for user: ${currentUser.id}');
 
       final response = await _supabase
           .from('investor_companies')
           .select('*')
-          .eq('investor_id', _investorProfileId!)
+          .eq('investor_id', currentUser.id) // Use currentUser.id directly
           .order('created_at', ascending: false);
 
       _companies.clear();
@@ -248,12 +168,8 @@ class InvestorCompaniesProvider with ChangeNotifier {
 
       debugPrint('✅ Loaded ${_companies.length} companies');
     } catch (e) {
-      _error = 'Failed to load companies: $e';
       debugPrint('❌ Error loading companies: $e');
-      rethrow;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+      throw Exception('Failed to load companies: $e');
     }
   }
 
@@ -280,7 +196,7 @@ class InvestorCompaniesProvider with ChangeNotifier {
       debugPrint('🔄 Adding new company: ${_companyNameController.text}');
 
       final companyData = {
-        'investor_id': currentUser.id,
+        'investor_id': currentUser.id, // Use currentUser.id consistently
         'company_name': _companyNameController.text.trim(),
         'investor_title_in_company': _titleController.text.trim(),
         'website_url':
@@ -381,14 +297,56 @@ class InvestorCompaniesProvider with ChangeNotifier {
 
   // Refresh companies data
   Future<void> refreshCompanies() async {
+    _error = null;
     try {
-      await _getInvestorProfileId();
       await _loadCompaniesData();
+      debugPrint('✅ Companies refreshed successfully');
     } catch (e) {
       _error = 'Failed to refresh companies: $e';
       debugPrint('❌ Error refreshing companies: $e');
+    } finally {
       notifyListeners();
     }
+  }
+
+  // Add listeners to controllers
+  void _addListeners() {
+    _companyNameController.addListener(_onFieldChanged);
+    _titleController.addListener(_onFieldChanged);
+    _websiteController.addListener(_onFieldChanged);
+  }
+
+  // Remove listeners
+  void _removeListeners() {
+    _companyNameController.removeListener(_onFieldChanged);
+    _titleController.removeListener(_onFieldChanged);
+    _websiteController.removeListener(_onFieldChanged);
+  }
+
+  // Handle field changes
+  void _onFieldChanged() {
+    _dirtyFields.add('company_form');
+    _debounceSave();
+    notifyListeners();
+  }
+
+  // Debounced save
+  void _debounceSave() {
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(seconds: 2), () {
+      if (isFormValid) {
+        // Auto-save would go here if needed
+      }
+    });
+  }
+
+  // Clear form
+  void clearForm() {
+    _companyNameController.clear();
+    _titleController.clear();
+    _websiteController.clear();
+    _dirtyFields.clear();
+    notifyListeners();
   }
 
   // Validation methods
@@ -426,6 +384,12 @@ class InvestorCompaniesProvider with ChangeNotifier {
       return 'Please enter a valid website URL';
     }
     return null;
+  }
+
+  // Reset error state
+  void clearError() {
+    _error = null;
+    notifyListeners();
   }
 
   @override

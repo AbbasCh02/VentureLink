@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../Providers/investor_profile_provider.dart';
 import '../Providers/investor_company_provider.dart';
 import 'investor_profile_page.dart';
-import 'investor_company_page.dart';
+import 'company_list_page.dart';
 
 class InvestorDashboard extends StatefulWidget {
   const InvestorDashboard({super.key});
@@ -634,7 +634,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const InvestorCompanyPage(),
+                        builder: (context) => const CompaniesListPage(),
                       ),
                     );
                   },
@@ -650,7 +650,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.visibility_outlined, size: 18),
+                      Icon(Icons.list_alt, size: 18),
                       SizedBox(width: 8),
                       Text(
                         'View Companies',
