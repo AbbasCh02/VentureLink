@@ -76,11 +76,7 @@ class StartupProfileProvider with ChangeNotifier {
   void setPitchDeckFiles(List<File> files, List<Widget> thumbnails) {
     _pitchDeckFiles = files;
     _pitchDeckThumbnails = thumbnails;
-    _dirtyFields.add('pitchDeckFiles');
     notifyListeners();
-
-    // Save the files
-    saveField('pitchDeckFiles');
   }
 
   Widget buildFileCard(BuildContext context, File file) {
@@ -365,6 +361,7 @@ class StartupProfileProvider with ChangeNotifier {
       } else {
         debugPrint('No startup profile data found for user: ${currentUser.id}');
       }
+      await _loadPitchDeckData(currentUser.id);
 
       // Re-add listeners
       _addListeners();
@@ -377,6 +374,188 @@ class StartupProfileProvider with ChangeNotifier {
       _addListeners();
       rethrow;
     }
+  }
+
+  Future<void> _loadPitchDeckData(String userId) async {
+    try {
+      debugPrint('🔄 Loading pitch deck data for user: $userId');
+
+      // Query pitch_decks table for user's pitch deck
+      final pitchDeckResponse =
+          await _supabase
+              .from('pitch_decks')
+              .select('*')
+              .eq('user_id', userId)
+              .maybeSingle();
+
+      if (pitchDeckResponse != null) {
+        // Extract pitch deck information
+        _pitchDeckId = pitchDeckResponse['id'];
+        _isPitchDeckSubmitted = pitchDeckResponse['is_submitted'] ?? false;
+
+        // Parse submission date if it exists
+        if (pitchDeckResponse['submission_date'] != null) {
+          _pitchDeckSubmissionDate = DateTime.parse(
+            pitchDeckResponse['submission_date'],
+          );
+        }
+
+        // Get file information
+        final List<String>? fileUrls =
+            pitchDeckResponse['file_urls']?.cast<String>();
+        final List<String>? fileNames =
+            pitchDeckResponse['file_names']?.cast<String>();
+        final int fileCount = pitchDeckResponse['file_count'] ?? 0;
+
+        if (fileUrls != null && fileUrls.isNotEmpty) {
+          debugPrint('✅ Found ${fileUrls.length} pitch deck files');
+
+          // Generate thumbnails for stored files
+          await _generateThumbnailsForStoredFiles(fileUrls, fileNames);
+
+          debugPrint('✅ Generated thumbnails for stored pitch deck files');
+          debugPrint('   - File Count: $fileCount');
+          debugPrint('   - Submitted: $_isPitchDeckSubmitted');
+          debugPrint('   - Submission Date: $_pitchDeckSubmissionDate');
+        } else {
+          debugPrint('ℹ️ No pitch deck files found');
+        }
+      } else {
+        debugPrint('ℹ️ No pitch deck record found for user');
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading pitch deck data: $e');
+      // Don't rethrow - pitch deck data is not critical for app initialization
+    }
+  }
+
+  Future<void> _generateThumbnailsForStoredFiles(
+    List<String> fileUrls,
+    List<String>? fileNames,
+  ) async {
+    try {
+      List<Widget> thumbnails = [];
+
+      for (int i = 0; i < fileUrls.length; i++) {
+        final fileUrl = fileUrls[i];
+        final fileName =
+            fileNames != null && i < fileNames.length
+                ? fileNames[i]
+                : 'File ${i + 1}';
+
+        // Extract file extension from URL or filename
+        String extension = '';
+        if (fileName.contains('.')) {
+          extension = fileName.split('.').last.toLowerCase();
+        } else if (fileUrl.contains('.')) {
+          extension = fileUrl.split('.').last.toLowerCase().split('?').first;
+        }
+
+        // Generate thumbnail widget for stored file
+        final thumbnail = _buildStoredFileCard(fileUrl, fileName, extension);
+        thumbnails.add(thumbnail);
+      }
+
+      // Update thumbnails (but keep _pitchDeckFiles empty since these are stored files)
+      _pitchDeckThumbnails = thumbnails;
+
+      debugPrint(
+        '✅ Generated ${thumbnails.length} thumbnails for stored files',
+      );
+    } catch (e) {
+      debugPrint('❌ Error generating thumbnails for stored files: $e');
+    }
+  }
+
+  Widget _buildStoredFileCard(
+    String fileUrl,
+    String fileName,
+    String extension,
+  ) {
+    return Container(
+      width: 120,
+      margin: const EdgeInsets.only(right: 12, bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey[850],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.green.withValues(
+            alpha: 0.4,
+          ), // Green border for stored files
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Thumbnail area
+            Container(
+              height: 60,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.grey[800],
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Center(child: _getFileIcon(extension)),
+            ),
+            const SizedBox(height: 8),
+            // File name
+            Text(
+              _getDisplayFileName(fileName),
+              style: const TextStyle(color: Colors.white, fontSize: 10),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            // Stored indicator
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'STORED',
+                style: TextStyle(
+                  color: Colors.green[400],
+                  fontSize: 8,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getDisplayFileName(String fileName) {
+    // Remove user ID and timestamp from filename for display
+    if (fileName.contains('_')) {
+      final parts = fileName.split('_');
+      if (parts.length >= 3) {
+        // Remove user ID and pitch deck ID, keep meaningful part
+        final meaningfulPart = parts.skip(2).join('_');
+        // Remove timestamp if present
+        if (meaningfulPart.contains('.')) {
+          final nameParts = meaningfulPart.split('.');
+          if (nameParts.length >= 2) {
+            final nameWithoutTimestamp = nameParts.first;
+            final extension = nameParts.last;
+            return '$nameWithoutTimestamp.$extension';
+          }
+        }
+        return meaningfulPart;
+      }
+    }
+
+    // If filename format is unexpected, just truncate if too long
+    if (fileName.length > 15) {
+      return '${fileName.substring(0, 12)}...';
+    }
+    return fileName;
   }
 
   // Method to get startup profile data
@@ -398,7 +577,7 @@ class StartupProfileProvider with ChangeNotifier {
 
   // Save specific field to Supabase
   Future<bool> saveField(String fieldName) async {
-    if (!_dirtyFields.contains(fieldName)) return true;
+    if (_isInitializing) return true;
 
     _isSaving = true;
     _error = null;
@@ -425,8 +604,13 @@ class StartupProfileProvider with ChangeNotifier {
           await _saveProfileImage(currentUser.id);
           break;
         case 'pitchDeckFiles':
-          await _savePitchDeckFiles(currentUser.id);
-          break;
+          // ✅ DON'T auto-upload files - just return success
+          // Files will be uploaded only when submitPitchDeck() is called
+          debugPrint(
+            '📝 Pitch deck files staged for upload (not uploaded yet)',
+          );
+          _dirtyFields.remove('pitchDeckFiles');
+          return true;
         case 'pitchDeckSubmission':
           await _savePitchDeckSubmission(currentUser.id);
           break;
@@ -583,10 +767,15 @@ class StartupProfileProvider with ChangeNotifier {
   }
 
   // Save pitch deck files and submission status
+  // Save pitch deck files and submission status
   Future<void> _savePitchDeckFiles(String userId) async {
     if (_pitchDeckFiles.isEmpty) return;
 
     try {
+      debugPrint(
+        '🚀 Uploading ${_pitchDeckFiles.length} files to cloud storage...',
+      );
+
       // Upload files using StorageService
       final uploadResult = await StorageService.uploadPitchDeckFiles(
         files: _pitchDeckFiles,
@@ -604,6 +793,7 @@ class StartupProfileProvider with ChangeNotifier {
                   'file_urls': uploadResult['file_urls'],
                   'file_names': uploadResult['file_names'],
                   'file_count': uploadResult['file_count'],
+                  'user_id': userId, // ✅ Add user_id to establish relationship
                   'created_at': DateTime.now().toIso8601String(),
                   'updated_at': DateTime.now().toIso8601String(),
                 })
@@ -612,20 +802,18 @@ class StartupProfileProvider with ChangeNotifier {
 
         _pitchDeckId = response['id'];
 
-        // Update user record with pitch deck reference
-        await _supabase
-            .from('users')
-            .update({
-              'pitch_deck_id': _pitchDeckId,
-              'updated_at': DateTime.now().toIso8601String(),
-            })
-            .eq('id', userId); // CRITICAL: Filter by user ID
+        // ✅ REMOVED: Don't update startups table (pitch_deck_id column doesn't exist)
+        // Relationship is maintained through pitch_decks.user_id
       }
+
+      debugPrint(
+        '✅ Successfully uploaded ${_pitchDeckFiles.length} files to cloud storage',
+      );
 
       // Clear uploaded files since they're now stored
       _pitchDeckFiles.clear();
     } catch (e) {
-      debugPrint('Error saving pitch deck files: $e');
+      debugPrint('❌ Error saving pitch deck files: $e');
       rethrow;
     }
   }
@@ -749,8 +937,12 @@ class StartupProfileProvider with ChangeNotifier {
     return _pitchDeckFiles.length + _pitchDeckThumbnails.length;
   }
 
+  bool get hasLocalPitchDeckFiles {
+    return _pitchDeckFiles.isNotEmpty;
+  }
+
   bool get hasStoredPitchDeckFiles {
-    return _pitchDeckId != null && _pitchDeckThumbnails.isNotEmpty;
+    return _pitchDeckThumbnails.isNotEmpty && _pitchDeckId != null;
   }
 
   bool get hasProfileImage {
@@ -785,17 +977,57 @@ class StartupProfileProvider with ChangeNotifier {
   Future<void> removePitchDeckFile(int index) async {
     if (index < _pitchDeckFiles.length) {
       _pitchDeckFiles.removeAt(index);
-      _dirtyFields.add('pitchDeckFiles');
+      // Remove corresponding thumbnail if it exists
+      if (index < _pitchDeckThumbnails.length) {
+        _pitchDeckThumbnails.removeAt(index);
+      }
+      // ✅ DON'T trigger auto-save/upload when removing files
       notifyListeners();
     }
   }
 
-  Future<void> submitPitchDeck() async {
-    _isPitchDeckSubmitted = true;
-    _pitchDeckSubmissionDate = DateTime.now();
-    _dirtyFields.add('pitchDeckSubmission');
+  bool get canSubmitPitchDeck {
+    return _pitchDeckFiles.isNotEmpty && !_isPitchDeckSubmitted;
+  }
+
+  Future<void> refreshData() async {
+    if (!_isInitialized) {
+      await initialize();
+    } else {
+      await _loadProfileData();
+    }
+  }
+
+  // 9. NEW: Method to clear only local files (not stored files)
+  void clearLocalPitchDeckFiles() {
+    _pitchDeckFiles.clear();
     notifyListeners();
-    saveField('pitchDeckSubmission');
+  }
+
+  Future<void> submitPitchDeck() async {
+    try {
+      final currentUser = _supabase.auth.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // ✅ NOW upload files to cloud storage when submitting
+      if (_pitchDeckFiles.isNotEmpty) {
+        await _savePitchDeckFiles(currentUser.id);
+      }
+
+      // Update submission status
+      _isPitchDeckSubmitted = true;
+      _pitchDeckSubmissionDate = DateTime.now();
+
+      // Save submission status to database
+      await _savePitchDeckSubmission(currentUser.id);
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('❌ Error submitting pitch deck: $e');
+      rethrow;
+    }
   }
 
   Map<String, dynamic> getProfileData() {

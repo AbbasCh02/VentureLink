@@ -134,17 +134,18 @@ class PitchDeck extends StatelessWidget {
       // Hide processing indicator
       if (context.mounted) Navigator.pop(context);
 
-      // Update provider with all files
+      // Update provider with all files (but DON'T upload yet)
       List<Widget> allThumbnails = List.from(provider.pitchDeckThumbnails);
       allThumbnails.addAll(newThumbnails);
 
+      // ✅ Use the new method that doesn't trigger upload
       provider.setPitchDeckFiles(allFiles, allThumbnails);
 
       // Show success message
       if (context.mounted) {
         _showSuccessSnackBar(
           context,
-          'Successfully uploaded ${validFiles.length} file(s)! Click "Submit Pitch Deck" when ready.',
+          'Successfully added ${validFiles.length} file(s)! Click "Submit Pitch Deck" to upload and submit.',
         );
       }
     } catch (e) {
@@ -183,11 +184,11 @@ class PitchDeck extends StatelessWidget {
       if (context.mounted) {
         _showLoadingDialog(
           context,
-          'Submitting ${provider.pitchDeckFiles.length} file(s)...',
+          'Uploading and submitting ${provider.pitchDeckFiles.length} file(s)...',
         );
       }
 
-      // Call provider method to handle submission
+      // ✅ NOW upload files to cloud storage and submit
       await provider.submitPitchDeck();
 
       // Hide loading dialog
@@ -197,7 +198,7 @@ class PitchDeck extends StatelessWidget {
       if (context.mounted) {
         _showSuccessSnackBar(
           context,
-          'Successfully submitted ${provider.pitchDeckFiles.length} file(s)!',
+          'Successfully uploaded and submitted pitch deck!',
         );
       }
     } catch (e) {
@@ -235,13 +236,14 @@ class PitchDeck extends StatelessWidget {
     try {
       // Show deletion loading
       if (context.mounted) {
-        _showLoadingDialog(context, 'Deleting file...');
+        _showLoadingDialog(context, 'Removing file...');
       }
 
       // Call provider method to delete individual file
       final fileIndex = provider.pitchDeckFiles.indexOf(file);
       if (fileIndex != -1) {
-        provider.removePitchDeckFile(fileIndex);
+        // ✅ This now won't trigger upload since we're using the updated method
+        await provider.removePitchDeckFile(fileIndex);
       }
 
       // Hide loading dialog
@@ -249,13 +251,13 @@ class PitchDeck extends StatelessWidget {
 
       // Show success message
       if (context.mounted) {
-        _showSuccessSnackBar(context, 'File deleted successfully!');
+        _showSuccessSnackBar(context, 'File removed successfully!');
       }
     } catch (e) {
       if (context.mounted) Navigator.pop(context);
       logger.e('Error deleting file: $e');
       if (context.mounted) {
-        _showErrorSnackBar(context, 'Failed to delete file. Please try again.');
+        _showErrorSnackBar(context, 'Failed to remove file. Please try again.');
       }
     }
   }
@@ -692,7 +694,7 @@ class PitchDeck extends StatelessWidget {
 
               // Files display
               SizedBox(
-                height: 160,
+                height: 200,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: [
