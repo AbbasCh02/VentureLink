@@ -203,14 +203,13 @@ class InvestorProfileProvider extends ChangeNotifier {
       final investorRecord =
           await _supabase
               .from('investors')
-              .select('*, avatar_url')
+              .select('*') // ✅ Removed avatar_url from select
               .eq('id', currentUser.id)
               .maybeSingle();
 
       if (investorRecord != null) {
         _isVerified = investorRecord['is_verified'] ?? false;
-        _profileImageUrl = investorRecord['avatar_url'];
-
+        // ✅ Removed avatar_url loading from here - will be loaded from profiles
         debugPrint('✅ Investor record found');
       } else {
         debugPrint('⚠️ Creating initial investor record...');
@@ -231,10 +230,12 @@ class InvestorProfileProvider extends ChangeNotifier {
         // Load basic investor info
         _portfolioSize = profileData['portfolio_size'];
 
-        // Load professional information (removed company_name and title)
+        // ✅ Load avatar_url from investor_profiles table
+        _profileImageUrl = profileData['avatar_url'];
+
+        // Load professional information
         _bioController.text = profileData['bio'] ?? '';
         _linkedinUrlController.text = profileData['linkedin_url'] ?? '';
-
         _fullNameController.text = profileData['full_name'] ?? '';
         _originController.text = profileData['country'] ?? '';
         _age = profileData['age'];
@@ -360,6 +361,7 @@ class InvestorProfileProvider extends ChangeNotifier {
         'full_name': null,
         'age': null,
         'country': null,
+        'avatar_url': null,
         'industries': <String>[],
         'geographic_focus': <String>[],
         'preferred_stages': <String>[],
@@ -441,16 +443,6 @@ class InvestorProfileProvider extends ChangeNotifier {
     }
   }
 
-  // Save to investors table
-  Future<void> _saveToInvestors(Map<String, dynamic> data) async {
-    final User? currentUser = _supabase.auth.currentUser;
-    if (currentUser == null) return;
-
-    data['updated_at'] = DateTime.now().toIso8601String();
-
-    await _supabase.from('investors').update(data).eq('id', currentUser.id);
-  }
-
   // Save to investor_profiles table
   Future<void> _saveToInvestorProfiles(Map<String, dynamic> data) async {
     final User? currentUser = _supabase.auth.currentUser;
@@ -482,7 +474,9 @@ class InvestorProfileProvider extends ChangeNotifier {
       );
 
       _profileImageUrl = imageUrl;
-      await _saveToInvestors({'avatar_url': imageUrl});
+      await _saveToInvestorProfiles({
+        'avatar_url': imageUrl,
+      }); // ✅ Correct table
       debugPrint('✅ Profile image uploaded and saved');
     } catch (e) {
       debugPrint('❌ Error saving profile image: $e');

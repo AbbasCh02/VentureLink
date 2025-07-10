@@ -989,7 +989,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
           case UserType.startup:
             if (mounted) {
               Navigator.of(context).pushNamedAndRemoveUntil(
-                '/startup_dashboard',
+                '/startup-dashboard',
                 (route) => false, // Remove all previous routes
               );
             }
@@ -997,7 +997,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
           case UserType.investor:
             if (mounted) {
               Navigator.of(context).pushNamedAndRemoveUntil(
-                '/investor_dashboard',
+                '/investor-dashboard',
                 (route) => false, // Remove all previous routes
               );
             }
