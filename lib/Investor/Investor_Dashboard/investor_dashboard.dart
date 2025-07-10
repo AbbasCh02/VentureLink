@@ -284,7 +284,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -450,10 +450,12 @@ class _InvestorDashboardState extends State<InvestorDashboard>
         const SizedBox(height: 12),
 
         // Two column layout for LinkedIn and Portfolio
+        // Two column layout for LinkedIn and Portfolio
         IntrinsicHeight(
           child: Row(
             children: [
               Expanded(
+                flex: 2, // LinkedIn takes 2 parts
                 child: _buildElegantInfoCard(
                   icon: Icons.link_outlined,
                   title: 'LinkedIn',
@@ -469,8 +471,9 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                   isCompact: true,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
+                flex: 2, // Portfolio takes 3 parts (wider)
                 child: _buildElegantInfoCard(
                   icon: Icons.account_balance_wallet_outlined,
                   title: 'Portfolio Size',
@@ -530,12 +533,12 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                 ),
                 child: Icon(icon, size: isCompact ? 16 : 18, color: color),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   title,
                   style: TextStyle(
-                    fontSize: isCompact ? 12 : 13,
+                    fontSize: isCompact ? 11 : 13,
                     fontWeight: FontWeight.w600,
                     color: color,
                   ),
@@ -578,7 +581,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
             ),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: const Color(0xFF9C27B0).withValues(alpha: 0.4),
+              color: const Color(0xFF4CAF50).withValues(alpha: 0.4),
               width: 1.5,
             ),
           ),
@@ -589,12 +592,12 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF9C27B0).withValues(alpha: 0.2),
+                      color: const Color(0xFF4CAF50).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
                       Icons.business_outlined,
-                      color: Color(0xFF9C27B0),
+                      color: Color(0xFF4CAF50),
                       size: 18,
                     ),
                   ),
@@ -605,7 +608,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF9C27B0),
+                        color: Color(0xFF4CAF50),
                       ),
                     ),
                   ),
@@ -636,7 +639,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF9C27B0),
+                    backgroundColor: const Color(0xFF4CAF50),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
