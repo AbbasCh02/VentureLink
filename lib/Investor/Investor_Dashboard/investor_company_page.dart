@@ -440,12 +440,10 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
                         : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.block, size: 20),
+                            Icon(Icons.add, size: 20),
                             const SizedBox(width: 8),
                             Text(
-                              provider.isFormValid
-                                  ? 'Add Company'
-                                  : 'Fill Required Fields',
+                              'Add Company',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
