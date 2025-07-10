@@ -100,20 +100,27 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
       appBar: AppBar(
         backgroundColor: Colors.grey[900],
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            if (_hasChanges) {
-              _showUnsavedChangesDialog();
-            } else {
-              Navigator.pop(context);
-            }
-          },
+        leading: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF65c6f4).withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Color(0xFF65c6f4)),
+            onPressed: () {
+              if (_hasChanges) {
+                _showUnsavedChangesDialog();
+              } else {
+                Navigator.pop(context);
+              }
+            },
+          ),
         ),
         title: const Text(
           'Investment Preferences',
           style: TextStyle(
-            color: Colors.white,
+            color: Color(0xFF65c6f4),
             fontSize: 20,
             fontWeight: FontWeight.w600,
           ),
@@ -158,7 +165,7 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
         children: [
           Row(
             children: const [
-              Icon(Icons.tune, color: Colors.white, size: 32),
+              Icon(Icons.tune, color: Colors.black, size: 32),
               SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -166,7 +173,7 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Colors.black,
                   ),
                 ),
               ),
@@ -177,7 +184,7 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
             'Select the industries, geographic regions and the investment stages you prefer to invest in. This helps startups find you more easily.',
             style: TextStyle(
               fontSize: 14,
-              color: Colors.white.withValues(alpha: 0.9),
+              color: Colors.black.withValues(alpha: 0.9),
               height: 1.4,
             ),
           ),

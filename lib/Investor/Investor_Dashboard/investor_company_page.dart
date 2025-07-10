@@ -151,9 +151,16 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
     return AppBar(
       backgroundColor: Colors.grey[900],
       elevation: 0,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Color(0xFF65c6f4)),
-        onPressed: () => Navigator.of(context).pop(),
+      leading: Container(
+        margin: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF65c6f4).withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF65c6f4)),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       title: const Text(
         'Company Information',
@@ -163,6 +170,7 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
           fontWeight: FontWeight.w600,
         ),
       ),
+
       actions: [
         Consumer<InvestorCompaniesProvider>(
           builder: (context, provider, child) {
