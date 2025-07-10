@@ -252,7 +252,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     return Consumer<InvestorProfileProvider>(
       builder: (context, provider, child) {
         return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -381,7 +381,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                     if (provider.age != null)
                       _buildCompactInfoChip(
                         icon: Icons.cake_outlined,
-                        label: '${provider.age} years',
+                        label: '${provider.age} yrs',
                         color: const Color(0xFFFF9800),
                       ),
                     if (provider.origin != null && provider.origin!.isNotEmpty)
@@ -538,7 +538,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                 child: Text(
                   title,
                   style: TextStyle(
-                    fontSize: isCompact ? 11 : 13,
+                    fontSize: isCompact ? 12 : 13,
                     fontWeight: FontWeight.w600,
                     color: color,
                   ),
@@ -552,7 +552,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
           Text(
             content,
             style: TextStyle(
-              fontSize: isCompact ? 11 : 12,
+              fontSize: isCompact ? 12 : 13,
               color: isSet ? Colors.grey[300] : Colors.grey[500],
               fontWeight: isSet ? FontWeight.w500 : FontWeight.normal,
               height: 1.3,
