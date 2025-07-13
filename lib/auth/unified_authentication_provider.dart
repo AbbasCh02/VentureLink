@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:logger/logger.dart';
 import '../services/user_type_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// User types enumeration
 enum UserType { startup, investor }
@@ -110,6 +111,7 @@ class UnifiedAuthProvider with ChangeNotifier {
   // Remember me functionality
   bool _rememberMe = false;
   String? _savedEmail;
+  SharedPreferences? _prefs;
 
   // User type selection for signup
   UserType? _selectedUserType;
@@ -119,6 +121,10 @@ class UnifiedAuthProvider with ChangeNotifier {
 
   // Supabase auth stream subscription
   StreamSubscription<AuthState>? _authSubscription;
+
+  static const String _keyRememberMe = 'remember_me';
+  static const String _keySavedEmail = 'saved_email';
+  static const String _keyAutoLogin = 'auto_login';
 
   UnifiedAuthProvider() {
     _initializeAuth();
@@ -176,20 +182,88 @@ class UnifiedAuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Check if user is already logged in
-      final session = _supabase.auth.currentSession;
-      if (session?.user != null) {
-        await _handleExistingUser(session!.user);
-      }
+      // 🔥 Initialize SharedPreferences
+      _prefs = await SharedPreferences.getInstance();
 
-      // Load saved credentials
-      await _loadRememberMe();
+      // 🔥 Load saved remember me preferences
+      await _loadRememberMePreferences();
+
+      // 🔥 Check if user should auto-login based on remember me setting
+      final shouldAutoLogin = _prefs?.getBool(_keyAutoLogin) ?? false;
+
+      if (shouldAutoLogin) {
+        // Check if user is already logged in with valid session
+        final session = _supabase.auth.currentSession;
+        if (session?.user != null) {
+          _logger.i('🔥 Auto-login: Valid session found, logging in user');
+          await _handleExistingUser(session!.user);
+        } else {
+          _logger.i('🔥 Auto-login disabled: No valid session found');
+          await _clearAutoLogin();
+        }
+      } else {
+        _logger.i('🔥 Auto-login disabled: Remember me not enabled');
+        // 🔥 CRITICAL: Sign out any existing session if remember me is not enabled
+        final session = _supabase.auth.currentSession;
+        if (session?.user != null) {
+          _logger.i('🔥 Signing out existing session (remember me disabled)');
+          await _supabase.auth.signOut();
+        }
+      }
     } catch (e) {
       _logger.e('Error initializing auth: $e');
       _error = 'Failed to initialize authentication';
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> _loadRememberMePreferences() async {
+    try {
+      _rememberMe = _prefs?.getBool(_keyRememberMe) ?? false;
+      _savedEmail = _prefs?.getString(_keySavedEmail);
+
+      if (_rememberMe && _savedEmail != null) {
+        _emailController.text = _savedEmail!;
+        _logger.i('✅ Remember me loaded for: $_savedEmail');
+      }
+    } catch (e) {
+      _logger.e('❌ Error loading remember me preferences: $e');
+    }
+  }
+
+  Future<void> _saveRememberMePreferences(
+    String email,
+    bool enableAutoLogin,
+  ) async {
+    try {
+      await _prefs?.setBool(_keyRememberMe, _rememberMe);
+      await _prefs?.setBool(_keyAutoLogin, enableAutoLogin);
+
+      if (_rememberMe) {
+        await _prefs?.setString(_keySavedEmail, email);
+        _savedEmail = email;
+        _logger.i(
+          '✅ Remember me saved for: $email (auto-login: $enableAutoLogin)',
+        );
+      } else {
+        await _prefs?.remove(_keySavedEmail);
+        await _prefs?.remove(_keyAutoLogin);
+        _savedEmail = null;
+        _logger.i('✅ Remember me cleared');
+      }
+    } catch (e) {
+      _logger.e('❌ Error saving remember me preferences: $e');
+    }
+  }
+
+  Future<void> _clearAutoLogin() async {
+    try {
+      await _prefs?.remove(_keyAutoLogin);
+      _logger.i('✅ Auto-login disabled');
+    } catch (e) {
+      _logger.e('❌ Error clearing auto-login: $e');
     }
   }
 
@@ -206,28 +280,22 @@ class UnifiedAuthProvider with ChangeNotifier {
         _isLoggedIn = true;
         _selectedUserType = userType;
 
-        // OPTIMIZATION: Only update user record if it's been more than 1 hour since last login
+        // Update user record if needed
         final shouldUpdateRecord = await _shouldUpdateUserRecord(
           user.id,
           userType,
         );
-
         if (shouldUpdateRecord) {
-          debugPrint('🔄 Updating user record (last update was > 1 hour ago)');
           await _createOrUpdateUserRecord(_currentUser!);
-        } else {
-          debugPrint('✅ Skipping user record update (recently updated)');
         }
 
         _logger.i(
           '✅ Existing user loaded: ${_currentUser!.email} (${userType.name})',
         );
-        debugPrint(
-          '✅ Existing user loaded: ${_currentUser!.email} (${userType.name})',
-        );
       } else {
         // User not found in either table
         await _supabase.auth.signOut();
+        await _clearAutoLogin();
         _error = 'User account not found. Please contact support.';
       }
     } catch (e) {
@@ -508,6 +576,7 @@ class UnifiedAuthProvider with ChangeNotifier {
   void setFormType(FormType formType) {
     debugPrint('🔍 setFormType called: $formType');
     _currentFormType = formType;
+    clearValidationErrors();
     clearForm();
     notifyListeners();
   }
@@ -525,6 +594,11 @@ class UnifiedAuthProvider with ChangeNotifier {
   void setRememberMe(bool value) {
     _rememberMe = value;
     notifyListeners();
+    _logger.i('🔥 Remember me set to: $value');
+  }
+
+  void toggleRememberMe() {
+    setRememberMe(!_rememberMe);
   }
 
   void clearForm() {
@@ -549,12 +623,9 @@ class UnifiedAuthProvider with ChangeNotifier {
 
   // Public method to validate form (called from UI)
   bool validateForm() {
-    debugPrint('🔍 validateForm called - currentFormType: $_currentFormType');
-    if (_currentFormType == FormType.login) {
-      return _validateLoginForm();
-    } else {
-      return _validateSignupForm();
-    }
+    return _currentFormType == FormType.login
+        ? _validateLoginForm()
+        : _validateSignupForm();
   }
 
   // Public method to enable real-time validation (called from UI)
@@ -660,6 +731,8 @@ class UnifiedAuthProvider with ChangeNotifier {
         debugPrint('🔥 SignUp method calling _createOrUpdateUserRecord...');
         await _createOrUpdateUserRecord(_currentUser!);
 
+        await _saveRememberMePreferences(this.email, _rememberMe);
+
         // Save remember me if checked
         if (_rememberMe) {
           await _saveRememberMe(this.email);
@@ -717,12 +790,7 @@ class UnifiedAuthProvider with ChangeNotifier {
         // User type will be detected in _handleSignedInUser
         _logger.i('✅ Login successful: ${this.email}');
 
-        // Save remember me if checked
-        if (_rememberMe) {
-          await _saveRememberMe(this.email);
-        } else {
-          await _clearRememberMe();
-        }
+        await _saveRememberMePreferences(this.email, _rememberMe);
 
         clearForm();
         return true;
@@ -742,6 +810,7 @@ class UnifiedAuthProvider with ChangeNotifier {
 
   Future<bool> signOut() async {
     try {
+      await _clearAutoLogin();
       await _supabase.auth.signOut();
       clearForm();
       return true;
@@ -764,77 +833,30 @@ class UnifiedAuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> _loadRememberMe() async {
-    try {
-      // In a real app, you might want to use secure storage
-      // For now, this is a placeholder
-      if (_savedEmail != null) {
-        _emailController.text = _savedEmail!;
-        _rememberMe = true;
-        _logger.i('✅ Remember me loaded for: $_savedEmail');
-      }
-    } catch (e) {
-      _logger.e('❌ Error loading remember me: $e');
-    }
-  }
-
-  Future<void> _clearRememberMe() async {
-    try {
-      _savedEmail = null;
-      _logger.i('✅ Remember me cleared');
-    } catch (e) {
-      _logger.e('❌ Error clearing remember me: $e');
-    }
-  }
-
   // ========== VALIDATION METHODS ==========
   bool _validateLoginForm() {
-    debugPrint('🔍 _validateLoginForm called');
     bool isValid = true;
-
-    final emailValue = email;
-    final passwordValue = password;
-    debugPrint(
-      '🔍 Validating email: "$emailValue", password: "${passwordValue.length} chars"',
-    );
-
-    _emailError = validateEmail(emailValue);
-    if (_emailError != null) {
-      debugPrint('🔍 Email error: $_emailError');
-      isValid = false;
-    }
-
-    _passwordError = validatePassword(passwordValue);
-    if (_passwordError != null) {
-      debugPrint('🔍 Password error: $_passwordError');
-      isValid = false;
-    }
-
+    _emailError = validateEmail(email);
+    if (_emailError != null) isValid = false;
+    _passwordError = validatePassword(password);
+    if (_passwordError != null) isValid = false;
     _isFormValid = isValid;
-    debugPrint('🔍 Form valid: $isValid, notifying listeners...');
-    notifyListeners(); // CRITICAL: Notify UI of validation changes
+    notifyListeners();
     return isValid;
   }
 
   bool _validateSignupForm() {
-    debugPrint('🔍 _validateSignupForm called');
     bool isValid = true;
-
     _nameError = validateFullName(fullName);
     if (_nameError != null) isValid = false;
-
     _emailError = validateEmail(email);
     if (_emailError != null) isValid = false;
-
     _passwordError = validatePassword(password);
     if (_passwordError != null) isValid = false;
-
     _confirmPasswordError = validateConfirmPassword(password, confirmPassword);
     if (_confirmPasswordError != null) isValid = false;
-
     _isFormValid = isValid;
-    debugPrint('🔍 Signup form valid: $isValid, notifying listeners...');
-    notifyListeners(); // CRITICAL: Notify UI of validation changes
+    notifyListeners();
     return isValid;
   }
 
