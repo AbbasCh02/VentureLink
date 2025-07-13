@@ -630,7 +630,7 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
                           child: CircularProgressIndicator(
                             strokeWidth: 2.5,
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
+                              Colors.black,
                             ),
                           ),
                         )

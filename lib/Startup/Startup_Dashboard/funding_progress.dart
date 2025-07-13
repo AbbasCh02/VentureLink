@@ -43,6 +43,7 @@ class _FundingState extends State<Funding> {
                 ],
               ),
               child: TextFormField(
+                cursorColor: const Color(0xFFffa500),
                 controller: provider.fundingGoalController,
                 keyboardType: TextInputType.number,
                 style: const TextStyle(color: Colors.white, fontSize: 16),

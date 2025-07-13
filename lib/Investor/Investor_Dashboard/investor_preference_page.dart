@@ -834,7 +834,7 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
                     'Save Preferences',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: Colors.black,
                     ),
                   ),
                 ),
