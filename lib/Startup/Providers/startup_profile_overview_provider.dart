@@ -15,6 +15,8 @@ class StartupProfileOverviewProvider with ChangeNotifier {
   bool _isSaving = false;
   String? _error;
   Timer? _saveTimer;
+  String? _currentUserId;
+  StreamSubscription<AuthState>? _authSubscription;
 
   // Dirty tracking for unsaved changes
   final Set<String> _dirtyFields = <String>{};
@@ -28,7 +30,35 @@ class StartupProfileOverviewProvider with ChangeNotifier {
 
   StartupProfileOverviewProvider() {
     // Initialize automatically when provider is created and user is authenticated
+    _setupAuthListener();
+    _addListeners();
     _initializeWhenReady();
+  }
+
+  void _setupAuthListener() {
+    _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
+      final AuthChangeEvent event = data.event;
+      final User? user = data.session?.user;
+
+      if (event == AuthChangeEvent.signedIn && user != null) {
+        // User signed in - check if it's a different user
+        if (_currentUserId != null && _currentUserId != user.id) {
+          debugPrint(
+            '🔄 Different startup user detected, resetting provider state',
+          );
+          _resetProviderState();
+        }
+        _currentUserId = user.id;
+
+        // Initialize for new user if not already initialized
+        if (!_isInitialized) {
+          initialize();
+        }
+      } else if (event == AuthChangeEvent.signedOut) {
+        debugPrint('🔄 Startup user signed out, resetting provider state');
+        _resetProviderState();
+      }
+    });
   }
 
   // Check if user is authenticated and initialize
@@ -58,6 +88,7 @@ class StartupProfileOverviewProvider with ChangeNotifier {
   // Reset provider state on logout
   void _resetProviderState() {
     _isInitialized = false;
+    _currentUserId = null;
     _removeListeners();
     _companyNameController.clear();
     _taglineController.clear();
@@ -65,6 +96,7 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     _regionController.clear();
     _dirtyFields.clear();
     _error = null;
+    _saveTimer?.cancel();
     notifyListeners();
     _addListeners();
   }
@@ -141,12 +173,20 @@ class StartupProfileOverviewProvider with ChangeNotifier {
   Future<void> initialize() async {
     final User? currentUser = _supabase.auth.currentUser;
     if (currentUser == null) {
-      clearAllData();
+      _resetProviderState();
       return;
     }
 
+    // 🔥 CRITICAL: Check if we need to reset for different user
+    if (_currentUserId != null && _currentUserId != currentUser.id) {
+      debugPrint('🔄 User changed during initialization, resetting state');
+      _resetProviderState();
+    }
+
+    _currentUserId = currentUser.id;
+
     if (_isInitialized) {
-      // If already initialized, just refresh data
+      debugPrint('✅ Provider already initialized for user: ${currentUser.id}');
       await _loadProfileData();
       return;
     }
@@ -159,7 +199,7 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     try {
       await _loadProfileData();
       _isInitialized = true;
-      debugPrint('✅ Profile overview initialized successfully');
+      debugPrint('✅ Profile overview initialized for user: ${currentUser.id}');
     } catch (e) {
       _error = 'Failed to initialize profile: $e';
       debugPrint('❌ Error initializing profile: $e');
@@ -172,14 +212,18 @@ class StartupProfileOverviewProvider with ChangeNotifier {
 
   Future<void> _loadProfileData() async {
     try {
-      // Remove listeners temporarily to prevent triggering dirty state
       _removeListeners();
 
-      // Get current user
       final User? currentUser = _supabase.auth.currentUser;
       if (currentUser == null) return;
 
-      // Load from startup_profiles table
+      // 🔥 ADDITIONAL SAFETY: Verify user consistency
+      if (_currentUserId != null && _currentUserId != currentUser.id) {
+        debugPrint('⚠️ User mismatch detected in _loadProfileData, resetting');
+        _resetProviderState();
+        _currentUserId = currentUser.id;
+      }
+
       final userResponse =
           await _supabase
               .from('startup_profiles')
@@ -188,33 +232,21 @@ class StartupProfileOverviewProvider with ChangeNotifier {
               .maybeSingle();
 
       if (userResponse != null) {
-        // Populate controllers with loaded data
         _companyNameController.text = userResponse['company_name'] ?? '';
         _taglineController.text = userResponse['tagline'] ?? '';
         _industryController.text = userResponse['industry'] ?? '';
         _regionController.text = userResponse['region'] ?? '';
 
-        debugPrint(
-          '✅ Profile data loaded successfully for user: ${currentUser.id}',
-        );
-        debugPrint(
-          '   - Company: ${userResponse['company_name'] ?? "Not Set"}',
-        );
-        debugPrint('   - Tagline: ${userResponse['tagline'] ?? "Not Set"}');
-        debugPrint('   - Industry: ${userResponse['industry'] ?? "Not Set"}');
-        debugPrint('   - Region: ${userResponse['region'] ?? "Not Set"}');
+        debugPrint('✅ Profile data loaded for user: ${currentUser.id}');
       } else {
         debugPrint('No profile data found for user: ${currentUser.id}');
       }
 
-      // Re-add listeners
       _addListeners();
-      _dirtyFields.clear(); // Clear dirty state after loading
+      _dirtyFields.clear();
     } catch (e) {
       _error = 'Failed to load profile data: $e';
       debugPrint('❌ Error loading profile data: $e');
-
-      // Re-add listeners even on error
       _addListeners();
       rethrow;
     }
@@ -476,6 +508,7 @@ class StartupProfileOverviewProvider with ChangeNotifier {
 
   @override
   void dispose() {
+    _authSubscription?.cancel(); // 🔥 Cancel auth listener
     _saveTimer?.cancel();
     _removeListeners();
     _companyNameController.dispose();

@@ -798,7 +798,7 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
                             final confirmed = await _showClearAllDialog();
                             if (confirmed == true && context.mounted) {
                               for (final company in provider.companies) {
-                                await provider.deleteCompany(company.id);
+                                await provider.deleteCompany(company);
                               }
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -828,7 +828,7 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
             Expanded(
               child: OutlinedButton(
                 onPressed: () async {
-                  await provider.refreshCompanies();
+                  await provider.refreshData();
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -910,7 +910,9 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
               ElevatedButton(
                 onPressed: () async {
                   try {
-                    await provider.deleteCompany(company.id);
+                    await provider.deleteCompany(
+                      company,
+                    ); // ✅ FIXED: Pass company object instead of company.id
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(

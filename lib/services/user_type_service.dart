@@ -60,7 +60,7 @@ class UserTypeService {
     try {
       final result =
           await _supabase
-              .from('users')
+              .from('startups')
               .select('id, email, is_verified')
               .eq('id', userId)
               .maybeSingle();
@@ -135,7 +135,7 @@ class UserTypeService {
       if (userType == 'startup') {
         final details =
             await _supabase
-                .from('users')
+                .from('startups')
                 .select('*')
                 .eq('id', userId)
                 .maybeSingle();

@@ -689,7 +689,7 @@ class _StartupDashboardState extends State<StartupDashboard>
               if (provider.hasPitchDeckFiles) ...[
                 // Files preview with constrained height
                 SizedBox(
-                  height: 140, // REDUCED from 160 to 140
+                  height: 200, // REDUCED from 160 to 140
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.only(

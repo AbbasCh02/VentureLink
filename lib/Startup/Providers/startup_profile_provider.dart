@@ -41,12 +41,42 @@ class StartupProfileProvider with ChangeNotifier {
   bool _isInitializing = false;
   bool _isInitialized = false;
 
+  String? _currentUserId;
+  StreamSubscription<AuthState>? _authSubscription;
+
   // Supabase client
   final SupabaseClient _supabase = Supabase.instance.client;
 
   StartupProfileProvider() {
     // Initialize automatically when provider is created and user is authenticated
+    _setupAuthListener();
     _initializeWhenReady();
+  }
+
+  void _setupAuthListener() {
+    _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
+      final AuthChangeEvent event = data.event;
+      final User? user = data.session?.user;
+
+      if (event == AuthChangeEvent.signedIn && user != null) {
+        // User signed in - check if it's a different user
+        if (_currentUserId != null && _currentUserId != user.id) {
+          debugPrint(
+            '🔄 Different startup user detected, resetting provider state',
+          );
+          _resetProviderState();
+        }
+        _currentUserId = user.id;
+
+        // Initialize for new user if not already initialized
+        if (!_isInitialized) {
+          initialize();
+        }
+      } else if (event == AuthChangeEvent.signedOut) {
+        debugPrint('🔄 Startup user signed out, resetting provider state');
+        _resetProviderState();
+      }
+    });
   }
 
   // Check if user is authenticated and initialize
@@ -165,6 +195,7 @@ class StartupProfileProvider with ChangeNotifier {
   // Reset provider state on logout
   void _resetProviderState() {
     _isInitialized = false;
+    _currentUserId = null;
     _removeListeners();
 
     _ideaDescriptionController.clear();
@@ -180,6 +211,7 @@ class StartupProfileProvider with ChangeNotifier {
     _selectedFundingPhase = null;
     _dirtyFields.clear();
     _error = null;
+    _saveTimer?.cancel();
 
     notifyListeners();
     _addListeners();
@@ -282,12 +314,20 @@ class StartupProfileProvider with ChangeNotifier {
   Future<void> initialize() async {
     final User? currentUser = _supabase.auth.currentUser;
     if (currentUser == null) {
-      clearAllData();
+      _resetProviderState();
       return;
     }
 
+    // 🔥 CRITICAL: Check if we need to reset for different user
+    if (_currentUserId != null && _currentUserId != currentUser.id) {
+      debugPrint('🔄 User changed during initialization, resetting state');
+      _resetProviderState();
+    }
+
+    _currentUserId = currentUser.id;
+
     if (_isInitialized) {
-      // If already initialized, just refresh data
+      debugPrint('✅ Provider already initialized for user: ${currentUser.id}');
       await _loadProfileData();
       return;
     }
@@ -300,7 +340,7 @@ class StartupProfileProvider with ChangeNotifier {
     try {
       await _loadProfileData();
       _isInitialized = true;
-      debugPrint('✅ Startup profile initialized successfully');
+      debugPrint('✅ Startup profile initialized for user: ${currentUser.id}');
     } catch (e) {
       _error = 'Failed to initialize startup profile: $e';
       debugPrint('❌ Error initializing startup profile: $e');
@@ -313,14 +353,19 @@ class StartupProfileProvider with ChangeNotifier {
 
   Future<void> _loadProfileData() async {
     try {
-      // Remove listeners temporarily to prevent triggering dirty state
       _removeListeners();
 
-      // Get current user
       final User? currentUser = _supabase.auth.currentUser;
       if (currentUser == null) {
         debugPrint('No authenticated user found');
         return;
+      }
+
+      // 🔥 ADDITIONAL SAFETY: Verify user consistency
+      if (_currentUserId != null && _currentUserId != currentUser.id) {
+        debugPrint('⚠️ User mismatch detected in _loadProfileData, resetting');
+        _resetProviderState();
+        _currentUserId = currentUser.id;
       }
 
       // Load user data from Supabase - CRITICAL: Filter by current user ID
@@ -338,39 +383,25 @@ class StartupProfileProvider with ChangeNotifier {
             userResponse['idea_description'] ?? '';
         _fundingGoalAmount = userResponse['funding_goal'];
         if (_fundingGoalAmount != null) {
-          _fundingGoalController.text =
-              _fundingGoalAmount.toString(); // ADD THIS LINE
+          _fundingGoalController.text = _fundingGoalAmount.toString();
         } else {
-          _fundingGoalController.clear(); // Clear if null
+          _fundingGoalController.clear();
         }
         _selectedFundingPhase = userResponse['funding_stage'];
         _profileImageUrl = userResponse['avatar_url'];
 
-        debugPrint(
-          '✅ Startup profile data loaded successfully for user: ${currentUser.id}',
-        );
-        debugPrint(
-          '   - Idea: ${_ideaDescriptionController.text.isNotEmpty ? "✓" : "✗"}',
-        );
-        debugPrint('   - Funding Goal: ${_fundingGoalAmount ?? "Not Set"}');
-        debugPrint('   - Funding Phase: ${_selectedFundingPhase ?? "Not Set"}');
-        debugPrint(
-          '   - Profile Image: ${_profileImageUrl != null ? "✓" : "✗"}',
-        );
-        debugPrint('   - Pitch Deck: ${_pitchDeckId != null ? "✓" : "✗"}');
+        debugPrint('✅ Startup profile data loaded for user: ${currentUser.id}');
       } else {
         debugPrint('No startup profile data found for user: ${currentUser.id}');
       }
+
       await _loadPitchDeckData(currentUser.id);
 
-      // Re-add listeners
       _addListeners();
-      _dirtyFields.clear(); // Clear dirty state after loading
+      _dirtyFields.clear();
     } catch (e) {
       _error = 'Failed to load startup profile data: $e';
       debugPrint('❌ Error loading startup profile data: $e');
-
-      // Re-add listeners even on error
       _addListeners();
       rethrow;
     }
@@ -1059,6 +1090,7 @@ class StartupProfileProvider with ChangeNotifier {
 
   @override
   void dispose() {
+    _authSubscription?.cancel(); // 🔥 Cancel auth listener
     _saveTimer?.cancel();
     _removeListeners();
     _ideaDescriptionController.dispose();

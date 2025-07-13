@@ -791,6 +791,7 @@ class InvestorProfileProvider extends ChangeNotifier {
     _age = null; // NEW
     _selectedIndustries.clear();
     _selectedGeographicFocus.clear();
+    _selectedPreferredStages.clear();
     _portfolioSize = null;
     _isVerified = false;
     _dirtyFields.clear();

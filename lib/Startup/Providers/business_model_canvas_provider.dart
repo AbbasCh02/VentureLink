@@ -33,12 +33,42 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
   bool _isInitializing = false;
   bool _isInitialized = false;
 
+  String? _currentUserId;
+  StreamSubscription<AuthState>? _authSubscription;
+
   // Supabase client
   final SupabaseClient _supabase = Supabase.instance.client;
 
   BusinessModelCanvasProvider() {
     // Initialize automatically when provider is created and user is authenticated
+    _setupAuthListener();
     _initializeWhenReady();
+  }
+
+  void _setupAuthListener() {
+    _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
+      final AuthChangeEvent event = data.event;
+      final User? user = data.session?.user;
+
+      if (event == AuthChangeEvent.signedIn && user != null) {
+        // User signed in - check if it's a different user
+        if (_currentUserId != null && _currentUserId != user.id) {
+          debugPrint(
+            '🔄 Different startup user detected, resetting BMC provider state',
+          );
+          _resetProviderState();
+        }
+        _currentUserId = user.id;
+
+        // Initialize for new user if not already initialized
+        if (!_isInitialized) {
+          initialize();
+        }
+      } else if (event == AuthChangeEvent.signedOut) {
+        debugPrint('🔄 Startup user signed out, resetting BMC provider state');
+        _resetProviderState();
+      }
+    });
   }
 
   // Check if user is authenticated and initialize
@@ -66,6 +96,7 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
   // Reset provider state on logout
   void _resetProviderState() {
     _isInitialized = false;
+    _currentUserId = null;
     _keyPartners = '';
     _keyActivities = '';
     _keyResources = '';
@@ -78,6 +109,7 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
     _dirtyFields.clear();
     _error = null;
     _bmcId = null;
+    _saveTimer?.cancel();
     notifyListeners();
   }
 
@@ -136,12 +168,22 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
   Future<void> initialize() async {
     final User? currentUser = _supabase.auth.currentUser;
     if (currentUser == null) {
-      clearAllData();
+      _resetProviderState();
       return;
     }
 
+    // 🔥 CRITICAL: Check if we need to reset for different user
+    if (_currentUserId != null && _currentUserId != currentUser.id) {
+      debugPrint('🔄 User changed during initialization, resetting state');
+      _resetProviderState();
+    }
+
+    _currentUserId = currentUser.id;
+
     if (_isInitialized) {
-      // If already initialized, just refresh data
+      debugPrint(
+        '✅ BMC provider already initialized for user: ${currentUser.id}',
+      );
       await _loadBMCData();
       return;
     }
@@ -154,7 +196,7 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
     try {
       await _loadBMCData();
       _isInitialized = true;
-      debugPrint('✅ BMC initialized successfully');
+      debugPrint('✅ BMC initialized for user: ${currentUser.id}');
     } catch (e) {
       _error = 'Failed to initialize BMC: $e';
       debugPrint('❌ Error initializing BMC: $e');
@@ -166,70 +208,46 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
   }
 
   Future<void> _loadBMCData() async {
-    try {
-      // Get current user
-      final User? currentUser = _supabase.auth.currentUser;
-      if (currentUser == null) {
-        debugPrint('No authenticated user found');
-        return;
-      }
+    final User? currentUser = _supabase.auth.currentUser;
+    if (currentUser == null) {
+      throw Exception('No authenticated user found');
+    }
 
-      // FIXED: Direct lookup by user_id instead of using bmc_id from users table
-      final bmcResponse =
+    // 🔥 ADDITIONAL SAFETY: Verify user consistency
+    if (_currentUserId != null && _currentUserId != currentUser.id) {
+      debugPrint('⚠️ User mismatch detected in _loadBMCData, resetting');
+      _resetProviderState();
+      _currentUserId = currentUser.id;
+    }
+
+    try {
+      debugPrint('🔄 Loading BMC data for user: ${currentUser.id}');
+
+      final bmcData =
           await _supabase
               .from('business_model_canvas')
               .select('*')
-              .eq('user_id', currentUser.id) // Look up by user_id directly
+              .eq('user_id', currentUser.id)
               .maybeSingle();
 
-      if (bmcResponse != null) {
-        // Store the BMC ID for future updates
-        _bmcId = bmcResponse['id'];
+      if (bmcData != null) {
+        _bmcId = bmcData['id'];
+        _keyPartners = bmcData['key_partners'] ?? '';
+        _keyActivities = bmcData['key_activities'] ?? '';
+        _keyResources = bmcData['key_resources'] ?? '';
+        _valuePropositions = bmcData['value_propositions'] ?? '';
+        _customerRelationships = bmcData['customer_relationships'] ?? '';
+        _customerSegments = bmcData['customer_segments'] ?? '';
+        _channels = bmcData['channels'] ?? '';
+        _costStructure = bmcData['cost_structure'] ?? '';
+        _revenueStreams = bmcData['revenue_streams'] ?? '';
 
-        // Populate all BMC fields with loaded data
-        _keyPartners = bmcResponse['key_partners'] ?? '';
-        _keyActivities = bmcResponse['key_activities'] ?? '';
-        _keyResources = bmcResponse['key_resources'] ?? '';
-        _valuePropositions = bmcResponse['value_propositions'] ?? '';
-        _customerRelationships = bmcResponse['customer_relationships'] ?? '';
-        _customerSegments = bmcResponse['customer_segments'] ?? '';
-        _channels = bmcResponse['channels'] ?? '';
-        _costStructure = bmcResponse['cost_structure'] ?? '';
-        _revenueStreams = bmcResponse['revenue_streams'] ?? '';
-
-        debugPrint(
-          '✅ BMC data loaded successfully for user: ${currentUser.id}',
-        );
-        debugPrint('   - BMC ID: $_bmcId');
-        debugPrint('   - Key Partners: ${_keyPartners.isNotEmpty ? "✓" : "✗"}');
-        debugPrint(
-          '   - Key Activities: ${_keyActivities.isNotEmpty ? "✓" : "✗"}',
-        );
-        debugPrint(
-          '   - Key Resources: ${_keyResources.isNotEmpty ? "✓" : "✗"}',
-        );
-        debugPrint(
-          '   - Value Propositions: ${_valuePropositions.isNotEmpty ? "✓" : "✗"}',
-        );
-        debugPrint(
-          '   - Customer Relationships: ${_customerRelationships.isNotEmpty ? "✓" : "✗"}',
-        );
-        debugPrint(
-          '   - Customer Segments: ${_customerSegments.isNotEmpty ? "✓" : "✗"}',
-        );
-        debugPrint('   - Channels: ${_channels.isNotEmpty ? "✓" : "✗"}');
-        debugPrint(
-          '   - Cost Structure: ${_costStructure.isNotEmpty ? "✓" : "✗"}',
-        );
-        debugPrint(
-          '   - Revenue Streams: ${_revenueStreams.isNotEmpty ? "✓" : "✗"}',
-        );
+        debugPrint('✅ BMC data loaded for user: ${currentUser.id}');
       } else {
         debugPrint('No BMC record found for user: ${currentUser.id}');
-        // BMC record will be created when user first saves data
       }
 
-      _dirtyFields.clear(); // Clear dirty state after loading
+      _dirtyFields.clear();
     } catch (e) {
       _error = 'Failed to load BMC data: $e';
       debugPrint('❌ Error loading BMC data: $e');
@@ -615,6 +633,7 @@ class BusinessModelCanvasProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _authSubscription?.cancel(); // 🔥 Cancel auth listener
     _saveTimer?.cancel();
     super.dispose();
   }

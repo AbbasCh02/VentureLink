@@ -79,6 +79,10 @@ class InvestorCompaniesProvider with ChangeNotifier {
   bool _isInitialized = false;
   final Set<String> _dirtyFields = {};
 
+  // 🔥 ADD: Track current user to detect user switches
+  String? _currentUserId;
+  StreamSubscription<AuthState>? _authSubscription;
+
   // Getters
   List<InvestorCompany> get companies => List.unmodifiable(_companies);
   int get companiesCount => _companies.length;
@@ -104,8 +108,7 @@ class InvestorCompaniesProvider with ChangeNotifier {
   double get completionPercentage {
     if (_companies.isEmpty) return 0.0;
     if (_companies.length >= 2) return 100.0;
-    return (_companies.length / 2) *
-        100; // Assuming ideal minimum is 2 companies
+    return (_companies.length / 2) * 100;
   }
 
   // Current companies (most recent entries)
@@ -121,9 +124,72 @@ class InvestorCompaniesProvider with ChangeNotifier {
         .toList();
   }
 
+  // 🔥 CONSTRUCTOR: Set up auth listener
+  InvestorCompaniesProvider() {
+    _setupAuthListener();
+  }
+
+  // 🔥 NEW: Set up auth state listener for user isolation
+  void _setupAuthListener() {
+    _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
+      final AuthChangeEvent event = data.event;
+      final User? user = data.session?.user;
+
+      if (event == AuthChangeEvent.signedIn && user != null) {
+        // User signed in - check if it's a different user
+        if (_currentUserId != null && _currentUserId != user.id) {
+          debugPrint('🔄 Different user detected, resetting provider state');
+          _resetProviderState();
+        }
+        _currentUserId = user.id;
+
+        // Initialize for new user if not already initialized
+        if (!_isInitialized) {
+          initialize();
+        }
+      } else if (event == AuthChangeEvent.signedOut) {
+        debugPrint('🔄 User signed out, resetting provider state');
+        _resetProviderState();
+      }
+    });
+  }
+
+  // 🔥 NEW: Reset provider state for user isolation
+  void _resetProviderState() {
+    _isInitialized = false;
+    _currentUserId = null;
+    _companies.clear();
+    _companyNameController.clear();
+    _titleController.clear();
+    _websiteController.clear();
+    _dirtyFields.clear();
+    _error = null;
+    _isLoading = false;
+    _isSaving = false;
+    _saveTimer?.cancel();
+    notifyListeners();
+  }
+
   // Initialize provider
   Future<void> initialize() async {
-    if (_isInitialized) return;
+    final User? currentUser = _supabase.auth.currentUser;
+    if (currentUser == null) {
+      debugPrint('❌ No authenticated user found during initialization');
+      return;
+    }
+
+    // 🔥 CRITICAL: Check if we need to reset for different user
+    if (_currentUserId != null && _currentUserId != currentUser.id) {
+      debugPrint('🔄 User changed during initialization, resetting state');
+      _resetProviderState();
+    }
+
+    _currentUserId = currentUser.id;
+
+    if (_isInitialized) {
+      debugPrint('✅ Provider already initialized for user: ${currentUser.id}');
+      return;
+    }
 
     _isLoading = true;
     _error = null;
@@ -133,7 +199,9 @@ class InvestorCompaniesProvider with ChangeNotifier {
       await _loadCompaniesData();
       _addListeners();
       _isInitialized = true;
-      debugPrint('✅ InvestorCompaniesProvider initialized successfully');
+      debugPrint(
+        '✅ InvestorCompaniesProvider initialized for user: ${currentUser.id}',
+      );
     } catch (e) {
       _error = 'Failed to initialize companies data: $e';
       debugPrint('❌ Error initializing companies: $e');
@@ -150,15 +218,23 @@ class InvestorCompaniesProvider with ChangeNotifier {
       throw Exception('No authenticated user found');
     }
 
+    // 🔥 ADDITIONAL SAFETY: Verify user consistency
+    if (_currentUserId != null && _currentUserId != currentUser.id) {
+      debugPrint('⚠️ User mismatch detected in _loadCompaniesData, resetting');
+      _resetProviderState();
+      _currentUserId = currentUser.id;
+    }
+
     try {
       debugPrint('🔄 Loading investor companies for user: ${currentUser.id}');
 
       final response = await _supabase
           .from('investor_companies')
           .select('*')
-          .eq('investor_id', currentUser.id) // Use currentUser.id directly
+          .eq('investor_id', currentUser.id) // This is correct
           .order('created_at', ascending: false);
 
+      // 🔥 CRITICAL: Clear existing companies before loading new ones
       _companies.clear();
 
       for (final companyData in response) {
@@ -166,7 +242,9 @@ class InvestorCompaniesProvider with ChangeNotifier {
         _companies.add(company);
       }
 
-      debugPrint('✅ Loaded ${_companies.length} companies');
+      debugPrint(
+        '✅ Loaded ${_companies.length} companies for user: ${currentUser.id}',
+      );
     } catch (e) {
       debugPrint('❌ Error loading companies: $e');
       throw Exception('Failed to load companies: $e');
@@ -188,15 +266,22 @@ class InvestorCompaniesProvider with ChangeNotifier {
       return;
     }
 
+    // 🔥 VERIFY: Ensure we're working with the correct user
+    if (_currentUserId != currentUser.id) {
+      debugPrint('⚠️ User mismatch in addCompany, reinitializing');
+      await initialize();
+      return;
+    }
+
     _isSaving = true;
     _error = null;
     notifyListeners();
 
     try {
-      debugPrint('🔄 Adding new company: ${_companyNameController.text}');
+      debugPrint('🔄 Adding new company for user: ${currentUser.id}');
 
       final companyData = {
-        'investor_id': currentUser.id, // Use currentUser.id consistently
+        'investor_id': currentUser.id,
         'company_name': _companyNameController.text.trim(),
         'investor_title_in_company': _titleController.text.trim(),
         'website_url':
@@ -214,7 +299,7 @@ class InvestorCompaniesProvider with ChangeNotifier {
               .single();
 
       final newCompany = InvestorCompany.fromSupabaseMap(response);
-      _companies.insert(0, newCompany); // Add to beginning of list
+      _companies.insert(0, newCompany);
 
       // Clear form
       _companyNameController.clear();
@@ -222,7 +307,7 @@ class InvestorCompaniesProvider with ChangeNotifier {
       _websiteController.clear();
       _dirtyFields.clear();
 
-      debugPrint('✅ Company added successfully: ${newCompany.companyName}');
+      debugPrint('✅ Company added successfully for user: ${currentUser.id}');
     } catch (e) {
       _error = 'Failed to add company: $e';
       debugPrint('❌ Error adding company: $e');
@@ -235,6 +320,13 @@ class InvestorCompaniesProvider with ChangeNotifier {
 
   // Update company
   Future<void> updateCompany(InvestorCompany company) async {
+    final User? currentUser = _supabase.auth.currentUser;
+    if (currentUser == null) {
+      _error = 'No authenticated user found';
+      notifyListeners();
+      return;
+    }
+
     _isSaving = true;
     _error = null;
     notifyListeners();
@@ -252,12 +344,17 @@ class InvestorCompaniesProvider with ChangeNotifier {
       await _supabase
           .from('investor_companies')
           .update(updateData)
-          .eq('id', company.id);
+          .eq('id', company.id)
+          .eq(
+            'investor_id',
+            currentUser.id,
+          ); // 🔥 DOUBLE-CHECK: Ensure user owns this company
 
-      // Update local list
+      // Update local data
       final index = _companies.indexWhere((c) => c.id == company.id);
       if (index != -1) {
         _companies[index] = company;
+        notifyListeners();
       }
 
       debugPrint('✅ Company updated successfully');
@@ -272,17 +369,31 @@ class InvestorCompaniesProvider with ChangeNotifier {
   }
 
   // Delete company
-  Future<void> deleteCompany(String companyId) async {
+  Future<void> deleteCompany(InvestorCompany company) async {
+    final User? currentUser = _supabase.auth.currentUser;
+    if (currentUser == null) {
+      _error = 'No authenticated user found';
+      notifyListeners();
+      return;
+    }
+
     _isSaving = true;
     _error = null;
     notifyListeners();
 
     try {
-      debugPrint('🔄 Deleting company: $companyId');
+      debugPrint('🔄 Deleting company: ${company.companyName}');
 
-      await _supabase.from('investor_companies').delete().eq('id', companyId);
+      await _supabase
+          .from('investor_companies')
+          .delete()
+          .eq('id', company.id)
+          .eq(
+            'investor_id',
+            currentUser.id,
+          ); // 🔥 DOUBLE-CHECK: Ensure user owns this company
 
-      _companies.removeWhere((company) => company.id == companyId);
+      _companies.removeWhere((c) => c.id == company.id);
 
       debugPrint('✅ Company deleted successfully');
     } catch (e) {
@@ -295,57 +406,29 @@ class InvestorCompaniesProvider with ChangeNotifier {
     }
   }
 
-  // Refresh companies data
-  Future<void> refreshCompanies() async {
-    _error = null;
-    try {
-      await _loadCompaniesData();
-      debugPrint('✅ Companies refreshed successfully');
-    } catch (e) {
-      _error = 'Failed to refresh companies: $e';
-      debugPrint('❌ Error refreshing companies: $e');
-    } finally {
-      notifyListeners();
-    }
+  // 🔥 NEW: Refresh data (useful for manual refresh)
+  Future<void> refreshData() async {
+    await _loadCompaniesData();
+    notifyListeners();
   }
 
-  // Add listeners to controllers
+  // Add listeners for form changes
   void _addListeners() {
-    _companyNameController.addListener(_onFieldChanged);
-    _titleController.addListener(_onFieldChanged);
-    _websiteController.addListener(_onFieldChanged);
+    _companyNameController.addListener(_onFormChanged);
+    _titleController.addListener(_onFormChanged);
+    _websiteController.addListener(_onFormChanged);
   }
 
   // Remove listeners
   void _removeListeners() {
-    _companyNameController.removeListener(_onFieldChanged);
-    _titleController.removeListener(_onFieldChanged);
-    _websiteController.removeListener(_onFieldChanged);
+    _companyNameController.removeListener(_onFormChanged);
+    _titleController.removeListener(_onFormChanged);
+    _websiteController.removeListener(_onFormChanged);
   }
 
-  // Handle field changes
-  void _onFieldChanged() {
-    _dirtyFields.add('company_form');
-    _debounceSave();
-    notifyListeners();
-  }
-
-  // Debounced save
-  void _debounceSave() {
-    _saveTimer?.cancel();
-    _saveTimer = Timer(const Duration(seconds: 2), () {
-      if (isFormValid) {
-        // Auto-save would go here if needed
-      }
-    });
-  }
-
-  // Clear form
-  void clearForm() {
-    _companyNameController.clear();
-    _titleController.clear();
-    _websiteController.clear();
-    _dirtyFields.clear();
+  // Handle form changes
+  void _onFormChanged() {
+    _dirtyFields.add('form');
     notifyListeners();
   }
 
@@ -394,6 +477,7 @@ class InvestorCompaniesProvider with ChangeNotifier {
 
   @override
   void dispose() {
+    _authSubscription?.cancel(); // 🔥 Cancel auth listener
     _removeListeners();
     _companyNameController.dispose();
     _titleController.dispose();
