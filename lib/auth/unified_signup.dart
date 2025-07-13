@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'unified_authentication_provider.dart';
 import 'unified_login.dart';
 
+// Main stateful widget for the signup page
 class UnifiedSignupPage extends StatefulWidget {
   const UnifiedSignupPage({super.key});
 
@@ -13,14 +14,17 @@ class UnifiedSignupPage extends StatefulWidget {
 
 class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     with TickerProviderStateMixin {
-  late AnimationController _fadeController;
-  late AnimationController _slideController;
-  late AnimationController _pulseController;
-  late AnimationController _colorController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
-  late Animation<double> _pulseAnimation;
-  late Animation<Color?> _colorAnimation;
+  // Animation controllers for various visual effects
+  late AnimationController _fadeController; // Controls fade-in animation
+  late AnimationController _slideController; // Controls slide-up animation
+  late AnimationController _pulseController; // Controls pulsing effect
+  late AnimationController _colorController; // Controls color transitions
+
+  // Animation objects linked to controllers
+  late Animation<double> _fadeAnimation; // Fade effect from 0 to 1
+  late Animation<Offset> _slideAnimation; // Slide from below
+  late Animation<double> _pulseAnimation; // Subtle size pulsing
+  late Animation<Color?> _colorAnimation; // Color cycling animation
 
   @override
   void initState() {
@@ -28,6 +32,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     _setupAnimations();
 
     // Set the form type to signup when this page loads
+    // Uses a post-frame callback to ensure the widget is fully built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<UnifiedAuthProvider>(
         context,
@@ -38,7 +43,9 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     });
   }
 
+  // Sets up all animation controllers and animations
   void _setupAnimations() {
+    // Initialize animation controllers with their durations
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
@@ -56,35 +63,40 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
       vsync: this,
     );
 
+    // Create fade animation (opacity 0->1)
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
 
+    // Create slide animation (moves content up from below)
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
 
+    // Create pulse animation (subtle size change)
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    // Color animation between orange and blue (will be overridden by user selection)
+    // Create color animation (cycles between orange and blue)
     _colorAnimation = ColorTween(
-      begin: const Color(0xFFffa500), // Orange
-      end: const Color(0xFF65c6f4), // Blue
+      begin: const Color(0xFFffa500), // Orange (startup color)
+      end: const Color(0xFF65c6f4), // Blue (investor color)
     ).animate(
       CurvedAnimation(parent: _colorController, curve: Curves.easeInOut),
     );
 
-    _fadeController.forward();
-    _slideController.forward();
-    _pulseController.repeat(reverse: true);
-    _colorController.repeat(reverse: true);
+    // Start animations
+    _fadeController.forward(); // Run once (fade in)
+    _slideController.forward(); // Run once (slide up)
+    _pulseController.repeat(reverse: true); // Continuously pulse
+    _colorController.repeat(reverse: true); // Continuously cycle colors
   }
 
   @override
   void dispose() {
+    // Clean up all animation controllers
     _fadeController.dispose();
     _slideController.dispose();
     _pulseController.dispose();
@@ -92,7 +104,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     super.dispose();
   }
 
-  // Get current theme color based on selected user type
+  // Helper to get theme color based on selected user type
   Color _getCurrentThemeColor() {
     final authProvider = Provider.of<UnifiedAuthProvider>(
       context,
@@ -110,11 +122,15 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
 
   @override
   Widget build(BuildContext context) {
+    // Main scaffold with dark background
     return Scaffold(
       backgroundColor: const Color(0xFF0a0a0a),
       body: Stack(
         children: [
+          // Background gradient decoration
           _buildBackgroundDecoration(),
+
+          // Main content with animations
           FadeTransition(
             opacity: _fadeAnimation,
             child: SlideTransition(
@@ -127,18 +143,18 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
                   ),
                   child: Column(
                     children: [
-                      // Back button
+                      // Back button at the top left
                       _buildBackButton(),
 
-                      // Logo
+                      // App logo with pulsing effect
                       _buildLogo(),
                       const SizedBox(height: 5),
 
-                      // Header
+                      // Page header text
                       _buildHeader(),
                       const SizedBox(height: 20),
 
-                      // Signup Form
+                      // Main signup form
                       _buildSignupForm(),
                     ],
                   ),
@@ -151,6 +167,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
+  // Creates a back button in the top-left corner
   Widget _buildBackButton() {
     return Align(
       alignment: Alignment.centerLeft,
@@ -174,17 +191,21 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
+  // Builds the animated app logo with dynamic glow effects
   Widget _buildLogo() {
     return Consumer<UnifiedAuthProvider>(
       builder: (context, authProvider, _) {
         return AnimatedBuilder(
           animation: Listenable.merge([_pulseAnimation, _colorAnimation]),
           builder: (context, __) {
+            // Determine current color (static for selection or animated)
             final currentColor =
                 authProvider.selectedUserType != null
-                    ? _getCurrentThemeColor() // orange / blue
-                    : (_colorAnimation.value ?? const Color(0xFFffa500));
+                    ? _getCurrentThemeColor() // Static color based on selection
+                    : (_colorAnimation.value ??
+                        const Color(0xFFffa500)); // Animated color
 
+            // Logo with subtle pulsing and color-themed glow
             return ScaleTransition(
               scale: _pulseAnimation,
               child: Container(
@@ -198,7 +219,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(28),
-                  // ← border & glow now use currentColor
+                  // Border and glow use the current theme color
                   border: Border.all(color: currentColor, width: 2),
                   boxShadow: [
                     BoxShadow(
@@ -239,26 +260,29 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
+  // Creates the radial gradient background
   Widget _buildBackgroundDecoration() {
     return Container(
       decoration: const BoxDecoration(
         gradient: RadialGradient(
           center: Alignment.topCenter,
           radius: 1.2,
-          colors: [Color(0xFF1a1a1a), Color(0xFF0a0a0a)],
+          colors: [Color(0xFF1a1a1a), Color(0xFF0a0a0a)], // Dark gradient
         ),
       ),
     );
   }
 
+  // Builds the page header with color-themed text
   Widget _buildHeader() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Consumer<UnifiedAuthProvider>(
           builder: (context, authProvider, child) {
-            // When user type is selected, show static colored text
+            // Color handling based on user selection
             if (authProvider.selectedUserType != null) {
+              // Static colored text when user type is selected
               final currentColor = _getCurrentThemeColor();
               return Text(
                 'Join VentureLink',
@@ -277,7 +301,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
               );
             }
 
-            // When no selection, show animated text
+            // Animated colored text when no selection
             return AnimatedBuilder(
               animation: _colorAnimation,
               builder: (context, child) {
@@ -303,6 +327,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
           },
         ),
         const SizedBox(height: 4),
+        // Subtitle
         Text(
           'Connect with the startup ecosystem',
           style: TextStyle(color: Colors.grey[400], fontSize: 13),
@@ -312,6 +337,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
+  // Builds the complete signup form with all fields and validation
   Widget _buildSignupForm() {
     return Consumer<UnifiedAuthProvider>(
       builder: (context, authProvider, child) {
@@ -320,7 +346,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // User Type Selection - Compact Version
+              // User Type Selection (Startup or Investor)
               _buildCompactUserTypeSelector(),
               const SizedBox(height: 12),
 
@@ -383,10 +409,10 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
               _buildSignUpButton(),
               const SizedBox(height: 12),
 
-              // Error Message
+              // Error Message (conditionally shown)
               if (authProvider.error != null) _buildErrorMessage(),
 
-              // Login Link
+              // Login Link (for existing users)
               _buildLoginLink(),
               const SizedBox(height: 12),
             ],
@@ -396,13 +422,14 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
+  // Builds the startup/investor selection cards
   Widget _buildCompactUserTypeSelector() {
     return Consumer<UnifiedAuthProvider>(
       builder: (context, authProvider, child) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Compact User type buttons
+            // Row with two user type options
             Row(
               children: [
                 // Startup option
@@ -411,13 +438,13 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
                     userType: UserType.startup,
                     title: 'Startup',
                     icon: Icons.rocket_launch,
-                    color: const Color(0xFFffa500),
+                    color: const Color(0xFFffa500), // Orange
                     isSelected:
                         authProvider.selectedUserType == UserType.startup,
                     onTap: () {
                       authProvider.setUserType(UserType.startup);
                       authProvider.clearError();
-                      setState(() {}); // Trigger rebuild to update colors
+                      setState(() {}); // Refresh UI for color updates
                     },
                   ),
                 ),
@@ -429,20 +456,20 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
                     userType: UserType.investor,
                     title: 'Investor',
                     icon: Icons.account_balance,
-                    color: const Color(0xFF65c6f4),
+                    color: const Color(0xFF65c6f4), // Blue
                     isSelected:
                         authProvider.selectedUserType == UserType.investor,
                     onTap: () {
                       authProvider.setUserType(UserType.investor);
                       authProvider.clearError();
-                      setState(() {}); // Trigger rebuild to update colors
+                      setState(() {}); // Refresh UI for color updates
                     },
                   ),
                 ),
               ],
             ),
 
-            // Error text
+            // Error message if no user type selected
             if (authProvider.selectedUserType == null &&
                 authProvider.error != null) ...[
               const SizedBox(height: 6),
@@ -457,6 +484,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
+  // Individual user type selection card (startup or investor)
   Widget _buildCompactUserTypeCard({
     required UserType userType,
     required String title,
@@ -471,15 +499,18 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
+          // Change background color when selected
           color:
               isSelected
                   ? color.withValues(alpha: 0.1)
                   : const Color(0xFF1a1a1a),
           borderRadius: BorderRadius.circular(10),
+          // Highlight border when selected
           border: Border.all(
             color: isSelected ? color : Colors.grey[800]!,
             width: isSelected ? 2 : 1,
           ),
+          // Add glow effect when selected
           boxShadow:
               isSelected
                   ? [
@@ -510,9 +541,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
-  // Complete _buildInputField method with animated colors
-  // Replace your existing _buildInputField method with this complete version:
-
+  // Creates input field with color-themed accents
   Widget _buildInputField({
     required String label,
     required TextEditingController controller,
@@ -530,6 +559,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Field label
             Text(
               label,
               style: const TextStyle(
@@ -540,19 +570,18 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
             ),
             const SizedBox(height: 6),
 
-            // 🔥 ANIMATED BUILDER FOR DYNAMIC COLORS
+            // Animated field with dynamic colors
             AnimatedBuilder(
               animation: _colorAnimation,
               builder: (context, child) {
-                // 🔥 Get current color based on user selection or animation
+                // Get current theme color based on selection or animation
                 Color currentColor;
                 if (authProvider.selectedUserType != null) {
-                  // User has made a selection - use static color
-                  currentColor = _getCurrentThemeColor();
+                  currentColor = _getCurrentThemeColor(); // Static color
                 } else {
-                  // No selection - use animated color
                   currentColor =
-                      _colorAnimation.value ?? const Color(0xFFffa500);
+                      _colorAnimation.value ??
+                      const Color(0xFFffa500); // Animated
                 }
 
                 return TextFormField(
@@ -560,27 +589,29 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
                   focusNode: focusNode,
                   validator: validator,
                   keyboardType: keyboardType,
+                  // Handle password visibility toggling
                   obscureText:
                       isPassword &&
                       (label.contains('Confirm')
                           ? !authProvider.isConfirmPasswordVisible
                           : !authProvider.isPasswordVisible),
                   style: const TextStyle(color: Colors.white),
-
-                  // 🔥 ADD CURSOR COLOR - animated!
                   cursorColor: hasError ? Colors.red : currentColor,
 
+                  // Real-time validation
                   onChanged: (value) {
-                    // Trigger real-time validation
                     if (authProvider.validateRealTime) {
                       authProvider.validateForm();
                     }
                   },
+
+                  // Field styling and decoration
                   decoration: InputDecoration(
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 12,
                     ),
+                    // Field icon
                     prefixIcon:
                         icon != null
                             ? Icon(
@@ -589,6 +620,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
                               size: 18,
                             )
                             : null,
+                    // Toggle visibility icon for password fields
                     suffixIcon:
                         isPassword
                             ? IconButton(
@@ -615,7 +647,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
                     filled: true,
                     fillColor: const Color(0xFF1a1a1a),
 
-                    // 🔥 UPDATED BORDER COLORS WITH ANIMATION
+                    // Border styling with color theming
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                       borderSide: BorderSide(
@@ -628,13 +660,11 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
                         color: hasError ? Colors.red : Colors.grey[800]!,
                       ),
                     ),
+                    // Highlight with theme color when focused
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                       borderSide: BorderSide(
-                        color:
-                            hasError
-                                ? Colors.red
-                                : currentColor, // 🔥 ANIMATED COLOR
+                        color: hasError ? Colors.red : currentColor,
                         width: 2,
                       ),
                     ),
@@ -668,6 +698,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
+  // Visual indicator for password strength
   Widget _buildPasswordStrengthIndicator() {
     return Consumer<UnifiedAuthProvider>(
       builder: (context, authProvider, child) {
@@ -675,9 +706,9 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
         final strength = _calculatePasswordStrength(password);
         final currentColor = _getCurrentThemeColor();
 
+        // Set color and text based on password strength
         Color color;
         String text;
-
         switch (strength) {
           case PasswordStrength.weak:
             color = Colors.red;
@@ -688,7 +719,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
             text = 'Medium';
             break;
           case PasswordStrength.strong:
-            color = currentColor;
+            color = currentColor; // Use theme color for strong passwords
             text = 'Strong';
             break;
           default:
@@ -698,6 +729,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
 
         if (password.isEmpty) return const SizedBox.shrink();
 
+        // Strength bar with appropriate width and color
         return Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Column(
@@ -714,6 +746,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
                       ),
                       child: FractionallySizedBox(
                         alignment: Alignment.centerLeft,
+                        // Width based on strength
                         widthFactor:
                             strength == PasswordStrength.weak
                                 ? 0.3
@@ -747,30 +780,35 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
+  // Calculates password strength based on length and complexity
   PasswordStrength _calculatePasswordStrength(String password) {
     if (password.length < 6) return PasswordStrength.weak;
     if (password.length < 8) return PasswordStrength.medium;
 
+    // Check for different character types
     bool hasUpper = password.contains(RegExp(r'[A-Z]'));
     bool hasLower = password.contains(RegExp(r'[a-z]'));
     bool hasDigit = password.contains(RegExp(r'[0-9]'));
     bool hasSpecial = password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
 
+    // Calculate score based on character variety
     int score = 0;
     if (hasUpper) score++;
     if (hasLower) score++;
     if (hasDigit) score++;
     if (hasSpecial) score++;
 
+    // Determine strength based on score and length
     if (score >= 3 && password.length >= 8) return PasswordStrength.strong;
     if (score >= 2) return PasswordStrength.medium;
     return PasswordStrength.weak;
   }
 
+  // Sign up button with theme-colored styling
   Widget _buildSignUpButton() {
     return Consumer<UnifiedAuthProvider>(
       builder: (context, authProvider, child) {
-        // Show animated colors when no selection, fixed color when selected
+        // Static color when user type selected
         if (authProvider.selectedUserType != null) {
           final currentColor = _getCurrentThemeColor();
           return SizedBox(
@@ -811,7 +849,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
           );
         }
 
-        // When no selection, show animated button
+        // Animated color when no selection
         return AnimatedBuilder(
           animation: _colorAnimation,
           builder: (context, child) {
@@ -857,6 +895,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
+  // Error message display with dismiss option
   Widget _buildErrorMessage() {
     return Consumer<UnifiedAuthProvider>(
       builder: (context, authProvider, child) {
@@ -892,6 +931,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
+  // "Already have an account" link to login page
   Widget _buildLoginLink() {
     return Center(
       child: Container(
@@ -910,7 +950,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
           style: TextButton.styleFrom(padding: EdgeInsets.zero),
           child: Consumer<UnifiedAuthProvider>(
             builder: (context, authProvider, child) {
-              // Show animated colors when no selection, fixed color when selected
+              // Static colored text for selected user type
               if (authProvider.selectedUserType != null) {
                 final currentColor = _getCurrentThemeColor();
                 return RichText(
@@ -938,7 +978,7 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
                 );
               }
 
-              // When no selection, show animated text
+              // Animated colored text when no selection
               return AnimatedBuilder(
                 animation: _colorAnimation,
                 builder: (context, child) {
@@ -979,19 +1019,21 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
+  // Handles the signup process
   Future<void> _handleSignUp() async {
     final authProvider = Provider.of<UnifiedAuthProvider>(
       context,
       listen: false,
     );
 
-    // Enable real-time validation
+    // Enable real-time validation for immediate feedback
     authProvider.enableRealTimeValidation();
 
+    // Attempt signup
     final success = await authProvider.signUp();
 
     if (success && mounted) {
-      // Show success message
+      // Show success snackbar
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -1011,18 +1053,17 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
         ),
       );
 
-      // Get the current user type and navigate directly to appropriate dashboard
+      // Navigate to appropriate dashboard based on user type
       final user = authProvider.currentUser;
       if (user != null) {
         debugPrint('🚀 Navigating to ${user.userType.name} dashboard');
 
-        // Navigate to the appropriate dashboard based on user type
         switch (user.userType) {
           case UserType.startup:
             if (mounted) {
               Navigator.of(context).pushNamedAndRemoveUntil(
                 '/startup-dashboard',
-                (route) => false, // Remove all previous routes
+                (route) => false, // Clear navigation stack
               );
             }
             break;
@@ -1030,14 +1071,14 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
             if (mounted) {
               Navigator.of(context).pushNamedAndRemoveUntil(
                 '/investor-dashboard',
-                (route) => false, // Remove all previous routes
+                (route) => false, // Clear navigation stack
               );
             }
             break;
         }
       }
     } else if (!success && mounted) {
-      // Show error message if signup failed
+      // Show error snackbar if signup failed
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
