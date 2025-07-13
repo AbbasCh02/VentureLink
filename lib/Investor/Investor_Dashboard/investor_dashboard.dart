@@ -120,7 +120,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF65c6f4), Color(0xFF65c6f4)],
+                    colors: [Color(0xFF65c6f4), Color(0xFF2476C9)],
                   ),
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -156,9 +156,22 @@ class _InvestorDashboardState extends State<InvestorDashboard>
         Container(
           margin: const EdgeInsets.only(right: 6, top: 6, bottom: 6),
           decoration: BoxDecoration(
-            color: const Color(0xFF65c6f4),
+            gradient: const LinearGradient(
+              colors: [
+                Color(0xFF65c6f4),
+                Color(0xFF2476C9),
+              ], // Added gradient variation
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.black, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF65c6f4).withValues(alpha: 0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: IconButton(
             icon: const Icon(
@@ -650,37 +663,47 @@ class _InvestorDashboardState extends State<InvestorDashboard>
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const CompaniesListPage(),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF65c6f4),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color(0xFF65c6f4),
+                        Color(0xFF2476C9),
+                      ], // Your exact gradient
                     ),
-                    elevation: 0,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.list_alt, size: 18),
-                      SizedBox(width: 8),
-                      Text(
-                        'View Companies',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const CompaniesListPage(),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.list_alt, size: 18, color: Colors.black),
+                            SizedBox(width: 8),
+                            Text(
+                              'View Companies',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),

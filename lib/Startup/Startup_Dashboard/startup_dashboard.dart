@@ -72,9 +72,21 @@ class _StartupDashboardState extends State<StartupDashboard>
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFFffa500), Color(0xFFffa500)],
+                    colors: [
+                      Color(0xFFffa500),
+                      Color(0xFFff8c00),
+                    ], // Added gradient variation
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFffa500).withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: const Icon(
                   Icons.rocket_launch,
@@ -108,9 +120,22 @@ class _StartupDashboardState extends State<StartupDashboard>
         Container(
           margin: const EdgeInsets.only(right: 6, top: 6, bottom: 6),
           decoration: BoxDecoration(
-            color: const Color(0xFFffa500),
+            gradient: const LinearGradient(
+              colors: [
+                Color(0xFFffa500),
+                Color(0xFFff8c00),
+              ], // Added gradient variation
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.black, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFffa500).withValues(alpha: 0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: IconButton(
             icon: const Icon(
@@ -1105,7 +1130,7 @@ class _StartupDashboardState extends State<StartupDashboard>
         children: [
           Row(
             children: [
-              const Icon(Icons.rocket_launch, color: Colors.black, size: 28),
+              const Icon(Icons.start, color: Colors.black, size: 28),
               const SizedBox(width: 12),
               const Expanded(
                 child: Text(
