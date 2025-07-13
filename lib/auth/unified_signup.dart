@@ -510,6 +510,9 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
+  // Complete _buildInputField method with animated colors
+  // Replace your existing _buildInputField method with this complete version:
+
   Widget _buildInputField({
     required String label,
     required TextEditingController controller,
@@ -522,7 +525,6 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
   }) {
     return Consumer<UnifiedAuthProvider>(
       builder: (context, authProvider, child) {
-        final currentColor = _getCurrentThemeColor();
         final hasError = errorText != null;
 
         return Column(
@@ -537,89 +539,119 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
               ),
             ),
             const SizedBox(height: 6),
-            TextFormField(
-              controller: controller,
-              focusNode: focusNode,
-              validator: validator,
-              keyboardType: keyboardType,
-              obscureText:
-                  isPassword &&
-                  (label.contains('Confirm')
-                      ? !authProvider.isConfirmPasswordVisible
-                      : !authProvider.isPasswordVisible),
-              style: const TextStyle(color: Colors.white),
-              onChanged: (value) {
-                // Trigger real-time validation
-                if (authProvider.validateRealTime) {
-                  authProvider.validateForm();
+
+            // 🔥 ANIMATED BUILDER FOR DYNAMIC COLORS
+            AnimatedBuilder(
+              animation: _colorAnimation,
+              builder: (context, child) {
+                // 🔥 Get current color based on user selection or animation
+                Color currentColor;
+                if (authProvider.selectedUserType != null) {
+                  // User has made a selection - use static color
+                  currentColor = _getCurrentThemeColor();
+                } else {
+                  // No selection - use animated color
+                  currentColor =
+                      _colorAnimation.value ?? const Color(0xFFffa500);
                 }
+
+                return TextFormField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  validator: validator,
+                  keyboardType: keyboardType,
+                  obscureText:
+                      isPassword &&
+                      (label.contains('Confirm')
+                          ? !authProvider.isConfirmPasswordVisible
+                          : !authProvider.isPasswordVisible),
+                  style: const TextStyle(color: Colors.white),
+
+                  // 🔥 ADD CURSOR COLOR - animated!
+                  cursorColor: hasError ? Colors.red : currentColor,
+
+                  onChanged: (value) {
+                    // Trigger real-time validation
+                    if (authProvider.validateRealTime) {
+                      authProvider.validateForm();
+                    }
+                  },
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                    prefixIcon:
+                        icon != null
+                            ? Icon(
+                              icon,
+                              color: hasError ? Colors.red : Colors.grey[400],
+                              size: 18,
+                            )
+                            : null,
+                    suffixIcon:
+                        isPassword
+                            ? IconButton(
+                              icon: Icon(
+                                label.contains('Confirm')
+                                    ? (authProvider.isConfirmPasswordVisible
+                                        ? Icons.visibility_off
+                                        : Icons.visibility)
+                                    : (authProvider.isPasswordVisible
+                                        ? Icons.visibility_off
+                                        : Icons.visibility),
+                                color: Colors.grey[400],
+                                size: 18,
+                              ),
+                              onPressed:
+                                  label.contains('Confirm')
+                                      ? authProvider
+                                          .toggleConfirmPasswordVisibility
+                                      : authProvider.togglePasswordVisibility,
+                            )
+                            : null,
+                    hintText: 'Enter your ${label.toLowerCase()}',
+                    hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    filled: true,
+                    fillColor: const Color(0xFF1a1a1a),
+
+                    // 🔥 UPDATED BORDER COLORS WITH ANIMATION
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(
+                        color: hasError ? Colors.red : Colors.grey[800]!,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(
+                        color: hasError ? Colors.red : Colors.grey[800]!,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(
+                        color:
+                            hasError
+                                ? Colors.red
+                                : currentColor, // 🔥 ANIMATED COLOR
+                        width: 2,
+                      ),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Colors.red, width: 2),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Colors.red, width: 2),
+                    ),
+                  ),
+                );
               },
-              decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                prefixIcon:
-                    icon != null
-                        ? Icon(
-                          icon,
-                          color: hasError ? Colors.red : Colors.grey[400],
-                          size: 18,
-                        )
-                        : null,
-                suffixIcon:
-                    isPassword
-                        ? IconButton(
-                          icon: Icon(
-                            label.contains('Confirm')
-                                ? (authProvider.isConfirmPasswordVisible
-                                    ? Icons.visibility_off
-                                    : Icons.visibility)
-                                : (authProvider.isPasswordVisible
-                                    ? Icons.visibility_off
-                                    : Icons.visibility),
-                            color: Colors.grey[400],
-                            size: 18,
-                          ),
-                          onPressed:
-                              label.contains('Confirm')
-                                  ? authProvider.toggleConfirmPasswordVisibility
-                                  : authProvider.togglePasswordVisibility,
-                        )
-                        : null,
-                hintText: 'Enter your ${label.toLowerCase()}',
-                hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
-                filled: true,
-                fillColor: const Color(0xFF1a1a1a),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(
-                    color: hasError ? Colors.red : Colors.grey[800]!,
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(
-                    color: hasError ? Colors.red : Colors.grey[800]!,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(
-                    color: hasError ? Colors.red : currentColor,
-                    width: 2,
-                  ),
-                ),
-                errorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Colors.red, width: 2),
-                ),
-                focusedErrorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Colors.red, width: 2),
-                ),
-              ),
             ),
+
+            // Error message display
             if (hasError) ...[
               const SizedBox(height: 4),
               Padding(

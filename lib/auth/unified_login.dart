@@ -368,6 +368,8 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
                     ],
                   ),
                   child: TextFormField(
+                    cursorColor:
+                        _colorAnimation.value ?? const Color(0xFFffa500),
                     controller: controller,
                     focusNode: focusNode,
                     validator: validator,
@@ -637,14 +639,14 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
                           children: [
                             const Icon(
                               Icons.login,
-                              color: Colors.white,
+                              color: Colors.black,
                               size: 18, // Reduced from 20
                             ),
                             const SizedBox(width: 10), // Reduced from 12
                             const Text(
                               'Sign In',
                               style: TextStyle(
-                                color: Colors.white,
+                                color: Colors.black,
                                 fontSize: 16, // Reduced from 18
                                 fontWeight: FontWeight.bold,
                                 shadows: [
