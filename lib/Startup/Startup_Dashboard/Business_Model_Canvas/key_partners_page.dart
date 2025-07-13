@@ -176,6 +176,7 @@ class _KeyPartnersPageState extends State<KeyPartnersPage> {
                     ),
                   ),
                   child: TextField(
+                    cursorColor: const Color(0xFFffa500),
                     controller: _controller,
                     focusNode: _focusNode,
                     enabled: !provider.isSaving,

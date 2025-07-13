@@ -176,6 +176,7 @@ class _KeyActivitiesPageState extends State<KeyActivitiesPage> {
                     ),
                   ),
                   child: TextField(
+                    cursorColor: const Color(0xFFffa500),
                     controller: _controller,
                     focusNode: _focusNode,
                     enabled: !provider.isSaving,

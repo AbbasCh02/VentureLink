@@ -204,6 +204,7 @@ class _ChannelsPageState extends State<ChannelsPage> {
                   ),
                   child: TextField(
                     controller: _controller,
+                    cursorColor: const Color(0xFFffa500),
                     focusNode: _focusNode,
                     enabled: !provider.isSaving,
                     decoration: InputDecoration(

@@ -508,6 +508,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
+          cursorColor: const Color(0xFFffa500),
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             filled: true,

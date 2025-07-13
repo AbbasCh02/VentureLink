@@ -445,6 +445,7 @@ class _ProfileOverviewState extends State<ProfileOverview>
         ),
         const SizedBox(height: 8),
         TextFormField(
+          cursorColor: const Color(0xFFffa500),
           controller: controller,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
