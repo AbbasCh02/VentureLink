@@ -1,9 +1,26 @@
-// lib/Investor/Investor_Dashboard/companies_list_page.dart
+/**
+ * companies_list_page.dart
+ * 
+ * Implements a visually rich interface for investors to browse and search their
+ * portfolio of companies and professional positions.
+ * 
+ * Features:
+ * - Animated UI components with staggered entrance effects
+ * - Real-time search filtering of companies
+ * - Multiple state handling (loading, empty, error, content)
+ * - Interactive company cards with website linking
+ * - Visual distinction between active and past positions
+ */
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../Providers/investor_company_provider.dart';
 
+/**
+ * CompaniesListPage - Main stateful widget for displaying a list of
+ * companies in an investor's portfolio.
+ */
 class CompaniesListPage extends StatefulWidget {
   const CompaniesListPage({super.key});
 
@@ -11,17 +28,30 @@ class CompaniesListPage extends StatefulWidget {
   State<CompaniesListPage> createState() => _CompaniesListPageState();
 }
 
+/**
+ * State class for CompaniesListPage that manages animations,
+ * search functionality, and data loading.
+ */
 class _CompaniesListPageState extends State<CompaniesListPage>
     with TickerProviderStateMixin {
+  // Search state
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+
+  // Animation controllers
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+
+  // Loading state
   bool _isInitializing = true;
 
+  /**
+   * Initializes state including animation controllers and triggers data loading.
+   */
   @override
   void initState() {
     super.initState();
+    // Setup fade animation
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
@@ -30,12 +60,16 @@ class _CompaniesListPageState extends State<CompaniesListPage>
       CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
     );
 
-    // Initialize companies provider if needed
+    // Initialize provider after initial build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeProvider();
     });
   }
 
+  /**
+   * Loads company data from the provider.
+   * Handles initial loading and refresh operations.
+   */
   Future<void> _initializeProvider() async {
     try {
       final provider = Provider.of<InvestorCompaniesProvider>(
@@ -43,15 +77,17 @@ class _CompaniesListPageState extends State<CompaniesListPage>
         listen: false,
       );
 
+      // Only initialize if not already done
       if (!provider.isInitialized) {
         await provider.initialize();
       }
 
+      // Update UI state when complete
       if (mounted) {
         setState(() {
           _isInitializing = false;
         });
-        _animationController.forward();
+        _animationController.forward(); // Start entrance animation
       }
     } catch (e) {
       debugPrint('Error initializing provider: $e');
@@ -63,6 +99,9 @@ class _CompaniesListPageState extends State<CompaniesListPage>
     }
   }
 
+  /**
+   * Cleans up resources when widget is removed.
+   */
   @override
   void dispose() {
     _searchController.dispose();
@@ -70,32 +109,43 @@ class _CompaniesListPageState extends State<CompaniesListPage>
     super.dispose();
   }
 
+  /**
+   * Builds the main widget structure with appropriate state handling.
+   */
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0a0a0a),
       body: Consumer<InvestorCompaniesProvider>(
         builder: (context, provider, child) {
-          // Show loading only during initial setup
+          // Show loading state during initial setup
           if (_isInitializing ||
               (provider.isLoading && !provider.isInitialized)) {
             return _buildLoadingState();
           }
 
-          // Show error only if it's a real error and not during initialization
+          // Show error state for non-initialization errors
           if (provider.error != null &&
               provider.isInitialized &&
               !provider.isLoading) {
             return _buildErrorState(provider.error!, provider);
           }
 
+          // Show main content when data is ready
           return _buildMainContent(provider);
         },
       ),
     );
   }
 
+  /**
+   * Builds the main content with filtered company list.
+   * 
+   * @param provider The data provider containing company information
+   * @return Widget containing the main content structure
+   */
   Widget _buildMainContent(InvestorCompaniesProvider provider) {
+    // Filter companies based on search query
     final filteredCompanies =
         provider.companies.where((company) {
           if (_searchQuery.isEmpty) return true;
@@ -134,6 +184,12 @@ class _CompaniesListPageState extends State<CompaniesListPage>
     );
   }
 
+  /**
+   * Builds the expandable app bar with title and statistics.
+   * 
+   * @param provider The data provider containing company counts
+   * @return A SliverAppBar widget with custom styling
+   */
   Widget _buildSliverAppBar(InvestorCompaniesProvider provider) {
     return SliverAppBar(
       expandedHeight: 160,
@@ -141,6 +197,7 @@ class _CompaniesListPageState extends State<CompaniesListPage>
       pinned: true,
       backgroundColor: const Color(0xFF0a0a0a),
       elevation: 0,
+      // Styled back button
       leading: Container(
         margin: const EdgeInsets.all(8),
         decoration: BoxDecoration(
@@ -170,6 +227,7 @@ class _CompaniesListPageState extends State<CompaniesListPage>
         ),
       ),
 
+      // Expandable content area with gradient background
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: BoxDecoration(
@@ -192,6 +250,7 @@ class _CompaniesListPageState extends State<CompaniesListPage>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  // Page title
                   Row(
                     children: [
                       const SizedBox(width: 16),
@@ -221,8 +280,11 @@ class _CompaniesListPageState extends State<CompaniesListPage>
                     ],
                   ),
                   const SizedBox(height: 16),
+
+                  // Statistic badges
                   Row(
                     children: [
+                      // Total companies badge
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -265,6 +327,8 @@ class _CompaniesListPageState extends State<CompaniesListPage>
                         ),
                       ),
                       const SizedBox(width: 12),
+
+                      // Active companies badge
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -311,11 +375,18 @@ class _CompaniesListPageState extends State<CompaniesListPage>
     );
   }
 
+  /**
+   * Builds the search input field with result count indicator.
+   * 
+   * @param resultCount Number of matching search results
+   * @return A widget containing the search interface
+   */
   Widget _buildSearchSection(int resultCount) {
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
+          // Search input field
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -353,6 +424,7 @@ class _CompaniesListPageState extends State<CompaniesListPage>
                     size: 24,
                   ),
                 ),
+                // Clear button for search field
                 suffixIcon:
                     _searchQuery.isNotEmpty
                         ? IconButton(
@@ -381,6 +453,8 @@ class _CompaniesListPageState extends State<CompaniesListPage>
               },
             ),
           ),
+
+          // Results count indicator (only shown when searching)
           if (_searchQuery.isNotEmpty) ...[
             const SizedBox(height: 12),
             Align(
@@ -413,18 +487,28 @@ class _CompaniesListPageState extends State<CompaniesListPage>
     );
   }
 
+  /**
+   * Builds an individual company card with animation and styling.
+   * 
+   * @param company The company data to display
+   * @param isCurrent Whether this is a current/active position
+   * @param index Position in the list (for staggered animation)
+   * @return An animated company card widget
+   */
   Widget _buildCompanyCard(InvestorCompany company, bool isCurrent, int index) {
     return TweenAnimationBuilder<double>(
+      // Staggered animation timing based on position in list
       duration: Duration(milliseconds: 600 + (index * 100)),
       tween: Tween(begin: 0.0, end: 1.0),
       curve: Curves.easeOutBack,
       builder: (context, value, child) {
         return Transform.translate(
-          offset: Offset(0, (1 - value) * 50),
+          offset: Offset(0, (1 - value) * 50), // Slide-up effect
           child: Opacity(
-            opacity: value.clamp(0.0, 1.0),
+            opacity: value.clamp(0.0, 1.0), // Fade-in effect
             child: Container(
               margin: const EdgeInsets.only(bottom: 20),
+              // Card styling with conditional formatting for active positions
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors:
@@ -466,9 +550,10 @@ class _CompaniesListPageState extends State<CompaniesListPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header with avatar and badge
+                    // Header with avatar and title
                     Row(
                       children: [
+                        // Company avatar with first letter
                         Container(
                           width: 60,
                           height: 60,
@@ -504,6 +589,8 @@ class _CompaniesListPageState extends State<CompaniesListPage>
                           ),
                         ),
                         const SizedBox(width: 16),
+
+                        // Company details (name, title, active badge)
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -523,6 +610,7 @@ class _CompaniesListPageState extends State<CompaniesListPage>
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
+                                  // Active badge (only for current positions)
                                   if (isCurrent)
                                     Container(
                                       margin: const EdgeInsets.only(left: 8),
@@ -581,7 +669,7 @@ class _CompaniesListPageState extends State<CompaniesListPage>
                       ],
                     ),
 
-                    // Website section
+                    // Website section (only shown if available)
                     if (company.website.isNotEmpty) ...[
                       const SizedBox(height: 20),
                       Container(
@@ -599,6 +687,7 @@ class _CompaniesListPageState extends State<CompaniesListPage>
                         ),
                         child: Row(
                           children: [
+                            // Website icon
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
@@ -614,6 +703,8 @@ class _CompaniesListPageState extends State<CompaniesListPage>
                               ),
                             ),
                             const SizedBox(width: 12),
+
+                            // Website link
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -646,6 +737,8 @@ class _CompaniesListPageState extends State<CompaniesListPage>
                                 ],
                               ),
                             ),
+
+                            // External link button
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
@@ -668,7 +761,7 @@ class _CompaniesListPageState extends State<CompaniesListPage>
                       ),
                     ],
 
-                    // Date info
+                    // Date added information
                     const SizedBox(height: 16),
                     Row(
                       children: [
@@ -698,6 +791,13 @@ class _CompaniesListPageState extends State<CompaniesListPage>
     );
   }
 
+  /**
+   * Builds an empty state widget for when no companies are found.
+   * Adapts messaging based on whether no companies exist or none match the search.
+   * 
+   * @param isCompletelyEmpty Whether there are no companies at all
+   * @return A widget displaying the appropriate empty state
+   */
   Widget _buildEmptyState(bool isCompletelyEmpty) {
     return Container(
       margin: const EdgeInsets.all(32),
@@ -722,6 +822,7 @@ class _CompaniesListPageState extends State<CompaniesListPage>
       ),
       child: Column(
         children: [
+          // Icon container
           Container(
             width: 100,
             height: 100,
@@ -736,13 +837,16 @@ class _CompaniesListPageState extends State<CompaniesListPage>
             ),
             child: Icon(
               isCompletelyEmpty
-                  ? Icons.business_center_rounded
-                  : Icons.search_off_rounded,
+                  ? Icons
+                      .business_center_rounded // Empty portfolio
+                  : Icons.search_off_rounded, // No search results
               size: 50,
               color: const Color(0xFF65c6f4),
             ),
           ),
           const SizedBox(height: 24),
+
+          // Empty state title
           Text(
             isCompletelyEmpty
                 ? 'No companies in your portfolio'
@@ -755,6 +859,8 @@ class _CompaniesListPageState extends State<CompaniesListPage>
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
+
+          // Empty state description
           Text(
             isCompletelyEmpty
                 ? 'Start building your professional portfolio by adding your company positions and investments'
@@ -766,6 +872,8 @@ class _CompaniesListPageState extends State<CompaniesListPage>
             ),
             textAlign: TextAlign.center,
           ),
+
+          // Add company button (only shown when portfolio is completely empty)
           if (isCompletelyEmpty) ...[
             const SizedBox(height: 32),
             Container(
@@ -816,6 +924,11 @@ class _CompaniesListPageState extends State<CompaniesListPage>
     );
   }
 
+  /**
+   * Builds a loading state widget with progress indicator.
+   * 
+   * @return A widget displaying loading animation and message
+   */
   Widget _buildLoadingState() {
     return Center(
       child: Column(
@@ -859,6 +972,13 @@ class _CompaniesListPageState extends State<CompaniesListPage>
     );
   }
 
+  /**
+  * Builds an error state widget with message and retry button.
+  * 
+  * @param error The error message to display
+  * @param provider The data provider for retry functionality
+  * @return A widget displaying the error state
+  */
   Widget _buildErrorState(String error, InvestorCompaniesProvider provider) {
     return Center(
       child: Container(
@@ -921,6 +1041,12 @@ class _CompaniesListPageState extends State<CompaniesListPage>
     );
   }
 
+  /**
+  * Formats a date into a human-readable relative time string.
+  * 
+  * @param date The date to format
+  * @return A string like "today", "3 days ago", "2 months ago", etc.
+  */
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
@@ -943,6 +1069,11 @@ class _CompaniesListPageState extends State<CompaniesListPage>
     }
   }
 
+  /**
+  * Launches a website URL with validation and error handling.
+  * 
+  * @param url The website URL to launch
+  */
   Future<void> _launchWebsite(String url) async {
     try {
       // Clean and validate URL
@@ -964,7 +1095,7 @@ class _CompaniesListPageState extends State<CompaniesListPage>
         return;
       }
 
-      // Check if URL can be launched
+      // Launch URL in external browser
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {
       debugPrint('Error launching website: $e');
@@ -972,6 +1103,11 @@ class _CompaniesListPageState extends State<CompaniesListPage>
     }
   }
 
+  /**
+  * Shows an error message in a snackbar.
+  * 
+  * @param message The error message to display
+  */
   void _showErrorSnackBar(String message) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

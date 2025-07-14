@@ -1,9 +1,26 @@
-// lib/Investor/Investor_Dashboard/investor_bio.dart
+/**
+ * investor_bio.dart
+ * 
+ * Implements a form-based interface for investors to create and edit their
+ * professional bio, portfolio information, and LinkedIn profile.
+ * 
+ * Features:
+ * - Animated UI with entrance effects
+ * - Form validation
+ * - Styled input fields and sections
+ * - Integration with InvestorProfileProvider for state management
+ * - Navigation to company management page
+ */
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:venturelink/Investor/Investor_Dashboard/investor_company_page.dart';
 import '../Providers/investor_profile_provider.dart';
 
+/**
+ * InvestorBio - Main stateful widget for the investor bio page.
+ * Allows investors to enter and update their professional information.
+ */
 class InvestorBio extends StatefulWidget {
   const InvestorBio({super.key});
 
@@ -11,30 +28,43 @@ class InvestorBio extends StatefulWidget {
   State<InvestorBio> createState() => _InvestorBioState();
 }
 
+/**
+ * State class for InvestorBio that manages animations and form state.
+ */
 class _InvestorBioState extends State<InvestorBio>
     with TickerProviderStateMixin {
+  // Form key for validation
   final _formKey = GlobalKey<FormState>();
+
+  // Animation controllers
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
+  /**
+   * Initializes state and sets up animations.
+   */
   @override
   void initState() {
     super.initState();
+    // Initialize fade animation
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
+    // Initialize slide animation
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
 
+    // Create fade animation
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
 
+    // Create slide animation with elastic bounce effect
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
@@ -42,10 +72,14 @@ class _InvestorBioState extends State<InvestorBio>
       CurvedAnimation(parent: _slideController, curve: Curves.elasticOut),
     );
 
+    // Start animations
     _fadeController.forward();
     _slideController.forward();
   }
 
+  /**
+   * Cleans up animation controllers when widget is removed.
+   */
   @override
   void dispose() {
     _fadeController.dispose();
@@ -53,6 +87,9 @@ class _InvestorBioState extends State<InvestorBio>
     super.dispose();
   }
 
+  /**
+   * Builds the main widget structure with form and sections.
+   */
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -101,6 +138,11 @@ class _InvestorBioState extends State<InvestorBio>
     );
   }
 
+  /**
+   * Builds the app bar with back button and title.
+   * 
+   * @return A styled AppBar widget
+   */
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       backgroundColor: Colors.grey[900],
@@ -127,6 +169,12 @@ class _InvestorBioState extends State<InvestorBio>
     );
   }
 
+  /**
+   * Builds the header section with title and description.
+   * 
+   * @param provider The InvestorProfileProvider for state access
+   * @return A styled header widget
+   */
   Widget _buildHeader(InvestorProfileProvider provider) {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -180,6 +228,15 @@ class _InvestorBioState extends State<InvestorBio>
     );
   }
 
+  /**
+   * Creates a styled button with gradient background, icon and text.
+   * 
+   * @param text The button text
+   * @param icon The icon to display
+   * @param onPressed Callback when button is pressed
+   * @param isFullWidth Whether the button should fill its parent width
+   * @return A styled button widget
+   */
   Widget _buildStyledButton({
     required String text,
     required IconData icon,
@@ -233,6 +290,12 @@ class _InvestorBioState extends State<InvestorBio>
     );
   }
 
+  /**
+   * Builds the professional bio input section.
+   * 
+   * @param provider The InvestorProfileProvider for form state
+   * @return A section card with bio text field
+   */
   Widget _buildBioSection(InvestorProfileProvider provider) {
     return _buildSectionCard(
       title: 'Professional Bio',
@@ -245,6 +308,12 @@ class _InvestorBioState extends State<InvestorBio>
     );
   }
 
+  /**
+   * Builds the company information section with an "Add Companies" button.
+   * 
+   * @param provider The InvestorProfileProvider for state
+   * @return A section card with company management button
+   */
   Widget _buildCompanyInfoSection(InvestorProfileProvider provider) {
     return _buildSectionCard(
       title: 'Companies Information',
@@ -268,6 +337,12 @@ class _InvestorBioState extends State<InvestorBio>
     );
   }
 
+  /**
+   * Builds the portfolio information section with portfolio size and LinkedIn inputs.
+   * 
+   * @param provider The InvestorProfileProvider for state
+   * @return A section card with portfolio fields
+   */
   Widget _buildPortfolioSection(InvestorProfileProvider provider) {
     return _buildSectionCard(
       title: 'Portfolio Information',
@@ -281,6 +356,12 @@ class _InvestorBioState extends State<InvestorBio>
     );
   }
 
+  /**
+   * Builds the LinkedIn profile URL input field with validation.
+   * 
+   * @param provider The InvestorProfileProvider for state
+   * @return A form field for LinkedIn URL input
+   */
   Widget _buildLinkedInProfileSelector(InvestorProfileProvider provider) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,6 +446,13 @@ class _InvestorBioState extends State<InvestorBio>
     );
   }
 
+  /**
+   * Creates a styled section card with title and content.
+   * 
+   * @param title The section title
+   * @param child The content widget to display
+   * @return A styled container with title and content
+   */
   Widget _buildSectionCard({required String title, required Widget child}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
@@ -422,6 +510,16 @@ class _InvestorBioState extends State<InvestorBio>
     );
   }
 
+  /**
+   * Creates a styled text form field with validation.
+   * 
+   * @param controller The text controller
+   * @param labelText The field label
+   * @param validator The validation function
+   * @param maxLines Number of lines for text input
+   * @param keyboardType The keyboard type to display
+   * @return A styled text input field
+   */
   Widget _buildStyledTextFormField({
     required TextEditingController controller,
     required String labelText,
@@ -477,6 +575,12 @@ class _InvestorBioState extends State<InvestorBio>
     );
   }
 
+  /**
+   * Builds the portfolio size input field with numeric validation.
+   * 
+   * @param provider The InvestorProfileProvider for state
+   * @return A form field for portfolio size input
+   */
   Widget _buildPortfolioSizeSelector(InvestorProfileProvider provider) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -553,6 +657,12 @@ class _InvestorBioState extends State<InvestorBio>
     );
   }
 
+  /**
+   * Builds the save button with gradient styling.
+   * 
+   * @param provider The InvestorProfileProvider for state
+   * @return A styled save button widget
+   */
   Widget _buildSaveButton(InvestorProfileProvider provider) {
     return Container(
       width: double.infinity,
@@ -592,6 +702,9 @@ class _InvestorBioState extends State<InvestorBio>
     );
   }
 
+  /**
+   * Handles the save action with validation, persistence, and feedback.
+   */
   Future<void> _saveBio() async {
     if (!_formKey.currentState!.validate()) {
       return;

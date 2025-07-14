@@ -1,8 +1,26 @@
-// lib/Investor/Investor_Dashboard/investor_company_page.dart
+/**
+ * investor_company_page.dart
+ * 
+ * Implements a management interface for investors to add, view, and remove companies 
+ * they are associated with professionally.
+ * 
+ * Features:
+ * - Animated UI with entrance effects
+ * - Form validation for adding companies
+ * - Visual company representation with grid layout
+ * - Integration with InvestorCompaniesProvider for state management
+ * - Real-time status indicators for current companies
+ * - Batch operations (save all, clear all)
+ */
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../Providers/investor_company_provider.dart';
 
+/**
+ * InvestorCompanyPage - Main stateful widget for the investor company management page.
+ * Allows investors to manage their professional affiliations with companies.
+ */
 class InvestorCompanyPage extends StatefulWidget {
   const InvestorCompanyPage({super.key});
 
@@ -10,30 +28,44 @@ class InvestorCompanyPage extends StatefulWidget {
   State<InvestorCompanyPage> createState() => _InvestorCompanyPageState();
 }
 
+/**
+ * State class for InvestorCompanyPage that manages animations, form state,
+ * and company data operations.
+ */
 class _InvestorCompanyPageState extends State<InvestorCompanyPage>
     with TickerProviderStateMixin {
+  // Form key for validation
   final _formKey = GlobalKey<FormState>();
+
+  // Animation controllers
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
+  /**
+   * Initializes state, sets up animations and loads company data.
+   */
   @override
   void initState() {
     super.initState();
+    // Initialize fade animation
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
+    // Initialize slide animation
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
 
+    // Create fade animation
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
 
+    // Create slide animation with elastic bounce effect
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
@@ -41,6 +73,7 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
       CurvedAnimation(parent: _slideController, curve: Curves.elasticOut),
     );
 
+    // Start animations
     _fadeController.forward();
     _slideController.forward();
 
@@ -51,6 +84,9 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
     });
   }
 
+  /**
+   * Cleans up animation controllers when widget is removed.
+   */
   @override
   void dispose() {
     _fadeController.dispose();
@@ -58,6 +94,9 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
     super.dispose();
   }
 
+  /**
+   * Builds the main widget structure with form and sections.
+   */
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -128,14 +167,23 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Header Section
                     _buildHeader(provider),
                     const SizedBox(height: 32),
+
+                    // Progress Statistics Section
                     _buildProgressSection(provider),
                     const SizedBox(height: 32),
+
+                    // Add Company Form Section
                     _buildAddCompanySection(provider),
                     const SizedBox(height: 32),
+
+                    // Companies Grid Display Section
                     _buildCompaniesSection(provider),
                     const SizedBox(height: 32),
+
+                    // Action Buttons Section
                     _buildActionButtons(provider),
                   ],
                 ),
@@ -147,6 +195,11 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
     );
   }
 
+  /**
+   * Builds the app bar with back button and title.
+   * 
+   * @return A styled AppBar widget
+   */
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       backgroundColor: Colors.grey[900],
@@ -196,6 +249,12 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
     );
   }
 
+  /**
+   * Builds the header section with title and description.
+   * 
+   * @param provider The InvestorCompaniesProvider for state access
+   * @return A styled header widget
+   */
   Widget _buildHeader(InvestorCompaniesProvider provider) {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -249,6 +308,12 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
     );
   }
 
+  /**
+   * Builds the progress section with company statistics.
+   * 
+   * @param provider The InvestorCompaniesProvider for state access
+   * @return A section with company statistics cards
+   */
   Widget _buildProgressSection(InvestorCompaniesProvider provider) {
     final companiesCount = provider.companiesCount;
     final currentCompaniesCount = provider.currentCompanies.length;
@@ -316,6 +381,15 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
     );
   }
 
+  /**
+   * Creates a styled stat card for displaying company metrics.
+   * 
+   * @param title The card title
+   * @param value The metric value to display
+   * @param icon The icon to show
+   * @param color The accent color for the card
+   * @return A styled card widget with company statistics
+   */
   Widget _buildCompanyStatCard(
     String title,
     String value,
@@ -352,6 +426,12 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
     );
   }
 
+  /**
+   * Builds the form section for adding a new company.
+   * 
+   * @param provider The InvestorCompaniesProvider for state access
+   * @return A form section with company input fields
+   */
   Widget _buildAddCompanySection(InvestorCompaniesProvider provider) {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -459,6 +539,16 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
     );
   }
 
+  /**
+   * Creates a styled form field with validation.
+   * 
+   * @param label The field label
+   * @param hint The hint text
+   * @param icon The field icon
+   * @param controller The text controller
+   * @param validator The validation function
+   * @return A styled text input field with validation
+   */
   Widget _buildStyledFormField({
     required String label,
     required String hint,
@@ -520,6 +610,12 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
     );
   }
 
+  /**
+   * Builds the companies display section with grid layout.
+   * 
+   * @param provider The InvestorCompaniesProvider for state access
+   * @return A section with company cards or empty state
+   */
   Widget _buildCompaniesSection(InvestorCompaniesProvider provider) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -541,6 +637,11 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
     );
   }
 
+  /**
+   * Builds an empty state widget when no companies are added.
+   * 
+   * @return A styled empty state container
+   */
   Widget _buildEmptyState() {
     return Container(
       width: double.infinity,
@@ -572,6 +673,12 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
     );
   }
 
+  /**
+   * Builds a grid layout of company cards.
+   * 
+   * @param provider The InvestorCompaniesProvider for state access
+   * @return A grid of company cards
+   */
   Widget _buildCompaniesGrid(InvestorCompaniesProvider provider) {
     return GridView.builder(
       shrinkWrap: true,
@@ -590,6 +697,13 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
     );
   }
 
+  /**
+   * Creates a styled card for an individual company.
+   * 
+   * @param company The company data to display
+   * @param provider The InvestorCompaniesProvider for state access
+   * @return A styled company card with actions
+   */
   Widget _buildCompanyCard(
     InvestorCompany company,
     InvestorCompaniesProvider provider,
@@ -724,6 +838,12 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
     );
   }
 
+  /**
+   * Builds the action buttons section for batch operations.
+   * 
+   * @param provider The InvestorCompaniesProvider for state access
+   * @return A section with save, clear, and refresh buttons
+   */
   Widget _buildActionButtons(InvestorCompaniesProvider provider) {
     return Column(
       children: [
@@ -857,6 +977,11 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
     );
   }
 
+  /**
+   * Handles adding a new company with validation and feedback.
+   * 
+   * @param provider The InvestorCompaniesProvider for state access
+   */
   void _addCompany(InvestorCompaniesProvider provider) async {
     if (_formKey.currentState!.validate() && provider.isFormValid) {
       try {
@@ -882,6 +1007,12 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
     }
   }
 
+  /**
+   * Shows a confirmation dialog before removing a company.
+   * 
+   * @param company The company to remove
+   * @param provider The InvestorCompaniesProvider for state access
+   */
   void _showRemoveDialog(
     InvestorCompany company,
     InvestorCompaniesProvider provider,
@@ -946,6 +1077,11 @@ class _InvestorCompanyPageState extends State<InvestorCompanyPage>
     );
   }
 
+  /**
+   * Shows a confirmation dialog before clearing all companies.
+   * 
+   * @return A Future that resolves to the user's choice (true for confirm)
+   */
   Future<bool?> _showClearAllDialog() {
     return showDialog<bool>(
       context: context,

@@ -1,8 +1,26 @@
-// lib/Investor/Investor_Dashboard/investor_preferences_page.dart
+/**
+ * investor_preferences_page.dart
+ * 
+ * Implements a customizable interface for investors to define and manage their 
+ * investment preferences across industries, geographic regions, and investment stages.
+ * 
+ * Features:
+ * - Multi-select chips for preference categories
+ * - Visual feedback with progress indicators
+ * - Real-time preference summaries
+ * - Temporary state management for unsaved changes
+ * - Elegant, gradient-based UI design
+ * - Integration with InvestorProfileProvider for data persistence
+ */
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../Providers/investor_profile_provider.dart';
 
+/**
+ * InvestorPreferencesPage - Main stateful widget for the preferences page.
+ * Allows investors to customize their investment focus areas.
+ */
 class InvestorPreferencesPage extends StatefulWidget {
   const InvestorPreferencesPage({super.key});
 
@@ -11,12 +29,20 @@ class InvestorPreferencesPage extends StatefulWidget {
       _InvestorPreferencesPageState();
 }
 
+/**
+ * State class for InvestorPreferencesPage that manages temporary selections
+ * and change tracking before persisting to the provider.
+ */
 class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
+  // Temporary selection lists to track unsaved changes
   List<String> _tempSelectedIndustries = [];
   List<String> _tempSelectedGeographic = [];
   List<String> _tempSelectedStages = [];
   bool _hasChanges = false;
 
+  /**
+   * Initializes state and loads current selections from the provider.
+   */
   @override
   void initState() {
     super.initState();
@@ -30,6 +56,9 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
     _tempSelectedStages = List.from(provider.selectedPreferredStages);
   }
 
+  /**
+   * Marks the form as having unsaved changes.
+   */
   void _markAsChanged() {
     if (!_hasChanges) {
       setState(() {
@@ -38,6 +67,9 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
     }
   }
 
+  /**
+   * Saves all preferences to the provider and persists to database.
+   */
   Future<void> _savePreferences() async {
     final provider = Provider.of<InvestorProfileProvider>(
       context,
@@ -81,6 +113,9 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
     }
   }
 
+  /**
+   * Resets temporary selections to match the provider's current values.
+   */
   void _resetPreferences() {
     final provider = Provider.of<InvestorProfileProvider>(
       context,
@@ -89,10 +124,14 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
     setState(() {
       _tempSelectedIndustries = List.from(provider.selectedIndustries);
       _tempSelectedGeographic = List.from(provider.selectedGeographicFocus);
+      _tempSelectedStages = List.from(provider.selectedPreferredStages);
       _hasChanges = false;
     });
   }
 
+  /**
+   * Builds the main widget structure with sections.
+   */
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -131,16 +170,27 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header Information Card
             _buildHeaderCard(),
             const SizedBox(height: 24),
+
+            // Industries Selection Section
             _buildIndustriesSection(),
             const SizedBox(height: 32),
+
+            // Geographic Focus Selection Section
             _buildGeographicSection(),
             const SizedBox(height: 32),
+
+            // Investment Stage Selection Section
             _buildPreferredStageSection(),
             const SizedBox(height: 32),
+
+            // Selection Summary Card
             _buildSummaryCard(),
             const SizedBox(height: 24),
+
+            // Action Buttons (only shown when changes exist)
             if (_hasChanges) _buildActionButtons(),
           ],
         ),
@@ -148,6 +198,11 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
     );
   }
 
+  /**
+   * Builds the header card with title and instructions.
+   * 
+   * @return A styled header widget with information
+   */
   Widget _buildHeaderCard() {
     return Container(
       width: double.infinity,
@@ -193,6 +248,11 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
     );
   }
 
+  /**
+   * Builds the industries selection section.
+   * 
+   * @return A section with industry selection chips
+   */
   Widget _buildIndustriesSection() {
     return _buildCleanSectionCard(
       title: 'Preferred Industries',
@@ -216,6 +276,11 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
     );
   }
 
+  /**
+   * Builds the geographic focus selection section.
+   * 
+   * @return A section with geographic region selection chips
+   */
   Widget _buildGeographicSection() {
     return _buildCleanSectionCard(
       title: 'Geographic Focus',
@@ -239,6 +304,11 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
     );
   }
 
+  /**
+   * Builds the investment stage selection section.
+   * 
+   * @return A section with investment stage selection chips
+   */
   Widget _buildPreferredStageSection() {
     return _buildCleanSectionCard(
       title: 'Preferred Investment Stage',
@@ -262,6 +332,16 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
     );
   }
 
+  /**
+   * Creates a styled section card with title, subtitle, and content.
+   * 
+   * @param title The section title
+   * @param subtitle The section subtitle or status
+   * @param icon The section icon
+   * @param child The content widget to display
+   * @param accentColor The accent color for styling
+   * @return A styled section container with header and content
+   */
   Widget _buildCleanSectionCard({
     required String title,
     required String subtitle,
@@ -341,6 +421,18 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
     );
   }
 
+  /**
+   * Builds an enhanced chip selection widget with status bar and controls.
+   * 
+   * @param items The list of available items
+   * @param selectedItems The currently selected items
+   * @param onSelectionChanged Callback when selection changes
+   * @param emptyMessage Message to display when nothing is selected
+   * @param emptyIcon Icon to display when nothing is selected
+   * @param accentColor The accent color for styling
+   * @param sectionType The type of section for messaging
+   * @return A selection widget with status and chip grid
+   */
   Widget _buildEnhancedChipSelection({
     required List<String> items,
     required List<String> selectedItems,
@@ -473,6 +565,15 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
     );
   }
 
+  /**
+   * Builds a grid layout of selection chips.
+   * 
+   * @param items The list of available items
+   * @param selectedItems The currently selected items
+   * @param onSelectionChanged Callback when selection changes
+   * @param accentColor The accent color for styling
+   * @return A grid of selection chips in rows of two
+   */
   Widget _buildElegantChipGrid({
     required List<String> items,
     required List<String> selectedItems,
@@ -533,6 +634,15 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
     );
   }
 
+  /**
+   * Creates a styled selection chip with visual feedback.
+   * 
+   * @param item The item text to display
+   * @param isSelected Whether the item is selected
+   * @param onTap Callback when chip is tapped
+   * @param accentColor The accent color for styling
+   * @return A styled selection chip widget
+   */
   Widget _buildElegantChip({
     required String item,
     required bool isSelected,
@@ -615,6 +725,11 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
     );
   }
 
+  /**
+   * Builds the summary card with selection statistics.
+   * 
+   * @return A card summarizing all selection categories with progress indicators
+   */
   Widget _buildSummaryCard() {
     final totalSelected =
         _tempSelectedIndustries.length +
@@ -735,6 +850,15 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
     );
   }
 
+  /**
+   * Creates a summary row with progress bar for a category.
+   * 
+   * @param label The category label
+   * @param selected Number of selected items
+   * @param total Total number of available items
+   * @param icon The category icon
+   * @return A row with selection statistics and progress bar
+   */
   Widget _buildCleanSummaryRow(
     String label,
     int selected,
@@ -785,6 +909,11 @@ class _InvestorPreferencesPageState extends State<InvestorPreferencesPage> {
     );
   }
 
+  /**
+   * Builds the action buttons for saving or resetting changes.
+   * 
+   * @return A row with save and reset buttons
+   */
   Widget _buildActionButtons() {
     return Row(
       children: [

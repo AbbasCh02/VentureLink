@@ -1,4 +1,18 @@
-// lib/Investor/Investor_Dashboard/investor_dashboard.dart
+/**
+ * investor_dashboard.dart
+ * 
+ * Implements the main dashboard interface for investors with an overview of their
+ * profile, portfolio insights, and investment metrics.
+ * 
+ * Features:
+ * - Animated UI with entrance effects
+ * - Profile overview with personal and professional information
+ * - Portfolio insights with investment preferences
+ * - Investment metrics with data visualization
+ * - Integration with InvestorProfileProvider and InvestorCompaniesProvider
+ * - Navigation to profile and company management pages
+ */
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../Providers/investor_profile_provider.dart';
@@ -7,6 +21,10 @@ import 'investor_profile_page.dart';
 import 'company_list_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/**
+ * InvestorDashboard - Main stateful widget for the investor dashboard page.
+ * Presents a comprehensive overview of the investor's profile and portfolio.
+ */
 class InvestorDashboard extends StatefulWidget {
   const InvestorDashboard({super.key});
 
@@ -14,13 +32,20 @@ class InvestorDashboard extends StatefulWidget {
   State<InvestorDashboard> createState() => _InvestorDashboardState();
 }
 
+/**
+ * State class for InvestorDashboard that manages animations and data loading.
+ */
 class _InvestorDashboardState extends State<InvestorDashboard>
     with TickerProviderStateMixin {
+  // Animation controllers
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
+  /**
+   * Initializes state, sets up animations and loads provider data.
+   */
   @override
   void initState() {
     super.initState();
@@ -30,19 +55,24 @@ class _InvestorDashboardState extends State<InvestorDashboard>
       _initializeInvestorProviders();
     });
 
+    // Initialize fade animation
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
+
+    // Initialize slide animation
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
 
+    // Create fade animation
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
 
+    // Create slide animation with elastic bounce effect
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
@@ -50,10 +80,14 @@ class _InvestorDashboardState extends State<InvestorDashboard>
       CurvedAnimation(parent: _slideController, curve: Curves.elasticOut),
     );
 
+    // Start animations
     _fadeController.forward();
     _slideController.forward();
   }
 
+  /**
+   * Cleans up animation controllers when widget is removed.
+   */
   @override
   void dispose() {
     _fadeController.dispose();
@@ -61,6 +95,10 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     super.dispose();
   }
 
+  /**
+   * Initializes the investor profile and company providers.
+   * Ensures data is loaded for the dashboard display.
+   */
   Future<void> _initializeInvestorProviders() async {
     try {
       final investorProfileProvider = context.read<InvestorProfileProvider>();
@@ -78,6 +116,9 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     }
   }
 
+  /**
+   * Builds the main widget structure with sections.
+   */
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -92,9 +133,16 @@ class _InvestorDashboardState extends State<InvestorDashboard>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Welcome Banner Section
                 _buildWelcomeSection(),
+
+                // Investor Profile Card Section
                 _buildInvestorProfileCard(),
+
+                // Investment Metrics Section
                 _buildInvestmentMetricsSection(),
+
+                // Portfolio Insights Card Section
                 _buildPortfolioInsightsCard(),
               ],
             ),
@@ -104,6 +152,11 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     );
   }
 
+  /**
+   * Builds the elegant app bar with title and profile button.
+   * 
+   * @return A styled AppBar widget
+   */
   PreferredSizeWidget _buildElegantAppBar() {
     return AppBar(
       backgroundColor: Colors.grey[900],
@@ -157,10 +210,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
           margin: const EdgeInsets.only(right: 6, top: 6, bottom: 6),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [
-                Color(0xFF65c6f4),
-                Color(0xFF2476C9),
-              ], // Added gradient variation
+              colors: [Color(0xFF65c6f4), Color(0xFF2476C9)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -209,6 +259,11 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     );
   }
 
+  /**
+   * Builds the welcome section with introduction and key features.
+   * 
+   * @return A styled welcome banner widget
+   */
   Widget _buildWelcomeSection() {
     return Container(
       margin: const EdgeInsets.only(bottom: 32),
@@ -262,6 +317,11 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     );
   }
 
+  /**
+   * Builds the investor profile card with personal and professional information.
+   * 
+   * @return A styled profile card widget
+   */
   Widget _buildInvestorProfileCard() {
     return Consumer<InvestorProfileProvider>(
       builder: (context, provider, child) {
@@ -321,6 +381,12 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     );
   }
 
+  /**
+   * Builds the profile section with avatar and basic information.
+   * 
+   * @param provider The InvestorProfileProvider for state access
+   * @return A styled profile header widget
+   */
   Widget _buildProfileSection(InvestorProfileProvider provider) {
     return Row(
       children: [
@@ -414,6 +480,14 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     );
   }
 
+  /**
+   * Creates a compact info chip with icon and label.
+   * 
+   * @param icon The icon to display
+   * @param label The text label
+   * @param color The accent color for the chip
+   * @return A styled info chip widget
+   */
   Widget _buildCompactInfoChip({
     required IconData icon,
     required String label,
@@ -448,6 +522,12 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     );
   }
 
+  /**
+   * Builds the personal information grid with bio and other details.
+   * 
+   * @param provider The InvestorProfileProvider for state access
+   * @return A grid of personal information cards
+   */
   Widget _buildPersonalInfoGrid(InvestorProfileProvider provider) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -511,6 +591,11 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     );
   }
 
+  /**
+   * Launches LinkedIn profile URL in external browser.
+   * 
+   * @param url The LinkedIn profile URL to open
+   */
   Future<void> _launchLinkedIn(String url) async {
     try {
       final uri = Uri.parse(url);
@@ -524,6 +609,18 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     }
   }
 
+  /**
+   * Creates a styled information card with title and content.
+   * 
+   * @param icon The card icon
+   * @param title The card title
+   * @param content The card content text
+   * @param isSet Whether the content has been set
+   * @param color The accent color for the card
+   * @param isCompact Whether to use compact layout
+   * @param maxLines Maximum number of content text lines
+   * @return A styled information card widget
+   */
   Widget _buildElegantInfoCard({
     required IconData icon,
     required String title,
@@ -599,6 +696,11 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     );
   }
 
+  /**
+   * Builds the companies section with count and navigation button.
+   * 
+   * @return A styled companies section widget with action button
+   */
   Widget _buildElegantCompaniesSection() {
     return Consumer<InvestorCompaniesProvider>(
       builder: (context, companiesProvider, child) {
@@ -666,10 +768,7 @@ class _InvestorDashboardState extends State<InvestorDashboard>
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFF65c6f4),
-                        Color(0xFF2476C9),
-                      ], // Your exact gradient
+                      colors: [Color(0xFF65c6f4), Color(0xFF2476C9)],
                     ),
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -714,6 +813,11 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     );
   }
 
+  /**
+   * Creates a placeholder avatar for when profile image is not available.
+   * 
+   * @return A styled avatar placeholder widget
+   */
   Widget _buildAvatarPlaceholder() {
     return Container(
       width: 100,
@@ -737,6 +841,11 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     );
   }
 
+  /**
+   * Builds the investment metrics section with key indicators.
+   * 
+   * @return A section with investment metric cards
+   */
   Widget _buildInvestmentMetricsSection() {
     return Consumer2<InvestorProfileProvider, InvestorCompaniesProvider>(
       builder: (context, profileProvider, companiesProvider, child) {
@@ -800,7 +909,16 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     );
   }
 
-  // Updated metric card with full subtitle text display
+  /**
+   * Creates a centralized metric card with title, value and subtitle.
+   * 
+   * @param title The metric title
+   * @param value The metric value
+   * @param icon The metric icon
+   * @param color The accent color for the card
+   * @param subtitle Optional subtitle for additional context
+   * @return A styled metric card widget
+   */
   Widget _buildCentralizedMetricCard({
     required String title,
     required String value,
@@ -828,10 +946,8 @@ class _InvestorDashboardState extends State<InvestorDashboard>
         ],
       ),
       child: Column(
-        mainAxisAlignment:
-            MainAxisAlignment.center, // Center everything vertically
-        crossAxisAlignment:
-            CrossAxisAlignment.center, // Center everything horizontally
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Icon at the top, centered
           Container(
@@ -890,6 +1006,11 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     );
   }
 
+  /**
+   * Builds the portfolio insights card with investment preferences.
+   * 
+   * @return A section with detailed portfolio insights or empty state
+   */
   Widget _buildPortfolioInsightsCard() {
     return Consumer<InvestorProfileProvider>(
       builder: (context, provider, child) {
@@ -1103,6 +1224,14 @@ class _InvestorDashboardState extends State<InvestorDashboard>
     );
   }
 
+  /**
+   * Creates a row with icon, title and subtitle for portfolio insights.
+   * 
+   * @param icon The row icon
+   * @param title The row title
+   * @param subtitle The row subtitle or content
+   * @return A styled insight row widget
+   */
   Widget _buildInsightRow({
     required IconData icon,
     required String title,
