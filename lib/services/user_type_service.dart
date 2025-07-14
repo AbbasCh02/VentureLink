@@ -2,16 +2,37 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Enhanced centralized service for detecting and managing user types
-/// This service determines whether a user is a startup or investor
-/// by checking which database table contains their record
-/// and ensures proper authentication isolation
+/**
+ * user_type_service.dart
+ * 
+ * Implements a centralized service for detecting and managing user types within the application.
+ * Provides utilities for determining whether a user is a startup or investor by checking
+ * database tables, enforcing proper authentication isolation, and preventing unauthorized access.
+ * 
+ * Features:
+ * - User type detection and validation
+ * - Authentication isolation between user types
+ * - User session management
+ * - User details retrieval based on type
+ * - Security enforcement for type-specific features
+ * - Consistency validation to prevent authorization issues
+ * - Debugging utilities for authentication state
+ */
+
+/**
+ * UserTypeService - Utility class for managing user types and authentication boundaries.
+ * Ensures users can only access features appropriate for their account type.
+ */
 class UserTypeService {
   static final SupabaseClient _supabase = Supabase.instance.client;
 
-  /// Detects user type by checking both users and investors tables
-  /// Returns 'startup', 'investor', or null if not found
-  /// CRITICAL: This function ensures proper user type isolation
+  /**
+   * Detects a user's type by checking database tables.
+   * Examines both startup and investor tables to determine user classification.
+   * 
+   * @param userId The user ID to check
+   * @return 'startup', 'investor', or null if not found in either table
+   */
   static Future<String?> detectUserType(String userId) async {
     try {
       debugPrint('🔍 Detecting user type for ID: $userId');
@@ -54,8 +75,13 @@ class UserTypeService {
     }
   }
 
-  /// Enhanced method to check if a user exists in the startup users table
-  /// with additional validation
+  /**
+   * Checks if a user exists in the startup users table.
+   * Includes verification status in debug output.
+   * 
+   * @param userId The user ID to check
+   * @return True if user exists in startups table, false otherwise
+   */
   static Future<bool> isStartupUser(String userId) async {
     try {
       final result =
@@ -79,8 +105,13 @@ class UserTypeService {
     }
   }
 
-  /// Enhanced method to check if a user exists in the investors table
-  /// with additional validation
+  /**
+   * Checks if a user exists in the investors table.
+   * Includes verification status in debug output.
+   * 
+   * @param userId The user ID to check
+   * @return True if user exists in investors table, false otherwise
+   */
   static Future<bool> isInvestorUser(String userId) async {
     try {
       final result =
@@ -104,8 +135,10 @@ class UserTypeService {
     }
   }
 
-  /// Enhanced cleanup method that properly isolates user sessions
-  /// This ensures no cross-contamination between startup and investor sessions
+  /**
+   * Cleans up user sessions by signing out.
+   * Ensures no cross-contamination between startup and investor sessions.
+   */
   static Future<void> cleanupUserSessions() async {
     try {
       // Get current session info before cleanup
@@ -124,8 +157,12 @@ class UserTypeService {
     }
   }
 
-  /// Gets user details from the appropriate table based on user type
-  /// with enhanced error handling and validation
+  /**
+   * Retrieves user details from the appropriate table based on detected user type.
+   * 
+   * @param userId The user ID to get details for
+   * @return Map containing user details or null if not found
+   */
   static Future<Map<String, dynamic>?> getUserDetails(String userId) async {
     try {
       debugPrint('📋 Getting user details for: $userId');
@@ -162,8 +199,14 @@ class UserTypeService {
     }
   }
 
-  /// Validates that a user exists in the correct table for their expected type
-  /// This is critical for preventing authentication confusion
+  /**
+   * Validates that a user exists in the correct table for their expected type.
+   * Critical for preventing authentication confusion between user types.
+   * 
+   * @param userId The user ID to validate
+   * @param expectedType The expected user type ('startup' or 'investor')
+   * @return True if user's actual type matches expected type, false otherwise
+   */
   static Future<bool> validateUserTypeConsistency(
     String userId,
     String expectedType,
@@ -191,8 +234,14 @@ class UserTypeService {
     }
   }
 
-  /// Enhanced method to ensure proper user isolation
-  /// This prevents startup users from accessing investor features and vice versa
+  /**
+   * Enforces proper user type isolation to prevent unauthorized access.
+   * Prevents startup users from accessing investor features and vice versa.
+   * 
+   * @param userId The user ID to check
+   * @param requiredType The required user type for access ('startup' or 'investor')
+   * @return True if user is of required type, false otherwise
+   */
   static Future<bool> enforceUserTypeIsolation(
     String userId,
     String requiredType,
@@ -225,8 +274,12 @@ class UserTypeService {
     }
   }
 
-  /// Checks if current authenticated user matches expected type
-  /// Returns true only if user is authenticated and in correct table
+  /**
+   * Checks if the current authenticated user matches the expected type.
+   * 
+   * @param expectedType The expected user type ('startup' or 'investor')
+   * @return True if current user is of expected type, false otherwise
+   */
   static Future<bool> isCurrentUserOfType(String expectedType) async {
     try {
       final currentUser = _supabase.auth.currentUser;
@@ -243,8 +296,11 @@ class UserTypeService {
     }
   }
 
-  /// Gets the current authenticated user's type
-  /// Returns 'startup', 'investor', or null
+  /**
+   * Gets the current authenticated user's type.
+   * 
+   * @return 'startup', 'investor', or null if no user is authenticated
+   */
   static Future<String?> getCurrentUserType() async {
     try {
       final currentUser = _supabase.auth.currentUser;
@@ -261,7 +317,10 @@ class UserTypeService {
     }
   }
 
-  /// Enhanced debugging method to log current authentication state
+  /**
+   * Logs detailed information about the current authentication state.
+   * Useful for debugging authentication and user type issues.
+   */
   static Future<void> debugCurrentAuthState() async {
     try {
       final session = _supabase.auth.currentSession;

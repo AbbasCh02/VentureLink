@@ -1,21 +1,55 @@
+// lib/services/storage_service.dart
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path/path.dart' as path;
 
+/**
+ * storage_service.dart
+ * 
+ * Provides a centralized service for file storage operations using Supabase Storage.
+ * Handles file uploads, downloads, validation, and management for different file types.
+ * 
+ * Features:
+ * - Avatar image upload and management
+ * - Pitch deck file upload and management
+ * - File validation with size and type restrictions
+ * - Secure file naming with user isolation
+ * - File metadata handling
+ * - Error handling with custom exceptions
+ * - File listing and organization
+ */
+
+/**
+ * StorageService - Utility class for managing file storage operations.
+ * Provides static methods for interacting with Supabase Storage buckets.
+ */
 class StorageService {
   static final SupabaseClient _supabase = Supabase.instance.client;
 
-  // Bucket names - make sure these match your Supabase bucket names
+  /**
+   * Bucket name for avatar images storage.
+   */
   static const String avatarsBucket = 'avatars';
-  static const String pitchDecksBucket =
-      'pitch-deck-files'; // Updated to match your bucket
 
-  // Maximum file sizes (in bytes)
+  /**
+   * Bucket name for pitch deck files storage.
+   */
+  static const String pitchDecksBucket = 'pitch-deck-files';
+
+  /**
+   * Maximum allowed size for avatar images (5MB).
+   */
   static const int maxAvatarSize = 5 * 1024 * 1024; // 5MB
+
+  /**
+   * Maximum allowed size for pitch deck files (100MB).
+   */
   static const int maxPitchDeckSize = 100 * 1024 * 1024; // 100MB
 
-  // Allowed file extensions
+  /**
+   * List of allowed file extensions for avatar images.
+   */
   static const List<String> avatarExtensions = [
     'jpg',
     'jpeg',
@@ -23,6 +57,10 @@ class StorageService {
     'gif',
     'webp',
   ];
+
+  /**
+   * List of allowed file extensions for pitch deck files.
+   */
   static const List<String> pitchDeckExtensions = [
     'pdf',
     'mp4',
@@ -32,8 +70,15 @@ class StorageService {
     'wmv',
   ];
 
-  /// Upload avatar to Supabase storage
-  /// Returns the public URL of the uploaded file
+  /**
+   * Uploads an avatar image to Supabase storage.
+   * Validates the file, creates a unique filename, and returns the public URL.
+   * 
+   * @param file The avatar image file to upload
+   * @param userId The user ID for folder organization
+   * @return The public URL of the uploaded avatar
+   * @throws StorageException if validation or upload fails
+   */
   static Future<String> uploadAvatar({
     required File file,
     required String userId,
@@ -78,8 +123,16 @@ class StorageService {
     }
   }
 
-  /// Upload multiple pitch deck files to Supabase storage
-  /// Returns a map with file URLs and names
+  /**
+   * Uploads multiple pitch deck files to Supabase storage.
+   * Validates each file, creates unique filenames, and returns URLs and metadata.
+   * 
+   * @param files List of pitch deck files to upload
+   * @param userId The user ID for folder organization
+   * @param pitchDeckId Optional pitch deck ID for file grouping
+   * @return Map containing file URLs, names, original names, and count
+   * @throws StorageException if validation or upload fails
+   */
   static Future<Map<String, dynamic>> uploadPitchDeckFiles({
     required List<File> files,
     required String userId,
@@ -150,7 +203,12 @@ class StorageService {
     }
   }
 
-  /// Delete avatar from storage
+  /**
+   * Deletes an avatar from Supabase storage.
+   * 
+   * @param fileName The filename of the avatar to delete
+   * @throws StorageException if deletion fails
+   */
   static Future<void> deleteAvatar({required String fileName}) async {
     try {
       await _supabase.storage.from(avatarsBucket).remove([fileName]);
@@ -162,7 +220,12 @@ class StorageService {
     }
   }
 
-  /// Delete pitch deck files from storage
+  /**
+   * Deletes multiple pitch deck files from Supabase storage.
+   * 
+   * @param fileNames List of filenames to delete
+   * @throws StorageException if deletion fails
+   */
   static Future<void> deletePitchDeckFiles({
     required List<String> fileNames,
   }) async {
@@ -182,7 +245,13 @@ class StorageService {
     }
   }
 
-  /// Get file info from storage
+  /**
+   * Gets file information from Supabase storage.
+   * 
+   * @param bucketName The storage bucket name
+   * @param fileName The filename to get info for
+   * @return File object with metadata or null if not found
+   */
   static Future<FileObject?> getFileInfo({
     required String bucketName,
     required String fileName,
@@ -202,7 +271,14 @@ class StorageService {
     }
   }
 
-  /// Download file from storage
+  /**
+   * Downloads a file from Supabase storage.
+   * 
+   * @param bucketName The storage bucket name
+   * @param fileName The filename to download
+   * @return The file contents as bytes
+   * @throws StorageException if download fails
+   */
   static Future<Uint8List> downloadFile({
     required String bucketName,
     required String fileName,
@@ -218,7 +294,14 @@ class StorageService {
     }
   }
 
-  /// List all files for a user in a specific bucket
+  /**
+   * Lists all files for a user in a specific storage bucket.
+   * 
+   * @param bucketName The storage bucket name
+   * @param userId The user ID to list files for
+   * @return List of file objects in the user's folder
+   * @throws StorageException if listing fails
+   */
   static Future<List<FileObject>> listUserFiles({
     required String bucketName,
     required String userId,
@@ -233,7 +316,12 @@ class StorageService {
     }
   }
 
-  /// Validate avatar file (public method)
+  /**
+   * Validates an avatar file for size and type constraints.
+   * 
+   * @param file The avatar file to validate
+   * @throws StorageException if validation fails
+   */
   static void validateAvatarFile(File file) {
     // Check if file exists
     if (!file.existsSync()) {
@@ -260,7 +348,12 @@ class StorageService {
     }
   }
 
-  /// Validate pitch deck file (public method)
+  /**
+   * Validates a pitch deck file for size and type constraints.
+   * 
+   * @param file The pitch deck file to validate
+   * @throws StorageException if validation fails
+   */
   static void validatePitchDeckFile(File file) {
     // Check if file exists
     if (!file.existsSync()) {
@@ -287,7 +380,12 @@ class StorageService {
     }
   }
 
-  /// Get appropriate content type for file extension
+  /**
+   * Determines the appropriate MIME content type based on file extension.
+   * 
+   * @param extension The file extension without dot
+   * @return The corresponding MIME content type
+   */
   static String _getContentType(String extension) {
     switch (extension.toLowerCase()) {
       case 'jpg':
@@ -316,7 +414,12 @@ class StorageService {
     }
   }
 
-  /// Format file size for display
+  /**
+   * Formats a file size in bytes to a human-readable string.
+   * 
+   * @param bytes The file size in bytes
+   * @return Formatted string with appropriate units (B, KB, MB, GB)
+   */
   static String formatFileSize(int bytes) {
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
@@ -326,17 +429,30 @@ class StorageService {
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 
-  /// Extract filename from storage URL
+  /**
+   * Extracts the filename from a storage URL.
+   * 
+   * @param url The storage URL
+   * @return The extracted filename
+   */
   static String extractFileNameFromUrl(String url) {
     final uri = Uri.parse(url);
     return path.basename(uri.path);
   }
 }
 
-/// Custom exception for storage operations
+/**
+ * StorageException - Custom exception for storage operations.
+ * Provides detailed error messages for storage-related failures.
+ */
 class StorageException implements Exception {
   final String message;
 
+  /**
+   * Creates a new storage exception with the specified message.
+   * 
+   * @param message The error message
+   */
   const StorageException(this.message);
 
   @override
