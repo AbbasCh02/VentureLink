@@ -5,6 +5,27 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/storage_service.dart';
 
+/**
+ * investor_profile_provider.dart
+ * 
+ * Implements a comprehensive state management provider for investor profiles with 
+ * Supabase backend integration, form handling, and data validation.
+ * 
+ * Features:
+ * - Complete investor profile data management
+ * - Form state tracking with auto-save functionality
+ * - Profile image upload and storage
+ * - Multi-select preferences (industries, regions, stages)
+ * - Profile completion tracking
+ * - Form validation
+ * - Database persistence with error handling
+ * - User authentication integration
+ */
+
+/**
+ * InvestorProfileProvider - Change notifier provider for managing investor profile data.
+ * Handles state management, data persistence, and form validation.
+ */
 class InvestorProfileProvider extends ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
 
@@ -29,7 +50,9 @@ class InvestorProfileProvider extends ChangeNotifier {
   Timer? _saveTimer;
   final Set<String> _dirtyFields = {};
 
-  // Available options
+  /**
+   * Available industry options for selection.
+   */
   static const List<String> availableIndustries = [
     'Technology',
     'Healthcare',
@@ -54,6 +77,9 @@ class InvestorProfileProvider extends ChangeNotifier {
     'Other',
   ];
 
+  /**
+   * Available geographic region options for selection.
+   */
   static const List<String> availableGeographicRegions = [
     'North America',
     'South America',
@@ -76,7 +102,9 @@ class InvestorProfileProvider extends ChangeNotifier {
     'Other',
   ];
 
-  // Available investment stages list
+  /**
+   * Available investment stage options for selection.
+   */
   static const List<String> availableInvestmentStages = [
     'Pre-Seed',
     'Seed',
@@ -92,62 +120,191 @@ class InvestorProfileProvider extends ChangeNotifier {
     'Revenue Based',
   ];
 
-  // Getters
+  /**
+   * Provides access to the bio text controller.
+   * 
+   * @return Text controller for bio
+   */
   TextEditingController get bioController => _bioController;
+
+  /**
+   * Provides access to the LinkedIn URL text controller.
+   * 
+   * @return Text controller for LinkedIn URL
+   */
   TextEditingController get linkedinUrlController => _linkedinUrlController;
+
+  /**
+   * Provides access to the full name text controller.
+   * 
+   * @return Text controller for full name
+   */
   TextEditingController get fullNameController => _fullNameController;
+
+  /**
+   * Provides access to the origin/country text controller.
+   * 
+   * @return Text controller for origin/country
+   */
   TextEditingController get originController => _originController;
 
+  /**
+   * Returns the investor's professional bio text.
+   * 
+   * @return Bio text or null if empty
+   */
   String? get bio => _bioController.text.isEmpty ? null : _bioController.text;
+
+  /**
+   * Returns the investor's LinkedIn profile URL.
+   * 
+   * @return LinkedIn URL or null if empty
+   */
   String? get linkedinUrl =>
       _linkedinUrlController.text.isEmpty ? null : _linkedinUrlController.text;
 
+  /**
+   * Returns the investor's full name.
+   * 
+   * @return Full name or null if empty
+   */
   String? get fullName =>
       _fullNameController.text.isEmpty ? null : _fullNameController.text;
+
+  /**
+   * Returns the investor's place of residence/origin.
+   * 
+   * @return Origin or null if empty
+   */
   String? get origin =>
       _originController.text.isEmpty ? null : _originController.text;
+
+  /**
+   * Returns the investor's age.
+   * 
+   * @return Age or null if not set
+   */
   int? get age => _age;
 
+  /**
+   * Provides access to the selected industries list.
+   * 
+   * @return Unmodifiable list of selected industries
+   */
   List<String> get selectedIndustries => List.unmodifiable(_selectedIndustries);
+
+  /**
+   * Provides access to the selected geographic focus regions.
+   * 
+   * @return Unmodifiable list of selected regions
+   */
   List<String> get selectedGeographicFocus =>
       List.unmodifiable(_selectedGeographicFocus);
+
+  /**
+   * Provides access to the selected preferred investment stages.
+   * 
+   * @return Unmodifiable list of selected stages
+   */
   List<String> get selectedPreferredStages =>
       List.unmodifiable(_selectedPreferredStages);
+
+  /**
+   * Returns the investor's portfolio size.
+   * 
+   * @return Portfolio size or null if not set
+   */
   int? get portfolioSize => _portfolioSize;
+
+  /**
+   * Indicates whether the investor is verified.
+   * 
+   * @return Verification status
+   */
   bool get isVerified => _isVerified;
+
+  /**
+   * Provides access to the profile image file (if newly selected).
+   * 
+   * @return Profile image file or null
+   */
   File? get profileImage => _profileImage;
+
+  /**
+   * Provides access to the profile image URL (if previously saved).
+   * 
+   * @return Profile image URL or null
+   */
   String? get profileImageUrl => _profileImageUrl;
+
+  /**
+   * Indicates whether the provider has been initialized.
+   * 
+   * @return Initialization state
+   */
   bool get isInitialized => _isInitialized;
+
+  /**
+   * Provides the latest error message if any.
+   * 
+   * @return Error message or null
+   */
   String? get error => _error;
 
+  /**
+   * Determines if the investor has a profile image set.
+   * 
+   * @return True if either a new image is selected or a saved image URL exists
+   */
   bool get hasProfileImage {
     return _profileImage != null ||
         (_profileImageUrl != null && _profileImageUrl!.isNotEmpty);
   }
 
+  /**
+   * Indicates whether there are any unsaved changes.
+   * 
+   * @return True if there are unsaved changes
+   */
   bool get hasUnsavedChanges => _dirtyFields.isNotEmpty;
 
+  /**
+   * Checks if a specific field has unsaved changes.
+   * 
+   * @param fieldName The field name to check
+   * @return True if the field has unsaved changes
+   */
   bool hasUnsavedChangesForField(String fieldName) =>
       _dirtyFields.contains(fieldName);
 
-  // Profile completion status
+  /**
+   * Determines if the investor profile is complete.
+   * A complete profile requires bio, full name, industries, and geographic focus.
+   * 
+   * @return True if profile is complete
+   */
   bool get isProfileComplete {
     return bio != null &&
         bio!.trim().isNotEmpty &&
-        fullName != null && // NEW: Include full name in completion
+        fullName != null &&
         fullName!.trim().isNotEmpty &&
         _selectedIndustries.isNotEmpty &&
         _selectedGeographicFocus.isNotEmpty;
   }
 
+  /**
+   * Calculates the profile completion percentage.
+   * 
+   * @return Percentage (0-100) of profile completion
+   */
   double get completionPercentage {
     int completed = 0;
     int total =
         6; // bio, full name, industries, geographic focus, profile image, age
 
     if (bio != null && bio!.trim().isNotEmpty) completed++;
-    if (fullName != null && fullName!.trim().isNotEmpty) completed++; // NEW
-    if (_age != null) completed++; // NEW
+    if (fullName != null && fullName!.trim().isNotEmpty) completed++;
+    if (_age != null) completed++;
     if (_selectedIndustries.isNotEmpty) completed++;
     if (_selectedGeographicFocus.isNotEmpty) completed++;
     if (hasProfileImage) completed++;
@@ -155,7 +312,10 @@ class InvestorProfileProvider extends ChangeNotifier {
     return (completed / total) * 100;
   }
 
-  // Initialize provider
+  /**
+   * Initializes the provider with user data.
+   * Loads profile from database and sets up listeners.
+   */
   Future<void> initialize() async {
     if (_isInitialized || _isInitializing) return;
 
@@ -185,7 +345,10 @@ class InvestorProfileProvider extends ChangeNotifier {
     }
   }
 
-  // Load investor profile data from database
+  /**
+   * Loads investor profile data from the database.
+   * Creates initial records if they don't exist.
+   */
   Future<void> _loadInvestorProfileData() async {
     final User? currentUser = _supabase.auth.currentUser;
     if (currentUser == null) {
@@ -198,18 +361,16 @@ class InvestorProfileProvider extends ChangeNotifier {
       // Temporarily remove listeners to prevent auto-save during load
       _removeListeners();
 
-      // FIXED: Load data directly from tables instead of using RPC
       // First check if investor record exists
       final investorRecord =
           await _supabase
               .from('investors')
-              .select('*') // ✅ Removed avatar_url from select
+              .select('*')
               .eq('id', currentUser.id)
               .maybeSingle();
 
       if (investorRecord != null) {
         _isVerified = investorRecord['is_verified'] ?? false;
-        // ✅ Removed avatar_url loading from here - will be loaded from profiles
         debugPrint('✅ Investor record found');
       } else {
         debugPrint('⚠️ Creating initial investor record...');
@@ -230,7 +391,7 @@ class InvestorProfileProvider extends ChangeNotifier {
         // Load basic investor info
         _portfolioSize = profileData['portfolio_size'];
 
-        // ✅ Load avatar_url from investor_profiles table
+        // Load avatar_url from investor_profiles table
         _profileImageUrl = profileData['avatar_url'];
 
         // Load professional information
@@ -240,7 +401,7 @@ class InvestorProfileProvider extends ChangeNotifier {
         _originController.text = profileData['country'] ?? '';
         _age = profileData['age'];
 
-        // CRITICAL: Load investment preferences with proper casting
+        // Load investment preferences with proper casting
         try {
           final industriesData = profileData['industries'];
           if (industriesData is List) {
@@ -311,7 +472,11 @@ class InvestorProfileProvider extends ChangeNotifier {
     }
   }
 
-  // Create initial investor record
+  /**
+   * Creates an initial investor record in the database.
+   * 
+   * @param user The authenticated user
+   */
   Future<void> _createInitialInvestorRecord(User user) async {
     try {
       debugPrint('🔄 Creating initial investor record for user: ${user.id}');
@@ -349,7 +514,11 @@ class InvestorProfileProvider extends ChangeNotifier {
     }
   }
 
-  // NEW: Create initial investor profile
+  /**
+   * Creates an initial investor profile record in the database.
+   * 
+   * @param user The authenticated user
+   */
   Future<void> _createInitialInvestorProfile(User user) async {
     try {
       debugPrint('🔄 Creating initial investor profile for user: ${user.id}');
@@ -377,7 +546,12 @@ class InvestorProfileProvider extends ChangeNotifier {
     }
   }
 
-  // Save individual field
+  /**
+   * Saves a specific field to the database.
+   * Only saves if the field is marked as dirty.
+   * 
+   * @param fieldName The name of the field to save
+   */
   Future<void> saveField(String fieldName) async {
     if (!_dirtyFields.contains(fieldName)) return;
 
@@ -396,15 +570,15 @@ class InvestorProfileProvider extends ChangeNotifier {
           await _saveToInvestorProfiles({'linkedin_url': linkedinUrl});
           break;
 
-        case 'fullName': // NEW
+        case 'fullName':
           await _saveToInvestorProfiles({'full_name': fullName});
           break;
 
-        case 'age': // NEW
+        case 'age':
           await _saveToInvestorProfiles({'age': _age});
           break;
 
-        case 'origin': // NEW
+        case 'origin':
           await _saveToInvestorProfiles({'country': origin});
           break;
 
@@ -443,7 +617,11 @@ class InvestorProfileProvider extends ChangeNotifier {
     }
   }
 
-  // Save to investor_profiles table
+  /**
+   * Saves data to the investor_profiles table.
+   * 
+   * @param data Map of field names to values to save
+   */
   Future<void> _saveToInvestorProfiles(Map<String, dynamic> data) async {
     final User? currentUser = _supabase.auth.currentUser;
     if (currentUser == null) return;
@@ -456,9 +634,10 @@ class InvestorProfileProvider extends ChangeNotifier {
         .eq('investor_id', currentUser.id);
   }
 
-  // Save to investor_companies table
-
-  // Save profile image
+  /**
+   * Uploads and saves the profile image.
+   * Uses StorageService to handle the upload.
+   */
   Future<void> _saveProfileImage() async {
     if (_profileImage == null) return;
 
@@ -474,9 +653,7 @@ class InvestorProfileProvider extends ChangeNotifier {
       );
 
       _profileImageUrl = imageUrl;
-      await _saveToInvestorProfiles({
-        'avatar_url': imageUrl,
-      }); // ✅ Correct table
+      await _saveToInvestorProfiles({'avatar_url': imageUrl});
       debugPrint('✅ Profile image uploaded and saved');
     } catch (e) {
       debugPrint('❌ Error saving profile image: $e');
@@ -484,22 +661,42 @@ class InvestorProfileProvider extends ChangeNotifier {
     }
   }
 
-  // Public update methods
+  /**
+   * Updates the investor's bio.
+   * 
+   * @param value The new bio text
+   */
   void updateBio(String value) {
     _bioController.text = value;
     _onFieldChanged('bio');
   }
 
+  /**
+   * Updates the investor's LinkedIn URL.
+   * 
+   * @param value The new LinkedIn URL
+   */
   void updateLinkedinUrl(String value) {
     _linkedinUrlController.text = value;
     _onFieldChanged('linkedinUrl');
   }
 
+  /**
+   * Updates the investor's full name.
+   * 
+   * @param value The new full name
+   */
   void updateFullName(String value) {
     _fullNameController.text = value;
     _onFieldChanged('fullName');
   }
 
+  /**
+   * Updates the investor's age.
+   * Triggers auto-save after a delay.
+   * 
+   * @param value The new age
+   */
   void updateAge(int? value) {
     _age = value;
     _dirtyFields.add('age');
@@ -510,11 +707,22 @@ class InvestorProfileProvider extends ChangeNotifier {
     });
   }
 
+  /**
+   * Updates the investor's place of origin/residence.
+   * 
+   * @param value The new origin/country
+   */
   void updateorigin(String value) {
     _originController.text = value;
     _onFieldChanged('origin');
   }
 
+  /**
+   * Updates the investor's portfolio size.
+   * Triggers auto-save after a delay.
+   * 
+   * @param size The new portfolio size
+   */
   void updatePortfolioSize(int? size) {
     _portfolioSize = size;
     _dirtyFields.add('portfolioSize');
@@ -525,6 +733,12 @@ class InvestorProfileProvider extends ChangeNotifier {
     });
   }
 
+  /**
+   * Updates the investor's profile image.
+   * Triggers immediate save.
+   * 
+   * @param image The new profile image file
+   */
   void updateProfileImage(File? image) {
     _profileImage = image;
     _dirtyFields.add('profileImage');
@@ -533,21 +747,33 @@ class InvestorProfileProvider extends ChangeNotifier {
     saveField('profileImage');
   }
 
-  // Method to update selected industries
+  /**
+   * Updates the list of selected industries.
+   * 
+   * @param industries The new list of industries
+   */
   void updateSelectedIndustries(List<String> industries) {
     _selectedIndustries = List.from(industries);
     _dirtyFields.add('industries');
     notifyListeners();
   }
 
-  // Method to update selected geographic focus
+  /**
+   * Updates the list of selected geographic focus regions.
+   * 
+   * @param geographicFocus The new list of regions
+   */
   void updateSelectedGeographicFocus(List<String> geographicFocus) {
     _selectedGeographicFocus = List.from(geographicFocus);
     _dirtyFields.add('geographicFocus');
     notifyListeners();
   }
 
-  // Method to add a single industry
+  /**
+   * Adds a single industry to the selected industries list.
+   * 
+   * @param industry The industry to add
+   */
   void addIndustry(String industry) {
     if (!_selectedIndustries.contains(industry)) {
       _selectedIndustries.add(industry);
@@ -556,7 +782,11 @@ class InvestorProfileProvider extends ChangeNotifier {
     }
   }
 
-  // Method to remove a single industry
+  /**
+   * Removes a single industry from the selected industries list.
+   * 
+   * @param industry The industry to remove
+   */
   void removeIndustry(String industry) {
     if (_selectedIndustries.remove(industry)) {
       _dirtyFields.add('industries');
@@ -564,7 +794,11 @@ class InvestorProfileProvider extends ChangeNotifier {
     }
   }
 
-  // Method to add a single geographic focus
+  /**
+   * Adds a single geographic region to the selected focus list.
+   * 
+   * @param region The region to add
+   */
   void addGeographicFocus(String region) {
     if (!_selectedGeographicFocus.contains(region)) {
       _selectedGeographicFocus.add(region);
@@ -573,7 +807,11 @@ class InvestorProfileProvider extends ChangeNotifier {
     }
   }
 
-  // Method to remove a single geographic focus
+  /**
+   * Removes a single geographic region from the selected focus list.
+   * 
+   * @param region The region to remove
+   */
   void removeGeographicFocus(String region) {
     if (_selectedGeographicFocus.remove(region)) {
       _dirtyFields.add('geographicFocus');
@@ -581,7 +819,9 @@ class InvestorProfileProvider extends ChangeNotifier {
     }
   }
 
-  // Method to clear all industries
+  /**
+   * Clears all selected industries.
+   */
   void clearAllIndustries() {
     if (_selectedIndustries.isNotEmpty) {
       _selectedIndustries.clear();
@@ -590,7 +830,9 @@ class InvestorProfileProvider extends ChangeNotifier {
     }
   }
 
-  // Method to clear all geographic focus
+  /**
+   * Clears all selected geographic focus regions.
+   */
   void clearAllGeographicFocus() {
     if (_selectedGeographicFocus.isNotEmpty) {
       _selectedGeographicFocus.clear();
@@ -599,13 +841,22 @@ class InvestorProfileProvider extends ChangeNotifier {
     }
   }
 
-  // Methods to update preferred stages
+  /**
+   * Updates the list of selected preferred investment stages.
+   * 
+   * @param stages The new list of stages
+   */
   void updateSelectedPreferredStages(List<String> stages) {
     _selectedPreferredStages = List.from(stages);
     _dirtyFields.add('preferredStages');
     notifyListeners();
   }
 
+  /**
+   * Adds a single investment stage to the selected stages list.
+   * 
+   * @param stage The stage to add
+   */
   void addPreferredStage(String stage) {
     if (!_selectedPreferredStages.contains(stage)) {
       _selectedPreferredStages.add(stage);
@@ -614,6 +865,11 @@ class InvestorProfileProvider extends ChangeNotifier {
     }
   }
 
+  /**
+   * Removes a single investment stage from the selected stages list.
+   * 
+   * @param stage The stage to remove
+   */
   void removePreferredStage(String stage) {
     if (_selectedPreferredStages.remove(stage)) {
       _dirtyFields.add('preferredStages');
@@ -621,6 +877,9 @@ class InvestorProfileProvider extends ChangeNotifier {
     }
   }
 
+  /**
+   * Clears all selected preferred investment stages.
+   */
   void clearAllPreferredStages() {
     if (_selectedPreferredStages.isNotEmpty) {
       _selectedPreferredStages.clear();
@@ -629,21 +888,42 @@ class InvestorProfileProvider extends ChangeNotifier {
     }
   }
 
+  /**
+   * Checks if a particular investment stage is selected.
+   * 
+   * @param stage The stage to check
+   * @return True if the stage is selected
+   */
   bool isPreferredStageSelected(String stage) {
     return _selectedPreferredStages.contains(stage);
   }
 
-  // Method to get industry selection status
+  /**
+   * Checks if a particular industry is selected.
+   * 
+   * @param industry The industry to check
+   * @return True if the industry is selected
+   */
   bool isIndustrySelected(String industry) {
     return _selectedIndustries.contains(industry);
   }
 
-  // Method to get geographic focus selection status
+  /**
+   * Checks if a particular geographic region is selected.
+   * 
+   * @param region The region to check
+   * @return True if the region is selected
+   */
   bool isGeographicFocusSelected(String region) {
     return _selectedGeographicFocus.contains(region);
   }
 
-  // Validation methods
+  /**
+   * Validates the bio field.
+   * 
+   * @param value The bio text to validate
+   * @return Error message or null if valid
+   */
   String? validateBio(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Please provide a brief bio about yourself';
@@ -654,6 +934,12 @@ class InvestorProfileProvider extends ChangeNotifier {
     return null;
   }
 
+  /**
+   * Validates the full name field.
+   * 
+   * @param value The full name to validate
+   * @return Error message or null if valid
+   */
   String? validateFullName(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Please enter your full name';
@@ -664,6 +950,12 @@ class InvestorProfileProvider extends ChangeNotifier {
     return null;
   }
 
+  /**
+   * Validates the age field.
+   * 
+   * @param value The age string to validate
+   * @return Error message or null if valid
+   */
   String? validateAge(String? value) {
     if (value == null || value.trim().isEmpty) {
       return null; // Age is optional
@@ -679,6 +971,12 @@ class InvestorProfileProvider extends ChangeNotifier {
     return null;
   }
 
+  /**
+   * Validates the origin/country field.
+   * 
+   * @param value The origin to validate
+   * @return Error message or null if valid
+   */
   String? validateorigin(String? value) {
     if (value == null || value.trim().isEmpty) {
       return null; // Optional field
@@ -689,6 +987,12 @@ class InvestorProfileProvider extends ChangeNotifier {
     return null;
   }
 
+  /**
+   * Validates a URL field.
+   * 
+   * @param value The URL to validate
+   * @return Error message or null if valid
+   */
   String? validateUrl(String? value) {
     if (value == null || value.trim().isEmpty) {
       return null; // URLs are optional
@@ -724,7 +1028,10 @@ class InvestorProfileProvider extends ChangeNotifier {
     return null;
   }
 
-  // Save all profile data
+  /**
+   * Saves all dirty fields in the profile.
+   * Used for bulk save operations.
+   */
   Future<void> saveProfile() async {
     final User? currentUser = _supabase.auth.currentUser;
     if (currentUser == null) return;
@@ -746,7 +1053,11 @@ class InvestorProfileProvider extends ChangeNotifier {
     }
   }
 
-  // Field change handlers
+  /**
+   * Handles field changes by marking fields as dirty and scheduling auto-save.
+   * 
+   * @param fieldName The field that changed
+   */
   void _onFieldChanged(String fieldName) {
     if (_isInitializing) return;
 
@@ -761,23 +1072,30 @@ class InvestorProfileProvider extends ChangeNotifier {
     });
   }
 
+  /**
+   * Sets up listeners for text field changes.
+   */
   void _addListeners() {
     _bioController.addListener(() => _onFieldChanged('bio'));
     _linkedinUrlController.addListener(() => _onFieldChanged('linkedinUrl'));
-    _fullNameController.addListener(() => _onFieldChanged('fullName')); // NEW
-    _originController.addListener(() => _onFieldChanged('origin')); // NEW
+    _fullNameController.addListener(() => _onFieldChanged('fullName'));
+    _originController.addListener(() => _onFieldChanged('origin'));
   }
 
+  /**
+   * Removes listeners for text field changes.
+   */
   void _removeListeners() {
     _bioController.removeListener(() => _onFieldChanged('bio'));
     _linkedinUrlController.removeListener(() => _onFieldChanged('linkedinUrl'));
-    _fullNameController.removeListener(
-      () => _onFieldChanged('fullName'),
-    ); // NEW
+    _fullNameController.removeListener(() => _onFieldChanged('fullName'));
     _originController.removeListener(() => _onFieldChanged('origin'));
   }
 
-  // Reset provider state
+  /**
+   * Resets the provider state.
+   * Clears all data and form fields.
+   */
   void _resetProviderState() {
     _isInitialized = false;
     _removeListeners();
@@ -786,9 +1104,9 @@ class InvestorProfileProvider extends ChangeNotifier {
     _linkedinUrlController.clear();
     _profileImage = null;
     _profileImageUrl = null;
-    _fullNameController.clear(); // NEW
-    _originController.clear(); // NEW
-    _age = null; // NEW
+    _fullNameController.clear();
+    _originController.clear();
+    _age = null;
     _selectedIndustries.clear();
     _selectedGeographicFocus.clear();
     _selectedPreferredStages.clear();
@@ -801,23 +1119,31 @@ class InvestorProfileProvider extends ChangeNotifier {
     _addListeners();
   }
 
-  // Clear all data
+  /**
+   * Clears all profile data.
+   */
   Future<void> clearAllData() async {
     _resetProviderState();
   }
 
-  // Reset for new user
+  /**
+   * Resets provider for a new user.
+   * Clears state and reinitializes.
+   */
   Future<void> resetForNewUser() async {
     _resetProviderState();
     await initialize();
   }
 
+  /**
+   * Cleans up resources when the provider is disposed.
+   */
   @override
   void dispose() {
     _removeListeners();
     _saveTimer?.cancel();
     _bioController.dispose();
-    _fullNameController.dispose(); // NEW
+    _fullNameController.dispose();
     _originController.dispose();
     _linkedinUrlController.dispose();
     super.dispose();

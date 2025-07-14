@@ -10,7 +10,32 @@ import '../../auth/unified_authentication_provider.dart';
 import '../../services/storage_service.dart';
 import 'investor_preference_page.dart';
 
+/**
+ * investor_profile_page.dart
+ * 
+ * Implements a comprehensive profile management interface for investors to update
+ * their personal information, professional details, and investment preferences.
+ * 
+ * Features:
+ * - Profile image upload and management
+ * - Personal information editing (name, age, location)
+ * - Navigation to Bio and Investment Preferences screens
+ * - Profile completeness validation
+ * - Form validation with error feedback
+ * - Animated UI transitions
+ * - User authentication management (logout)
+ * - Integration with multiple providers for data persistence
+ */
+
+/**
+ * InvestorProfilePage - Main stateful widget for the investor profile management.
+ * Allows investors to view and edit their complete profile information.
+ */
 class InvestorProfilePage extends StatefulWidget {
+  /**
+   * Optional callback function that triggers when profile is updated.
+   * Passes updated portfolio size and other relevant information.
+   */
   final Function(int?, String?)? onProfileUpdate;
 
   const InvestorProfilePage({super.key, this.onProfileUpdate});
@@ -19,16 +44,24 @@ class InvestorProfilePage extends StatefulWidget {
   State<InvestorProfilePage> createState() => _InvestorProfilePageState();
 }
 
+/**
+ * State class for InvestorProfilePage that manages animations,
+ * form validation, and integration with providers.
+ */
 class _InvestorProfilePageState extends State<InvestorProfilePage>
     with TickerProviderStateMixin {
   final Logger _logger = Logger();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
+  // Animation controllers
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
+  /**
+   * Initializes state, sets up animations and initializes provider.
+   */
   @override
   void initState() {
     super.initState();
@@ -36,6 +69,9 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
     _initializeProvider();
   }
 
+  /**
+   * Sets up fade and slide animations for UI elements.
+   */
   void _setupAnimations() {
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 800),
@@ -61,6 +97,10 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
     _slideController.forward();
   }
 
+  /**
+   * Initializes the investor profile provider if not already initialized.
+   * Handles errors with snackbar notifications.
+   */
   void _initializeProvider() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
@@ -82,6 +122,9 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
     });
   }
 
+  /**
+   * Cleans up animation controllers when widget is removed.
+   */
   @override
   void dispose() {
     _fadeController.dispose();
@@ -89,7 +132,10 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
     super.dispose();
   }
 
-  // Profile image picking with enhanced source selection
+  /**
+   * Handles the profile image selection from gallery.
+   * Validates, processes, and updates the image with error handling.
+   */
   Future<void> _pickImage() async {
     final provider = Provider.of<InvestorProfileProvider>(
       context,
@@ -146,7 +192,11 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
     }
   }
 
-  // Save profile
+  /**
+   * Validates and saves the profile information.
+   * Checks for completeness and displays specific errors for missing fields.
+   * Triggers callback on successful save.
+   */
   Future<void> _saveProfile() async {
     try {
       final provider = context.read<InvestorProfileProvider>();
@@ -235,7 +285,10 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
     }
   }
 
-  // Handle logout
+  /**
+   * Handles user logout with confirmation dialog.
+   * Signs out and redirects to welcome page on confirmation.
+   */
   Future<void> _handleLogout() async {
     // Show confirmation dialog
     final confirmed = await showDialog<bool>(
@@ -295,6 +348,9 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
     }
   }
 
+  /**
+   * Builds the main widget structure with sections.
+   */
   @override
   Widget build(BuildContext context) {
     return Consumer<InvestorProfileProvider>(
@@ -339,6 +395,7 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
                         key: _formKey,
                         child: Column(
                           children: [
+                            // Profile Image Section
                             Container(
                               margin: const EdgeInsets.only(bottom: 32),
                               child: Center(
@@ -397,6 +454,8 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
                               ),
                             ),
                             const SizedBox(height: 24),
+
+                            // Personal Info Section
                             _buildSectionCard(
                               title: 'Personal Info',
                               child: Column(
@@ -447,6 +506,12 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
     );
   }
 
+  /**
+   * Builds the age selector field with validation.
+   * 
+   * @param provider The InvestorProfileProvider for state access
+   * @return A form field for age input
+   */
   Widget _buildAgeSelector(InvestorProfileProvider provider) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -510,7 +575,12 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
     );
   }
 
-  // Fix 2: Update the place of residence field to use correct controller
+  /**
+   * Builds the country/origin field with validation.
+   * 
+   * @param provider The InvestorProfileProvider for state access
+   * @return A form field for country/origin input
+   */
   Widget _buildCountryField(InvestorProfileProvider provider) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -585,6 +655,12 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
     );
   }
 
+  /**
+   * Builds the full name field with validation.
+   * 
+   * @param provider The InvestorProfileProvider for state access
+   * @return A form field for full name input
+   */
   Widget _buildActualFullNameField(InvestorProfileProvider provider) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -660,6 +736,13 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
     );
   }
 
+  /**
+   * Determines and builds the appropriate profile image content.
+   * Prioritizes local file > network image > placeholder.
+   * 
+   * @param provider The InvestorProfileProvider for state access
+   * @return A widget displaying the appropriate profile image
+   */
   Widget _buildProfileImageContent(InvestorProfileProvider provider) {
     // Priority: Local file > Network URL > Placeholder
     if (provider.profileImage != null) {
@@ -701,6 +784,11 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
     }
   }
 
+  /**
+   * Creates a placeholder for when no profile image is available.
+   * 
+   * @return A styled image placeholder widget
+   */
   Widget _buildProfileImagePlaceholder() {
     return Container(
       width: 140,
@@ -720,6 +808,13 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
     );
   }
 
+  /**
+   * Creates a styled section card with title and content.
+   * 
+   * @param title The section title
+   * @param child The content widget to display
+   * @return A styled container with title and content
+   */
   Widget _buildSectionCard({required String title, required Widget child}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
@@ -777,6 +872,15 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
     );
   }
 
+  /**
+   * Creates a styled button with gradient background and icon.
+   * 
+   * @param text The button text
+   * @param icon The icon to display
+   * @param onPressed Callback when button is pressed
+   * @param isFullWidth Whether the button should fill its parent width
+   * @return A styled button widget
+   */
   Widget _buildStyledButton({
     required String text,
     required IconData icon,
@@ -830,6 +934,15 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
     );
   }
 
+  /**
+   * Creates a styled logout button with red gradient background.
+   * 
+   * @param text The button text
+   * @param onPressed Callback when button is pressed
+   * @param icon Optional icon to display
+   * @param isFullWidth Whether the button should fill its parent width
+   * @return A styled logout button widget
+   */
   Widget _buildLogoutButton({
     required String text,
     required VoidCallback onPressed,
@@ -886,6 +999,12 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
     );
   }
 
+  /**
+   * Builds the investment preferences card with summary and navigation.
+   * 
+   * @param provider The InvestorProfileProvider for state access
+   * @return A section card with investment preferences information
+   */
   Widget _buildInvestmentPreferencesCard(InvestorProfileProvider provider) {
     final selectedCount =
         provider.selectedIndustries.length +
@@ -1017,6 +1136,13 @@ class _InvestorProfilePageState extends State<InvestorProfilePage>
     );
   }
 
+  /**
+   * Builds a summary of all investment preferences.
+   * Displays industries, geographic regions, and investment stages.
+   * 
+   * @param provider The InvestorProfileProvider for state access
+   * @return A widget with organized preference categories
+   */
   Widget _buildPreferencesSummary(InvestorProfileProvider provider) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

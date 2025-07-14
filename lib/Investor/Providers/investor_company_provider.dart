@@ -3,7 +3,26 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
 
-// Company model
+/**
+ * investor_company_provider.dart
+ * 
+ * Implements a data model and state management provider for investor company 
+ * information, handling CRUD operations with Supabase backend integration.
+ * 
+ * Features:
+ * - Company data model with serialization
+ * - Supabase database integration
+ * - Form management with validation
+ * - Real-time form state tracking
+ * - User authentication state handling
+ * - Data persistence with error handling
+ * - Multi-user isolation and security checks
+ */
+
+/**
+ * InvestorCompany - Data model representing a company associated with an investor.
+ * Includes serialization methods for database operations.
+ */
 class InvestorCompany {
   final String id;
   final String companyName;
@@ -11,6 +30,15 @@ class InvestorCompany {
   final String website;
   final DateTime dateAdded;
 
+  /**
+   * Constructs an InvestorCompany with required fields.
+   * 
+   * @param id Unique identifier for the company
+   * @param companyName Name of the company
+   * @param title Investor's title or position in the company
+   * @param website Optional website URL
+   * @param dateAdded Date when the company was added
+   */
   InvestorCompany({
     required this.id,
     required this.companyName,
@@ -19,6 +47,12 @@ class InvestorCompany {
     required this.dateAdded,
   });
 
+  /**
+   * Creates an InvestorCompany instance from a Supabase database map.
+   * 
+   * @param map The database record as a map
+   * @return A new InvestorCompany instance
+   */
   factory InvestorCompany.fromSupabaseMap(Map<String, dynamic> map) {
     return InvestorCompany(
       id: map['id']?.toString() ?? '',
@@ -31,6 +65,11 @@ class InvestorCompany {
     );
   }
 
+  /**
+   * Converts the company object to a map for database operations.
+   * 
+   * @return A map representation of the company
+   */
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -41,6 +80,16 @@ class InvestorCompany {
     };
   }
 
+  /**
+   * Creates a copy of this company with optional field updates.
+   * 
+   * @param id Optional new ID
+   * @param companyName Optional new company name
+   * @param title Optional new title
+   * @param website Optional new website
+   * @param dateAdded Optional new date
+   * @return A new InvestorCompany with updated fields
+   */
   InvestorCompany copyWith({
     String? id,
     String? companyName,
@@ -58,6 +107,10 @@ class InvestorCompany {
   }
 }
 
+/**
+ * InvestorCompaniesProvider - Change notifier provider for managing investor companies.
+ * Handles state management, data persistence, and form validation.
+ */
 class InvestorCompaniesProvider with ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
 
@@ -79,39 +132,112 @@ class InvestorCompaniesProvider with ChangeNotifier {
   bool _isInitialized = false;
   final Set<String> _dirtyFields = {};
 
-  // 🔥 ADD: Track current user to detect user switches
+  // Track current user to detect user switches
   String? _currentUserId;
   StreamSubscription<AuthState>? _authSubscription;
 
-  // Getters
+  /**
+   * Provides access to the unmodifiable list of companies.
+   * 
+   * @return An unmodifiable list of InvestorCompany objects
+   */
   List<InvestorCompany> get companies => List.unmodifiable(_companies);
+
+  /**
+   * Returns the total count of companies.
+   * 
+   * @return Number of companies
+   */
   int get companiesCount => _companies.length;
+
+  /**
+   * Indicates whether there are any companies.
+   * 
+   * @return True if companies exist, false otherwise
+   */
   bool get hasCompanies => _companies.isNotEmpty;
+
+  /**
+   * Indicates whether data is currently loading.
+   * 
+   * @return Loading state
+   */
   bool get isLoading => _isLoading;
+
+  /**
+   * Indicates whether a save operation is in progress.
+   * 
+   * @return Saving state
+   */
   bool get isSaving => _isSaving;
+
+  /**
+   * Provides the latest error message if any.
+   * 
+   * @return Error message or null
+   */
   String? get error => _error;
+
+  /**
+   * Indicates whether the provider has been initialized.
+   * 
+   * @return Initialization state
+   */
   bool get isInitialized => _isInitialized;
 
+  /**
+   * Provides access to the company name form controller.
+   * 
+   * @return Text controller for company name
+   */
   TextEditingController get companyNameController => _companyNameController;
+
+  /**
+   * Provides access to the title form controller.
+   * 
+   * @return Text controller for title
+   */
   TextEditingController get titleController => _titleController;
+
+  /**
+   * Provides access to the website form controller.
+   * 
+   * @return Text controller for website
+   */
   TextEditingController get websiteController => _websiteController;
 
-  // Form validation
+  /**
+   * Determines if the form has valid required fields.
+   * 
+   * @return Form validity state
+   */
   bool get isFormValid =>
       _companyNameController.text.trim().isNotEmpty &&
       _titleController.text.trim().isNotEmpty;
 
-  // Check for unsaved changes
+  /**
+   * Indicates whether there are any unsaved changes.
+   * 
+   * @return True if there are unsaved changes
+   */
   bool get hasAnyUnsavedChanges => _dirtyFields.isNotEmpty;
 
-  // Get completion percentage for companies setup
+  /**
+   * Calculates the completion percentage for companies setup.
+   * 
+   * @return Percentage (0-100) of company setup completion
+   */
   double get completionPercentage {
     if (_companies.isEmpty) return 0.0;
     if (_companies.length >= 2) return 100.0;
     return (_companies.length / 2) * 100;
   }
 
-  // Current companies (most recent entries)
+  /**
+   * Filters companies to return only current ones (determined by title).
+   * 
+   * @return A list of current companies
+   */
   List<InvestorCompany> get currentCompanies {
     return _companies
         .where(
@@ -124,12 +250,16 @@ class InvestorCompaniesProvider with ChangeNotifier {
         .toList();
   }
 
-  // 🔥 CONSTRUCTOR: Set up auth listener
+  /**
+   * Constructor that sets up authentication listener.
+   */
   InvestorCompaniesProvider() {
     _setupAuthListener();
   }
 
-  // 🔥 NEW: Set up auth state listener for user isolation
+  /**
+   * Sets up authentication state listener for user isolation.
+   */
   void _setupAuthListener() {
     _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
       final AuthChangeEvent event = data.event;
@@ -154,7 +284,10 @@ class InvestorCompaniesProvider with ChangeNotifier {
     });
   }
 
-  // 🔥 NEW: Reset provider state for user isolation
+  /**
+   * Resets provider state for user isolation.
+   * Clears all data and cancels timers.
+   */
   void _resetProviderState() {
     _isInitialized = false;
     _currentUserId = null;
@@ -170,7 +303,10 @@ class InvestorCompaniesProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Initialize provider
+  /**
+   * Initializes the provider with user data.
+   * Loads companies from database and sets up listeners.
+   */
   Future<void> initialize() async {
     final User? currentUser = _supabase.auth.currentUser;
     if (currentUser == null) {
@@ -178,7 +314,7 @@ class InvestorCompaniesProvider with ChangeNotifier {
       return;
     }
 
-    // 🔥 CRITICAL: Check if we need to reset for different user
+    // Check if we need to reset for different user
     if (_currentUserId != null && _currentUserId != currentUser.id) {
       debugPrint('🔄 User changed during initialization, resetting state');
       _resetProviderState();
@@ -211,14 +347,17 @@ class InvestorCompaniesProvider with ChangeNotifier {
     }
   }
 
-  // Load companies data from database
+  /**
+   * Loads companies data from database for the current user.
+   * Clears existing data before loading new data.
+   */
   Future<void> _loadCompaniesData() async {
     final User? currentUser = _supabase.auth.currentUser;
     if (currentUser == null) {
       throw Exception('No authenticated user found');
     }
 
-    // 🔥 ADDITIONAL SAFETY: Verify user consistency
+    // Additional safety check for user consistency
     if (_currentUserId != null && _currentUserId != currentUser.id) {
       debugPrint('⚠️ User mismatch detected in _loadCompaniesData, resetting');
       _resetProviderState();
@@ -231,10 +370,10 @@ class InvestorCompaniesProvider with ChangeNotifier {
       final response = await _supabase
           .from('investor_companies')
           .select('*')
-          .eq('investor_id', currentUser.id) // This is correct
+          .eq('investor_id', currentUser.id)
           .order('created_at', ascending: false);
 
-      // 🔥 CRITICAL: Clear existing companies before loading new ones
+      // Clear existing companies before loading new ones
       _companies.clear();
 
       for (final companyData in response) {
@@ -251,7 +390,10 @@ class InvestorCompaniesProvider with ChangeNotifier {
     }
   }
 
-  // Add new company
+  /**
+   * Adds a new company with form data to the database.
+   * Validates form and updates state on success.
+   */
   Future<void> addCompany() async {
     if (!isFormValid) {
       _error = 'Please fill in all required fields';
@@ -266,7 +408,7 @@ class InvestorCompaniesProvider with ChangeNotifier {
       return;
     }
 
-    // 🔥 VERIFY: Ensure we're working with the correct user
+    // Verify working with correct user
     if (_currentUserId != currentUser.id) {
       debugPrint('⚠️ User mismatch in addCompany, reinitializing');
       await initialize();
@@ -318,7 +460,12 @@ class InvestorCompaniesProvider with ChangeNotifier {
     }
   }
 
-  // Update company
+  /**
+   * Updates an existing company in the database.
+   * Verifies user ownership before updating.
+   * 
+   * @param company The updated company object
+   */
   Future<void> updateCompany(InvestorCompany company) async {
     final User? currentUser = _supabase.auth.currentUser;
     if (currentUser == null) {
@@ -348,7 +495,7 @@ class InvestorCompaniesProvider with ChangeNotifier {
           .eq(
             'investor_id',
             currentUser.id,
-          ); // 🔥 DOUBLE-CHECK: Ensure user owns this company
+          ); // Double-check: Ensure user owns this company
 
       // Update local data
       final index = _companies.indexWhere((c) => c.id == company.id);
@@ -368,7 +515,12 @@ class InvestorCompaniesProvider with ChangeNotifier {
     }
   }
 
-  // Delete company
+  /**
+   * Deletes a company from the database.
+   * Verifies user ownership before deletion.
+   * 
+   * @param company The company to delete
+   */
   Future<void> deleteCompany(InvestorCompany company) async {
     final User? currentUser = _supabase.auth.currentUser;
     if (currentUser == null) {
@@ -391,7 +543,7 @@ class InvestorCompaniesProvider with ChangeNotifier {
           .eq(
             'investor_id',
             currentUser.id,
-          ); // 🔥 DOUBLE-CHECK: Ensure user owns this company
+          ); // Double-check: Ensure user owns this company
 
       _companies.removeWhere((c) => c.id == company.id);
 
@@ -406,33 +558,47 @@ class InvestorCompaniesProvider with ChangeNotifier {
     }
   }
 
-  // 🔥 NEW: Refresh data (useful for manual refresh)
+  /**
+   * Refreshes the companies data from the database.
+   * Useful for manual refresh operations.
+   */
   Future<void> refreshData() async {
     await _loadCompaniesData();
     notifyListeners();
   }
 
-  // Add listeners for form changes
+  /**
+   * Sets up listeners for form field changes.
+   */
   void _addListeners() {
     _companyNameController.addListener(_onFormChanged);
     _titleController.addListener(_onFormChanged);
     _websiteController.addListener(_onFormChanged);
   }
 
-  // Remove listeners
+  /**
+   * Removes listeners for form field changes.
+   */
   void _removeListeners() {
     _companyNameController.removeListener(_onFormChanged);
     _titleController.removeListener(_onFormChanged);
     _websiteController.removeListener(_onFormChanged);
   }
 
-  // Handle form changes
+  /**
+   * Handles form changes by marking fields as dirty.
+   */
   void _onFormChanged() {
     _dirtyFields.add('form');
     notifyListeners();
   }
 
-  // Validation methods
+  /**
+   * Validates the company name field.
+   * 
+   * @param value The company name to validate
+   * @return Error message or null if valid
+   */
   String? validateCompanyName(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Company name is required';
@@ -443,6 +609,12 @@ class InvestorCompaniesProvider with ChangeNotifier {
     return null;
   }
 
+  /**
+   * Validates the title field.
+   * 
+   * @param value The title to validate
+   * @return Error message or null if valid
+   */
   String? validateTitle(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Title is required';
@@ -453,6 +625,12 @@ class InvestorCompaniesProvider with ChangeNotifier {
     return null;
   }
 
+  /**
+   * Validates the website field.
+   * 
+   * @param value The website URL to validate
+   * @return Error message or null if valid
+   */
   String? validateWebsite(String? value) {
     if (value == null || value.trim().isEmpty) {
       return null; // Website is optional
@@ -469,15 +647,20 @@ class InvestorCompaniesProvider with ChangeNotifier {
     return null;
   }
 
-  // Reset error state
+  /**
+   * Clears the current error state.
+   */
   void clearError() {
     _error = null;
     notifyListeners();
   }
 
+  /**
+   * Cleans up resources when the provider is disposed.
+   */
   @override
   void dispose() {
-    _authSubscription?.cancel(); // 🔥 Cancel auth listener
+    _authSubscription?.cancel(); // Cancel auth listener
     _removeListeners();
     _companyNameController.dispose();
     _titleController.dispose();
