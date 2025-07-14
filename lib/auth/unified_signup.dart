@@ -1,10 +1,29 @@
-// lib/auth/unified_signup.dart
+// ignore_for_file: dangling_library_doc_comments, slash_for_doc_comments
+
+/**
+ * unified_signup.dart
+ * 
+ * Implements a polished signup screen with animations, form validation,
+ * user type selection (startup/investor), and account creation flow.
+ * 
+ * Features:
+ * - Animated entrance effects (fade, slide)
+ * - Dynamic color transitions between startup/investor themes
+ * - User type selection with visual feedback
+ * - Password strength indicator
+ * - Real-time form validation
+ * - Smart routing to appropriate dashboard after signup
+ */
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'unified_authentication_provider.dart';
 import 'unified_login.dart';
 
-// Main stateful widget for the signup page
+/**
+ * UnifiedSignupPage - Stateful widget that provides the signup interface.
+ * Uses TickerProviderStateMixin for animations.
+ */
 class UnifiedSignupPage extends StatefulWidget {
   const UnifiedSignupPage({super.key});
 
@@ -26,6 +45,10 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
   late Animation<double> _pulseAnimation; // Subtle size pulsing
   late Animation<Color?> _colorAnimation; // Color cycling animation
 
+  /**
+   * Initializes the page state, sets up animations, and configures the
+   * authentication provider form type to signup mode.
+   */
   @override
   void initState() {
     super.initState();
@@ -43,7 +66,10 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     });
   }
 
-  // Sets up all animation controllers and animations
+  /**
+   * Sets up all animations used in the signup screen.
+   * Configures controllers, curves, and animation parameters.
+   */
   void _setupAnimations() {
     // Initialize animation controllers with their durations
     _fadeController = AnimationController(
@@ -94,9 +120,11 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     _colorController.repeat(reverse: true); // Continuously cycle colors
   }
 
+  /**
+   * Disposes of animation controllers to prevent memory leaks.
+   */
   @override
   void dispose() {
-    // Clean up all animation controllers
     _fadeController.dispose();
     _slideController.dispose();
     _pulseController.dispose();
@@ -104,7 +132,12 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     super.dispose();
   }
 
-  // Helper to get theme color based on selected user type
+  /**
+   * Helper method to get the current theme color based on user type selection.
+   * Returns a static color for selected user type, or the animated color.
+   * 
+   * @return The appropriate Color to use for theming
+   */
   Color _getCurrentThemeColor() {
     final authProvider = Provider.of<UnifiedAuthProvider>(
       context,
@@ -120,6 +153,9 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     }
   }
 
+  /**
+   * Builds the main widget structure with background, animations, and content.
+   */
   @override
   Widget build(BuildContext context) {
     // Main scaffold with dark background
@@ -167,7 +203,9 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
-  // Creates a back button in the top-left corner
+  /**
+   * Creates a back button in the top-left corner for navigation.
+   */
   Widget _buildBackButton() {
     return Align(
       alignment: Alignment.centerLeft,
@@ -191,7 +229,10 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
-  // Builds the animated app logo with dynamic glow effects
+  /**
+   * Builds the animated app logo with dynamic glow effects.
+   * Adapts colors based on user type selection.
+   */
   Widget _buildLogo() {
     return Consumer<UnifiedAuthProvider>(
       builder: (context, authProvider, _) {
@@ -260,7 +301,9 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
-  // Creates the radial gradient background
+  /**
+   * Creates the radial gradient background.
+   */
   Widget _buildBackgroundDecoration() {
     return Container(
       decoration: const BoxDecoration(
@@ -273,7 +316,10 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
-  // Builds the page header with color-themed text
+  /**
+   * Builds the page header with color-themed text.
+   * Adapts colors based on user type selection.
+   */
   Widget _buildHeader() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -337,7 +383,10 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
-  // Builds the complete signup form with all fields and validation
+  /**
+   * Builds the complete signup form with all fields and validation.
+   * Includes user type selection, name, email, password fields, and buttons.
+   */
   Widget _buildSignupForm() {
     return Consumer<UnifiedAuthProvider>(
       builder: (context, authProvider, child) {
@@ -422,7 +471,10 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
-  // Builds the startup/investor selection cards
+  /**
+   * Builds the user type selection section with startup and investor options.
+   * Shows error message if no type selected but form is submitted.
+   */
   Widget _buildCompactUserTypeSelector() {
     return Consumer<UnifiedAuthProvider>(
       builder: (context, authProvider, child) {
@@ -484,7 +536,17 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
-  // Individual user type selection card (startup or investor)
+  /**
+   * Builds a user type selection card with appropriate styling.
+   * Shows selection state with color and visual effects.
+   * 
+   * @param userType The UserType represented by this card
+   * @param title The display text for the card
+   * @param icon The icon to display
+   * @param color The theme color for this user type
+   * @param isSelected Whether this type is currently selected
+   * @param onTap Callback when card is tapped
+   */
   Widget _buildCompactUserTypeCard({
     required UserType userType,
     required String title,
@@ -541,7 +603,19 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
-  // Creates input field with color-themed accents
+  /**
+   * Builds a form input field with validation and theme-colored styling.
+   * Adapts to password fields with visibility toggle.
+   * 
+   * @param label The field label
+   * @param controller The text controller
+   * @param focusNode The focus node
+   * @param validator The validation function
+   * @param keyboardType The keyboard type
+   * @param icon The leading icon
+   * @param isPassword Whether this is a password field
+   * @param errorText The error text to display
+   */
   Widget _buildInputField({
     required String label,
     required TextEditingController controller,
@@ -698,7 +772,10 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
-  // Visual indicator for password strength
+  /**
+   * Visual indicator for password strength with color and text feedback.
+   * Shows strength level based on password complexity.
+   */
   Widget _buildPasswordStrengthIndicator() {
     return Consumer<UnifiedAuthProvider>(
       builder: (context, authProvider, child) {
@@ -780,7 +857,12 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
-  // Calculates password strength based on length and complexity
+  /**
+   * Calculates password strength based on length and character diversity.
+   * 
+   * @param password The password to evaluate
+   * @return PasswordStrength enum value (weak, medium, strong)
+   */
   PasswordStrength _calculatePasswordStrength(String password) {
     if (password.length < 6) return PasswordStrength.weak;
     if (password.length < 8) return PasswordStrength.medium;
@@ -804,7 +886,10 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     return PasswordStrength.weak;
   }
 
-  // Sign up button with theme-colored styling
+  /**
+   * Builds the sign-up button with theme-colored styling.
+   * Shows loading indicator during authentication.
+   */
   Widget _buildSignUpButton() {
     return Consumer<UnifiedAuthProvider>(
       builder: (context, authProvider, child) {
@@ -895,7 +980,10 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
-  // Error message display with dismiss option
+  /**
+  * Builds the error message container with dismiss option.
+  * Displayed when authentication errors occur.
+  */
   Widget _buildErrorMessage() {
     return Consumer<UnifiedAuthProvider>(
       builder: (context, authProvider, child) {
@@ -931,7 +1019,10 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
-  // "Already have an account" link to login page
+  /**
+  * Builds the "Already have an account" link to login page.
+  * Uses theme colors for the link text.
+  */
   Widget _buildLoginLink() {
     return Center(
       child: Container(
@@ -1019,7 +1110,11 @@ class _UnifiedSignupPageState extends State<UnifiedSignupPage>
     );
   }
 
-  // Handles the signup process
+  /**
+  * Handles the signup process when the form is submitted.
+  * Validates input, attempts signup, and navigates to the appropriate
+  * dashboard on success.
+  */
   Future<void> _handleSignUp() async {
     final authProvider = Provider.of<UnifiedAuthProvider>(
       context,

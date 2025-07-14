@@ -1,4 +1,13 @@
-// lib/auth/unified_authentication_provider.dart
+// ignore_for_file: slash_for_doc_comments, dangling_library_doc_comments
+/**
+ * unified_authentication_provider.dart
+ * 
+ * Provides authentication services for both startup and investor users.
+ * This provider handles user authentication with Supabase, form validation,
+ * and user type management for different user roles.
+ */
+
+// Import statements for required packages and services
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -6,10 +15,17 @@ import 'package:logger/logger.dart';
 import '../services/user_type_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// User types enumeration
+/**
+ * Enum defining user types supported by the application.
+ * - startup: For entrepreneurs looking for investment
+ * - investor: For individuals/entities looking to invest
+ */
 enum UserType { startup, investor }
 
-/// Generic user model that can represent both startup and investor users
+/**
+ * AppUser model representing a user in the application.
+ * Can represent both startup and investor users with a common interface.
+ */
 class AppUser {
   final String id;
   final String fullName;
@@ -19,6 +35,7 @@ class AppUser {
   final bool isVerified;
   final UserType userType;
 
+  // Constructor requiring all fields
   AppUser({
     required this.id,
     required this.fullName,
@@ -29,6 +46,14 @@ class AppUser {
     required this.userType,
   });
 
+  /**
+   * Factory constructor to create an AppUser from a Supabase User object.
+   * Maps Supabase user properties to our AppUser model.
+   * 
+   * @param user The Supabase User object
+   * @param userType The type of user (startup or investor)
+   * @return A new AppUser instance
+   */
   factory AppUser.fromSupabaseUser(User user, UserType userType) {
     return AppUser(
       id: user.id,
@@ -41,6 +66,18 @@ class AppUser {
     );
   }
 
+  /**
+   * Creates a copy of this AppUser with optional property updates.
+   * 
+   * @param id Optional new ID
+   * @param fullName Optional new full name
+   * @param email Optional new email
+   * @param createdAt Optional new creation date
+   * @param lastLoginAt Optional new last login date
+   * @param isVerified Optional new verification status
+   * @param userType Optional new user type
+   * @return A new AppUser with updated properties
+   */
   AppUser copyWith({
     String? id,
     String? fullName,
@@ -62,26 +99,33 @@ class AppUser {
   }
 }
 
+/**
+ * Enum for form types to distinguish between login and signup operations.
+ */
 enum FormType { login, signup }
 
+/**
+ * Enum for password strength levels used in the signup form.
+ */
 enum PasswordStrength { none, weak, medium, strong }
 
-/// Unified Authentication Provider that handles both startup and investor authentication
-/// based on user type selection during signup and automatic detection during login
+/**
+ * Main authentication provider class that handles all authentication-related operations.
+ * Uses ChangeNotifier for state management to notify UI of changes.
+ */
 class UnifiedAuthProvider with ChangeNotifier {
+  // Services and clients
   final Logger _logger = Logger();
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  // ========== FORM MANAGEMENT ==========
+  // Form controllers and state
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
-
   final GlobalKey<FormState> _loginFormKey = GlobalKey<FormState>();
   final GlobalKey<FormState> _signupFormKey = GlobalKey<FormState>();
-
   final FocusNode _nameFocusNode = FocusNode();
   final FocusNode _emailFocusNode = FocusNode();
   final FocusNode _passwordFocusNode = FocusNode();
@@ -93,7 +137,7 @@ class UnifiedAuthProvider with ChangeNotifier {
   bool _isFormValid = false;
   FormType _currentFormType = FormType.login;
 
-  // Validation state
+  // Form validation state
   String? _nameError;
   String? _emailError;
   String? _passwordError;
@@ -101,7 +145,7 @@ class UnifiedAuthProvider with ChangeNotifier {
   bool _validateRealTime = false;
   Timer? _validationTimer;
 
-  // ========== AUTHENTICATION STATE ==========
+  // Authentication state
   AppUser? _currentUser;
   bool _isLoggedIn = false;
   bool _isLoading = false;
@@ -112,61 +156,60 @@ class UnifiedAuthProvider with ChangeNotifier {
   bool _rememberMe = false;
   String? _savedEmail;
   SharedPreferences? _prefs;
-
-  // User type selection for signup
   UserType? _selectedUserType;
 
-  // CRITICAL: Flag to prevent duplicate user record creation
+  // Flag to prevent duplicate record creation
   bool _isCreatingUserRecord = false;
 
-  // Supabase auth stream subscription
+  // Supabase auth subscription
   StreamSubscription<AuthState>? _authSubscription;
 
+  // Shared preferences keys
   static const String _keyRememberMe = 'remember_me';
   static const String _keySavedEmail = 'saved_email';
   static const String _keyAutoLogin = 'auto_login';
 
+  /**
+   * Constructor initializes authentication, sets up listeners,
+   * and configures form field controllers.
+   */
   UnifiedAuthProvider() {
     _initializeAuth();
     _initializeListeners();
     _setupControllerListeners();
   }
 
-  // ========== GETTERS ==========
-  // Form getters
+  // Getters for form controllers and state
   TextEditingController get nameController => _nameController;
   TextEditingController get emailController => _emailController;
   TextEditingController get passwordController => _passwordController;
   TextEditingController get confirmPasswordController =>
       _confirmPasswordController;
-
   GlobalKey<FormState> get loginFormKey => _loginFormKey;
   GlobalKey<FormState> get signupFormKey => _signupFormKey;
-
   FocusNode get nameFocusNode => _nameFocusNode;
   FocusNode get emailFocusNode => _emailFocusNode;
   FocusNode get passwordFocusNode => _passwordFocusNode;
   FocusNode get confirmPasswordFocusNode => _confirmPasswordFocusNode;
-
   bool get isPasswordVisible => _isPasswordVisible;
   bool get isConfirmPasswordVisible => _isConfirmPasswordVisible;
   bool get isFormValid => _isFormValid;
   FormType get currentFormType => _currentFormType;
 
-  // Validation error getters - ESSENTIAL FOR THE UI
+  // Validation error getters for UI display
   String? get nameError => _nameError;
   String? get emailError => _emailError;
   String? get passwordError => _passwordError;
   String? get confirmPasswordError => _confirmPasswordError;
   bool get validateRealTime => _validateRealTime;
 
-  // Form values
+  // Form value getters
   String get fullName => _nameController.text.trim();
   String get email => _emailController.text.trim();
   String get password => _passwordController.text;
   String get confirmPassword => _confirmPasswordController.text;
 
-  // Auth getters
+  // Auth state getters
   AppUser? get currentUser => _currentUser;
   bool get isLoggedIn => _isLoggedIn;
   bool get isLoading => _isLoading;
@@ -176,23 +219,26 @@ class UnifiedAuthProvider with ChangeNotifier {
   String? get savedEmail => _savedEmail;
   UserType? get selectedUserType => _selectedUserType;
 
-  // ========== INITIALIZATION ==========
+  /**
+   * Initializes authentication state by checking for existing sessions
+   * and handling auto-login based on remembered preferences.
+   */
   Future<void> _initializeAuth() async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      // 🔥 Initialize SharedPreferences
+      // Initialize SharedPreferences
       _prefs = await SharedPreferences.getInstance();
 
-      // 🔥 Load saved remember me preferences
+      // Load saved remember me preferences
       await _loadRememberMePreferences();
 
-      // 🔥 Check if user should auto-login based on remember me setting
+      // Check if user should auto-login
       final shouldAutoLogin = _prefs?.getBool(_keyAutoLogin) ?? false;
 
       if (shouldAutoLogin) {
-        // Check if user is already logged in with valid session
+        // Check for valid session
         final session = _supabase.auth.currentSession;
         if (session?.user != null) {
           _logger.i('🔥 Auto-login: Valid session found, logging in user');
@@ -203,7 +249,7 @@ class UnifiedAuthProvider with ChangeNotifier {
         }
       } else {
         _logger.i('🔥 Auto-login disabled: Remember me not enabled');
-        // 🔥 CRITICAL: Sign out any existing session if remember me is not enabled
+        // Sign out any existing session if remember me is not enabled
         final session = _supabase.auth.currentSession;
         if (session?.user != null) {
           _logger.i('🔥 Signing out existing session (remember me disabled)');
@@ -219,6 +265,10 @@ class UnifiedAuthProvider with ChangeNotifier {
     }
   }
 
+  /**
+   * Loads remember me preferences from shared preferences.
+   * If remember me is enabled, pre-fills the email field.
+   */
   Future<void> _loadRememberMePreferences() async {
     try {
       _rememberMe = _prefs?.getBool(_keyRememberMe) ?? false;
@@ -233,6 +283,12 @@ class UnifiedAuthProvider with ChangeNotifier {
     }
   }
 
+  /**
+   * Saves remember me preferences to shared preferences.
+   * 
+   * @param email The email to save
+   * @param enableAutoLogin Whether to enable auto-login
+   */
   Future<void> _saveRememberMePreferences(
     String email,
     bool enableAutoLogin,
@@ -258,6 +314,9 @@ class UnifiedAuthProvider with ChangeNotifier {
     }
   }
 
+  /**
+   * Clears auto-login preferences.
+   */
   Future<void> _clearAutoLogin() async {
     try {
       await _prefs?.remove(_keyAutoLogin);
@@ -267,8 +326,12 @@ class UnifiedAuthProvider with ChangeNotifier {
     }
   }
 
-  /// Handle existing user by detecting their type and setting up the session
-  /// OPTIMIZED: Only update user record if actually needed
+  /**
+   * Handles an existing user by detecting their type and setting up the session.
+   * Only updates user record if needed.
+   * 
+   * @param user The Supabase User object
+   */
   Future<void> _handleExistingUser(User user) async {
     try {
       final userTypeString = await UserTypeService.detectUserType(user.id);
@@ -304,8 +367,14 @@ class UnifiedAuthProvider with ChangeNotifier {
     }
   }
 
-  /// Check if we should update the user record
-  /// OPTIMIZATION: Only update if last_login_at is older than 1 hour
+  /**
+   * Checks if the user record should be updated.
+   * Only updates if last login was more than 1 hour ago for optimization.
+   * 
+   * @param userId The user ID
+   * @param userType The user type
+   * @return True if record should be updated, false otherwise
+   */
   Future<bool> _shouldUpdateUserRecord(String userId, UserType userType) async {
     try {
       final tableName = userType == UserType.startup ? 'startups' : 'investors';
@@ -335,6 +404,9 @@ class UnifiedAuthProvider with ChangeNotifier {
     }
   }
 
+  /**
+   * Initializes listeners for form fields and authentication state changes.
+   */
   void _initializeListeners() {
     // Set up form field listeners for real-time validation
     _nameController.addListener(_onFormFieldChanged);
@@ -379,11 +451,16 @@ class UnifiedAuthProvider with ChangeNotifier {
         default:
           _logger.i('Auth event: ${event.name}');
       }
-      notifyListeners(); // CRITICAL: Always notify listeners for route changes
+      notifyListeners(); // Always notify listeners for route changes
     });
   }
 
-  /// Handle user sign in - detect type or use selected type
+  /**
+   * Handles user sign in by detecting type or using selected type.
+   * Creates or updates user record in database.
+   * 
+   * @param user The Supabase User object
+   */
   Future<void> _handleSignedInUser(User user) async {
     try {
       UserType? userType;
@@ -413,8 +490,7 @@ class UnifiedAuthProvider with ChangeNotifier {
         _isLoggedIn = true;
         _error = null;
 
-        // CRITICAL FIX: Only create/update user record if not already in progress
-        // But allow retry if previous attempt may have failed
+        // Only create/update user record if not already in progress
         if (!_isCreatingUserRecord) {
           debugPrint(
             '🔥 Auth state listener calling _createOrUpdateUserRecord...',
@@ -458,6 +534,9 @@ class UnifiedAuthProvider with ChangeNotifier {
     }
   }
 
+  /**
+   * Handles user sign out by clearing state and notifying listeners.
+   */
   void _handleSignedOut() {
     final previousUserId = _currentUser?.id;
     _currentUser = null;
@@ -469,10 +548,12 @@ class UnifiedAuthProvider with ChangeNotifier {
     debugPrint('✅ User signed out (was: $previousUserId)');
   }
 
-  /// Create or update user record in the appropriate table based on user type
-  /// Replace your existing _createOrUpdateUserRecord method with this fixed version
-  /// Alternative version without storing results (simpler)
-  /// OPTIMIZED: Create or update user record only when necessary
+  /**
+   * Creates or updates user record in the appropriate table based on user type.
+   * Optimized to only update when necessary and prevent duplicate operations.
+   * 
+   * @param user The AppUser object to create or update
+   */
   Future<void> _createOrUpdateUserRecord(AppUser user) async {
     if (_isCreatingUserRecord) {
       debugPrint('🔍 User record creation already in progress, skipping...');
@@ -497,7 +578,7 @@ class UnifiedAuthProvider with ChangeNotifier {
               .maybeSingle();
 
       if (existingUser == null) {
-        // Create new user record (this should be rare for existing users)
+        // Create new user record
         final insertData = <String, dynamic>{
           'id': user.id,
           'email': user.email,
@@ -561,18 +642,29 @@ class UnifiedAuthProvider with ChangeNotifier {
     }
   }
 
-  // ========== USER TYPE SELECTION ==========
+  /**
+   * Sets the user type for signup.
+   * 
+   * @param userType The UserType to set
+   */
   void setUserType(UserType userType) {
     _selectedUserType = userType;
     notifyListeners();
   }
 
+  /**
+   * Clears the user type selection.
+   */
   void clearUserTypeSelection() {
     _selectedUserType = null;
     notifyListeners();
   }
 
-  // ========== FORM MANAGEMENT ==========
+  /**
+   * Sets the form type (login or signup).
+   * 
+   * @param formType The FormType to set
+   */
   void setFormType(FormType formType) {
     debugPrint('🔍 setFormType called: $formType');
     _currentFormType = formType;
@@ -581,26 +673,43 @@ class UnifiedAuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /**
+   * Toggles password visibility in the form.
+   */
   void togglePasswordVisibility() {
     _isPasswordVisible = !_isPasswordVisible;
     notifyListeners();
   }
 
+  /**
+   * Toggles confirm password visibility in the form.
+   */
   void toggleConfirmPasswordVisibility() {
     _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
     notifyListeners();
   }
 
+  /**
+   * Sets the remember me value.
+   * 
+   * @param value The boolean value to set
+   */
   void setRememberMe(bool value) {
     _rememberMe = value;
     notifyListeners();
     _logger.i('🔥 Remember me set to: $value');
   }
 
+  /**
+   * Toggles the remember me value.
+   */
   void toggleRememberMe() {
     setRememberMe(!_rememberMe);
   }
 
+  /**
+   * Clears all form fields and validation errors.
+   */
   void clearForm() {
     debugPrint('🔍 clearForm called');
     _nameController.clear();
@@ -616,26 +725,37 @@ class UnifiedAuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /**
+   * Clears the error message.
+   */
   void clearError() {
     _error = null;
     notifyListeners();
   }
 
-  // Public method to validate form (called from UI)
+  /**
+   * Validates the form based on the current form type.
+   * 
+   * @return True if form is valid, false otherwise
+   */
   bool validateForm() {
     return _currentFormType == FormType.login
         ? _validateLoginForm()
         : _validateSignupForm();
   }
 
-  // Public method to enable real-time validation (called from UI)
+  /**
+   * Enables real-time validation and validates the form immediately.
+   */
   void enableRealTimeValidation() {
     debugPrint('🔍 enableRealTimeValidation called');
     _validateRealTime = true;
     validateForm(); // Validate immediately when enabled
   }
 
-  // Method to clear validation errors
+  /**
+   * Clears all validation errors.
+   */
   void clearValidationErrors() {
     _nameError = null;
     _emailError = null;
@@ -644,7 +764,9 @@ class UnifiedAuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Add listener setup for real-time validation
+  /**
+   * Sets up listeners for form controllers to enable real-time validation.
+   */
   void _setupControllerListeners() {
     _emailController.addListener(() {
       if (_validateRealTime) {
@@ -661,7 +783,16 @@ class UnifiedAuthProvider with ChangeNotifier {
     });
   }
 
-  // ========== AUTHENTICATION METHODS ==========
+  /**
+   * Signs up a new user with the provided credentials.
+   * 
+   * @param fullName Optional full name
+   * @param email Optional email
+   * @param password Optional password
+   * @param confirmPassword Optional confirmation password
+   * @param userType Optional user type
+   * @return True if signup successful, false otherwise
+   */
   Future<bool> signUp({
     String? fullName,
     String? email,
@@ -696,7 +827,7 @@ class UnifiedAuthProvider with ChangeNotifier {
         'Attempting signup for: ${this.email} as ${_selectedUserType!.name}',
       );
 
-      // CRITICAL: Sign up WITHOUT email confirmation required
+      // Sign up without email confirmation required
       final response = await _supabase.auth.signUp(
         email: this.email,
         password: this.password,
@@ -717,7 +848,7 @@ class UnifiedAuthProvider with ChangeNotifier {
           '✅ New ${_selectedUserType!.name} user created with ID: ${response.user!.id}',
         );
 
-        // CRITICAL: Set the user data but let the auth state listener handle user record creation
+        // Set the user data
         _currentUser = AppUser.fromSupabaseUser(
           response.user!,
           _selectedUserType!,
@@ -727,7 +858,7 @@ class UnifiedAuthProvider with ChangeNotifier {
         ); // Force verified status
         _isLoggedIn = true;
 
-        // CRITICAL FIX: Create user record here since auth listener might race
+        // Create user record
         debugPrint('🔥 SignUp method calling _createOrUpdateUserRecord...');
         await _createOrUpdateUserRecord(_currentUser!);
 
@@ -746,7 +877,7 @@ class UnifiedAuthProvider with ChangeNotifier {
         );
 
         clearForm();
-        notifyListeners(); // CRITICAL: Notify listeners to trigger navigation
+        notifyListeners(); // Notify listeners to trigger navigation
         return true;
       } else {
         _error = 'Signup failed. Please try again.';
@@ -762,6 +893,14 @@ class UnifiedAuthProvider with ChangeNotifier {
     }
   }
 
+  /**
+  * Signs in a user with the provided credentials.
+  * 
+  * @param email Optional email
+  * @param password Optional password
+  * @param rememberMe Optional remember me value
+  * @return True if login successful, false otherwise
+  */
   Future<bool> signIn({
     String? email,
     String? password,
@@ -808,6 +947,11 @@ class UnifiedAuthProvider with ChangeNotifier {
     }
   }
 
+  /**
+  * Signs out the current user.
+  * 
+  * @return True if sign out successful, false otherwise
+  */
   Future<bool> signOut() async {
     try {
       await _clearAutoLogin();
@@ -821,11 +965,14 @@ class UnifiedAuthProvider with ChangeNotifier {
     }
   }
 
-  // ========== REMEMBER ME FUNCTIONALITY ==========
+  /**
+  * Saves the email for remember me functionality.
+  * 
+  * @param email The email to save
+  */
   Future<void> _saveRememberMe(String email) async {
     try {
       // In a real app, you might want to use secure storage
-      // For now, this is a placeholder
       _savedEmail = email;
       _logger.i('✅ Remember me saved for: $email');
     } catch (e) {
@@ -833,7 +980,11 @@ class UnifiedAuthProvider with ChangeNotifier {
     }
   }
 
-  // ========== VALIDATION METHODS ==========
+  /**
+  * Validates the login form.
+  * 
+  * @return True if form is valid, false otherwise
+  */
   bool _validateLoginForm() {
     bool isValid = true;
     _emailError = validateEmail(email);
@@ -845,6 +996,11 @@ class UnifiedAuthProvider with ChangeNotifier {
     return isValid;
   }
 
+  /**
+  * Validates the signup form.
+  * 
+  * @return True if form is valid, false otherwise
+  */
   bool _validateSignupForm() {
     bool isValid = true;
     _nameError = validateFullName(fullName);
@@ -860,6 +1016,9 @@ class UnifiedAuthProvider with ChangeNotifier {
     return isValid;
   }
 
+  /**
+  * Handles form field changes and triggers validation if real-time validation is enabled.
+  */
   void _onFormFieldChanged() {
     debugPrint('🔍 Form field changed - validateRealTime: $_validateRealTime');
     if (_validateRealTime) {
@@ -869,7 +1028,12 @@ class UnifiedAuthProvider with ChangeNotifier {
     }
   }
 
-  // ========== FIELD VALIDATION ==========
+  /**
+  * Validates the full name field.
+  * 
+  * @param value The value to validate
+  * @return Null if valid, error message otherwise
+  */
   String? validateFullName(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Full name is required';
@@ -880,11 +1044,17 @@ class UnifiedAuthProvider with ChangeNotifier {
     return null;
   }
 
+  /**
+  * Validates the email field.
+  * 
+  * @param value The value to validate
+  * @return Null if valid, error message otherwise
+  */
   String? validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Email is required';
     }
-    // Fixed complete email regex
+    // Complete email regex for validation
     final emailRegex = RegExp(
       r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
     );
@@ -894,6 +1064,12 @@ class UnifiedAuthProvider with ChangeNotifier {
     return null;
   }
 
+  /**
+  * Validates the password field.
+  * 
+  * @param value The value to validate
+  * @return Null if valid, error message otherwise
+  */
   String? validatePassword(String? value) {
     if (value == null || value.isEmpty) {
       return 'Password is required';
@@ -904,6 +1080,13 @@ class UnifiedAuthProvider with ChangeNotifier {
     return null;
   }
 
+  /**
+  * Validates the confirm password field.
+  * 
+  * @param password The password to compare against
+  * @param confirmPassword The confirmation password
+  * @return Null if valid, error message otherwise
+  */
   String? validateConfirmPassword(String? password, String? confirmPassword) {
     if (confirmPassword == null || confirmPassword.isEmpty) {
       return 'Please confirm your password';
@@ -914,27 +1097,41 @@ class UnifiedAuthProvider with ChangeNotifier {
     return null;
   }
 
-  // ========== PASSWORD STRENGTH ==========
+  /**
+  * Calculates the password strength based on complexity rules.
+  * 
+  * @param password The password to check
+  * @return The PasswordStrength level
+  */
   PasswordStrength getPasswordStrength(String password) {
     if (password.isEmpty) return PasswordStrength.none;
 
     int score = 0;
 
-    // Length
+    // Length-based scoring
     if (password.length >= 8) score++;
     if (password.length >= 12) score++;
 
-    // Character types
-    if (RegExp(r'[a-z]').hasMatch(password)) score++;
-    if (RegExp(r'[A-Z]').hasMatch(password)) score++;
-    if (RegExp(r'[0-9]').hasMatch(password)) score++;
-    if (RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password)) score++;
+    // Character type scoring
+    if (RegExp(r'[a-z]').hasMatch(password)) score++; // Lowercase
+    if (RegExp(r'[A-Z]').hasMatch(password)) score++; // Uppercase
+    if (RegExp(r'[0-9]').hasMatch(password)) score++; // Numbers
+    if (RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password)) {
+      score++; // Special chars
+    }
 
+    // Determine strength level based on score
     if (score <= 2) return PasswordStrength.weak;
     if (score <= 4) return PasswordStrength.medium;
     return PasswordStrength.strong;
   }
 
+  /**
+  * Gets the color associated with a password strength level.
+  * 
+  * @param strength The PasswordStrength level
+  * @return The color representing the strength
+  */
   Color getPasswordStrengthColor(PasswordStrength strength) {
     switch (strength) {
       case PasswordStrength.weak:
@@ -948,6 +1145,12 @@ class UnifiedAuthProvider with ChangeNotifier {
     }
   }
 
+  /**
+  * Gets the text label for a password strength level.
+  * 
+  * @param strength The PasswordStrength level
+  * @return The text label
+  */
   String getPasswordStrengthText(PasswordStrength strength) {
     switch (strength) {
       case PasswordStrength.weak:
@@ -961,7 +1164,12 @@ class UnifiedAuthProvider with ChangeNotifier {
     }
   }
 
-  // ========== UTILITY METHODS ==========
+  /**
+  * Converts authentication errors to user-friendly messages.
+  * 
+  * @param error The error object
+  * @return A user-friendly error message
+  */
   String _getErrorMessage(dynamic error) {
     if (error is AuthException) {
       switch (error.statusCode) {
@@ -976,7 +1184,14 @@ class UnifiedAuthProvider with ChangeNotifier {
     return 'An unexpected error occurred';
   }
 
-  // Alias methods for backward compatibility
+  /**
+  * Alias for signIn method to maintain backward compatibility.
+  * 
+  * @param email Optional email
+  * @param password Optional password
+  * @param rememberMe Optional remember me value
+  * @return True if login successful, false otherwise
+  */
   Future<bool> login({
     String? email,
     String? password,
@@ -989,6 +1204,16 @@ class UnifiedAuthProvider with ChangeNotifier {
     );
   }
 
+  /**
+  * Alias for signUp method to maintain backward compatibility.
+  * 
+  * @param fullName Optional full name
+  * @param email Optional email
+  * @param password Optional password
+  * @param confirmPassword Optional confirmation password
+  * @param userType Optional user type
+  * @return True if signup successful, false otherwise
+  */
   Future<bool> signup({
     String? fullName,
     String? email,
@@ -1005,6 +1230,10 @@ class UnifiedAuthProvider with ChangeNotifier {
     );
   }
 
+  /**
+  * Disposes of resources used by the provider.
+  * Cleans up controllers, focus nodes, timers, and subscriptions.
+  */
   @override
   void dispose() {
     _nameController.dispose();

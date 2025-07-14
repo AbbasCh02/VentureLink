@@ -1,11 +1,28 @@
-// lib/auth/unified_login_page.dart
+// ignore_for_file: dangling_library_doc_comments, slash_for_doc_comments
+/**
+ * unified_login_page.dart
+ * 
+ * Implements a polished login screen with animations, form validation,
+ * and authentication flow for the application.
+ * 
+ * Features:
+ * - Animated entrance effects (fade, slide)
+ * - Dynamic color transitions between startup/investor themes
+ * - Real-time form validation
+ * - Remember me functionality
+ * - User type detection for appropriate routing
+ */
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../auth/unified_authentication_provider.dart';
 import 'unified_signup.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// Main login page widget that provides user authentication functionality
+/**
+ * UnifiedLoginPage - Stateful widget that provides the login interface.
+ * Uses TickerProviderStateMixin for animations.
+ */
 class UnifiedLoginPage extends StatefulWidget {
   const UnifiedLoginPage({super.key});
 
@@ -27,6 +44,10 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
   late Animation<double> _pulseAnimation; // Subtle size pulsing
   late Animation<Color?> _colorAnimation; // Color cycling animation
 
+  /**
+   * Initializes the page state, sets up animations, and configures the
+   * authentication provider form type to login mode.
+   */
   @override
   void initState() {
     super.initState();
@@ -44,7 +65,10 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
     });
   }
 
-  // Initialize and configure all animations
+  /**
+   * Sets up all animations used in the login screen.
+   * Configures controllers, curves, and animation parameters.
+   */
   void _setupAnimations() {
     // Create animation controllers with specified durations
     _fadeController = AnimationController(
@@ -95,9 +119,11 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
     _colorController.repeat(reverse: true); // Continuously cycle colors
   }
 
+  /**
+   * Disposes of animation controllers to prevent memory leaks.
+   */
   @override
   void dispose() {
-    // Clean up animation controllers to prevent memory leaks
     _fadeController.dispose();
     _slideController.dispose();
     _pulseController.dispose();
@@ -105,9 +131,11 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
     super.dispose();
   }
 
+  /**
+   * Builds the main widget structure with background, animations, and content.
+   */
   @override
   Widget build(BuildContext context) {
-    // Main scaffold with dark background
     return Scaffold(
       backgroundColor: const Color(0xFF0a0a0a),
       body: Stack(
@@ -149,7 +177,10 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
     );
   }
 
-  // Creates the background with gradient and subtle grid pattern
+  /**
+   * Creates the background with gradient and subtle grid pattern.
+   * Uses a CustomPainter for the grid lines.
+   */
   Widget _buildBackgroundDecoration() {
     return Container(
       decoration: const BoxDecoration(
@@ -167,7 +198,9 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
     );
   }
 
-  // Creates a back button in the top-left corner
+  /**
+   * Creates a back button in the top-left corner for navigation.
+   */
   Widget _buildBackButton() {
     return Align(
       alignment: Alignment.centerLeft,
@@ -191,7 +224,9 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
     );
   }
 
-  // Builds the logo section with animations and welcome text
+  /**
+   * Builds the logo section with animations, glow effects, and welcome text.
+   */
   Widget _buildLogoSection() {
     return Column(
       children: [
@@ -300,7 +335,10 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
     );
   }
 
-  // Builds the login form with input fields and buttons
+  /**
+   * Builds the login form with email, password fields, and buttons.
+   * Uses the authentication provider for form state and validation.
+   */
   Widget _buildLoginForm() {
     return Consumer<UnifiedAuthProvider>(
       builder: (context, authProvider, child) {
@@ -354,7 +392,19 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
     );
   }
 
-  // Builds a styled input field with validation
+  /**
+   * Builds a styled input field with validation, animated colors,
+   * and custom error display.
+   * 
+   * @param label The field label
+   * @param controller The text controller
+   * @param focusNode The focus node
+   * @param validator The validation function
+   * @param keyboardType The keyboard type
+   * @param icon The leading icon
+   * @param isPassword Whether this is a password field
+   * @param errorText The error text to display
+   */
   Widget _buildInputField({
     required String label,
     required TextEditingController controller,
@@ -528,7 +578,10 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
     );
   }
 
-  // Builds the "Remember Me" checkbox and "Forgot Password" link
+  /**
+   * Builds the "Remember Me" checkbox and "Forgot Password" link row.
+   * Uses animated colors for interactive elements.
+   */
   Widget _buildRememberMeAndForgotPassword() {
     return Consumer<UnifiedAuthProvider>(
       builder: (context, authProvider, child) {
@@ -611,7 +664,10 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
     );
   }
 
-  // Builds a gradient sign-in button with animation
+  /**
+   * Builds a gradient sign-in button with animation and loading state.
+   * Uses dynamic color animation for the gradient.
+   */
   Widget _buildSignInButton() {
     return Consumer<UnifiedAuthProvider>(
       builder: (context, authProvider, child) {
@@ -710,7 +766,10 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
     );
   }
 
-  // Builds an error message container for displaying auth errors
+  /**
+   * Builds an error message container for displaying auth errors.
+   * Includes a dismiss button to clear the error.
+   */
   Widget _buildErrorMessage() {
     return Consumer<UnifiedAuthProvider>(
       builder: (context, authProvider, child) {
@@ -747,7 +806,9 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
     );
   }
 
-  // Builds the "Sign Up" link for new users
+  /**
+   * Builds the "Sign Up" link for new users with animated colors.
+   */
   Widget _buildSignUpLink() {
     return Center(
       child: Container(
@@ -803,7 +864,10 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
     );
   }
 
-  // Handles the sign-in process with validation
+  /**
+   * Handles the sign-in process, including validation and user type detection.
+   * Routes to the appropriate dashboard based on user type after successful login.
+   */
   Future<void> _handleSignIn() async {
     final authProvider = context.read<UnifiedAuthProvider>();
 
@@ -861,7 +925,13 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
     }
   }
 
-  // Checks which database table contains the user's email
+  /**
+   * Checks which database table contains the user's email.
+   * Used to determine the user type (startup or investor).
+   * 
+   * @param email The email to check
+   * @return String representing user type ('investor' or 'startup') or null if not found
+   */
   Future<String?> _checkUserType(String email) async {
     try {
       final supabase = Supabase.instance.client;
@@ -897,7 +967,10 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
     }
   }
 
-  // Handles the "Forgot Password" functionality
+  /**
+   * Handles the "Forgot Password" functionality.
+   * Currently shows a placeholder dialog until functionality is implemented.
+   */
   void _handleForgotPassword() {
     showDialog(
       context: context,
@@ -933,7 +1006,10 @@ class _UnifiedLoginPageState extends State<UnifiedLoginPage>
   }
 }
 
-// Custom painter that adds a subtle grid pattern to the background
+/**
+* CustomPainter implementation that draws a subtle grid pattern background.
+* Creates a professional design element with minimal visual weight.
+*/
 class BackgroundPatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
