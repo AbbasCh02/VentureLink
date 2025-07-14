@@ -1,4 +1,3 @@
-// ignore_for_file: slash_for_doc_comments, dangling_library_doc_comments
 /**
  * unified_authentication_provider.dart
  * 

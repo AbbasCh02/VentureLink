@@ -1,5 +1,3 @@
-// ignore_for_file: dangling_library_doc_comments, slash_for_doc_comments
-
 /**
  * unified_signup.dart
  * 
