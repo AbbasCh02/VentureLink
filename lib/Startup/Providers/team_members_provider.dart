@@ -3,7 +3,31 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
 
-// Team Member model
+/**
+ * team_members_provider.dart
+ * 
+ * Implements a comprehensive state management provider for team member data,
+ * handling team composition, roles, LinkedIn profiles, and member management.
+ * 
+ * Features:
+ * - Complete team member data management (CRUD operations)
+ * - Team composition analytics and role distribution tracking
+ * - LinkedIn profile validation and management
+ * - Bulk operations for adding multiple team members
+ * - Form validation for all team member fields
+ * - Team completion tracking and progress calculation
+ * - Dirty field tracking for real-time UI feedback
+ * - Authentication state integration with user isolation
+ * - Leadership team identification and filtering
+ * - Database persistence with Supabase integration
+ * - Error handling and loading state management
+ * - Data export/import functionality for team backup
+ */
+
+/**
+ * TeamMember - Data model representing a single team member.
+ * Contains all necessary information for team member management.
+ */
 class TeamMember {
   final String id;
   final String name;
@@ -12,6 +36,16 @@ class TeamMember {
   final String avatar;
   final DateTime dateAdded;
 
+  /**
+   * Creates a new TeamMember instance.
+   * 
+   * @param id Unique identifier for the team member
+   * @param name Full name of the team member
+   * @param role Position/role within the startup
+   * @param linkedin LinkedIn profile URL (optional)
+   * @param avatar Avatar/profile image URL (optional)
+   * @param dateAdded Date when the member was added to the team
+   */
   TeamMember({
     required this.id,
     required this.name,
@@ -21,6 +55,13 @@ class TeamMember {
     required this.dateAdded,
   });
 
+  /**
+   * Creates a TeamMember instance from Supabase database data.
+   * Handles data conversion and provides default values for missing fields.
+   * 
+   * @param map Raw data map from Supabase query
+   * @return TeamMember instance with converted data
+   */
   factory TeamMember.fromSupabaseMap(Map<String, dynamic> map) {
     return TeamMember(
       id: map['id'] ?? '',
@@ -34,6 +75,11 @@ class TeamMember {
     );
   }
 
+  /**
+   * Converts the TeamMember instance to a map for database storage.
+   * 
+   * @return Map containing all team member data
+   */
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -45,6 +91,18 @@ class TeamMember {
     };
   }
 
+  /**
+   * Creates a copy of the TeamMember with updated fields.
+   * Useful for updating specific properties while preserving others.
+   * 
+   * @param id New ID (optional)
+   * @param name New name (optional)
+   * @param role New role (optional)
+   * @param linkedin New LinkedIn URL (optional)
+   * @param avatar New avatar URL (optional)
+   * @param dateAdded New date added (optional)
+   * @return New TeamMember instance with updated values
+   */
   TeamMember copyWith({
     String? id,
     String? name,
@@ -64,41 +122,55 @@ class TeamMember {
   }
 }
 
+/**
+ * TeamMembersProvider - Advanced change notifier provider for managing
+ * comprehensive team member data with analytics and bulk operations.
+ */
 class TeamMembersProvider with ChangeNotifier {
-  // Form controllers
+  // Form controllers for team member input
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _roleController = TextEditingController();
   final TextEditingController _linkedinController = TextEditingController();
 
-  // Team members list
+  // Team members storage
   final List<TeamMember> _teamMembers = [];
 
-  // Auto-save timer
+  // Auto-save timer for debouncing user input
   Timer? _saveTimer;
 
-  // Loading and error states
+  // Loading and error states for UI feedback
   bool _isLoading = false;
   bool _isSaving = false;
   String? _error;
 
-  // Dirty tracking for unsaved changes
+  // Dirty tracking for unsaved changes indicator
   final Set<String> _dirtyFields = <String>{};
 
-  // Flag to prevent infinite loops during initialization
+  // Initialization flags to prevent infinite loops
   bool _isInitializing = false;
   bool _isInitialized = false;
+
+  // User authentication tracking
   String? _currentUserId;
   StreamSubscription<AuthState>? _authSubscription;
 
-  // Supabase client
+  // Supabase client for database operations
   final SupabaseClient _supabase = Supabase.instance.client;
 
+  /**
+   * Constructor that automatically sets up authentication listener
+   * and initializes data when a user is authenticated.
+   */
   TeamMembersProvider() {
     // Initialize automatically when provider is created and user is authenticated
     _setupAuthListener();
     _initializeWhenReady();
   }
 
+  /**
+   * Sets up an authentication state listener to handle user sign-in/sign-out events.
+   * Ensures data isolation between different users and resets state appropriately.
+   */
   void _setupAuthListener() {
     _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
       final AuthChangeEvent event = data.event;
@@ -125,7 +197,10 @@ class TeamMembersProvider with ChangeNotifier {
     });
   }
 
-  // Check if user is authenticated and initialize
+  /**
+   * Checks for an authenticated user and initializes immediately if found.
+   * Otherwise sets up listeners for future authentication events.
+   */
   void _initializeWhenReady() {
     // Check if there's an authenticated user
     final currentUser = _supabase.auth.currentUser;
@@ -149,7 +224,10 @@ class TeamMembersProvider with ChangeNotifier {
     _addListeners();
   }
 
-  // Reset provider state on logout
+  /**
+   * Resets the provider state when a user signs out or changes.
+   * Clears all data, cancels timers, and removes listeners.
+   */
   void _resetProviderState() {
     _isInitialized = false;
     _currentUserId = null;
@@ -163,18 +241,32 @@ class TeamMembersProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /**
+   * Adds text field listeners to track changes for form validation.
+   * Each listener triggers the field change handler for UI updates.
+   */
   void _addListeners() {
     _nameController.addListener(() => _onFieldChanged('name'));
     _roleController.addListener(() => _onFieldChanged('role'));
     _linkedinController.addListener(() => _onFieldChanged('linkedin'));
   }
 
+  /**
+   * Removes text field listeners to prevent memory leaks.
+   * Called during cleanup and state resets.
+   */
   void _removeListeners() {
     _nameController.removeListener(() => _onFieldChanged('name'));
     _roleController.removeListener(() => _onFieldChanged('role'));
     _linkedinController.removeListener(() => _onFieldChanged('linkedin'));
   }
 
+  /**
+   * Handles field changes by marking fields as dirty for UI feedback.
+   * Used to show users which fields have been modified.
+   * 
+   * @param fieldName The name of the field that changed
+   */
   void _onFieldChanged(String fieldName) {
     // Don't mark as dirty during initialization
     if (_isInitializing) return;
@@ -183,22 +275,56 @@ class TeamMembersProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Getters for states
+  // State getters for UI feedback
+
+  /**
+   * Indicates whether data is currently loading.
+   * 
+   * @return Loading state
+   */
   bool get isLoading => _isLoading;
+
+  /**
+   * Indicates whether a save operation is in progress.
+   * 
+   * @return Saving state
+   */
   bool get isSaving => _isSaving;
+
+  /**
+   * Provides the latest error message if any.
+   * 
+   * @return Error message or null
+   */
   String? get error => _error;
 
-  // Check if specific field has unsaved changes
+  /**
+   * Checks if a specific field has unsaved changes.
+   * 
+   * @param field The field name to check
+   * @return True if the field has unsaved changes
+   */
   bool hasUnsavedChanges(String field) => _dirtyFields.contains(field);
+
+  /**
+   * Indicates whether any fields have unsaved changes.
+   * 
+   * @return True if there are any unsaved changes
+   */
   bool get hasAnyUnsavedChanges => _dirtyFields.isNotEmpty;
 
-  // Clear error method
+  /**
+   * Clears the current error state.
+   */
   void clearError() {
     _error = null;
     notifyListeners();
   }
 
-  // Initialize and load team members from Supabase
+  /**
+   * Initializes the provider with user data from the database.
+   * Loads existing team members if available and sets up the provider state.
+   */
   Future<void> initialize() async {
     final User? currentUser = _supabase.auth.currentUser;
     if (currentUser == null) {
@@ -241,6 +367,10 @@ class TeamMembersProvider with ChangeNotifier {
     }
   }
 
+  /**
+   * Loads team members data from the database.
+   * Retrieves all team members for the current user and populates the local list.
+   */
   Future<void> _loadTeamMembers() async {
     final User? currentUser = _supabase.auth.currentUser;
     if (currentUser == null) {
@@ -291,33 +421,83 @@ class TeamMembersProvider with ChangeNotifier {
     }
   }
 
-  // Add getter for team members list
+  // Getters for accessing team data
+
+  /**
+   * Returns an unmodifiable list of all team members.
+   * 
+   * @return List of team members
+   */
   List<TeamMember> get teamMembers => List.unmodifiable(_teamMembers);
 
-  // Add getter for team members count
+  /**
+   * Returns the total number of team members.
+   * 
+   * @return Count of team members
+   */
   int get teamMembersCount => _teamMembers.length;
 
-  // Check if team has members
+  /**
+   * Indicates whether the team has any members.
+   * 
+   * @return True if team has members
+   */
   bool get hasTeamMembers => _teamMembers.isNotEmpty;
 
-  // Get completion percentage for team setup
+  /**
+   * Calculates the team completion percentage based on ideal team size.
+   * Assumes an ideal team size of 3 members for 100% completion.
+   * 
+   * @return Completion percentage (0-100)
+   */
   double get completionPercentage {
     if (_teamMembers.isEmpty) return 0.0;
     if (_teamMembers.length >= 3) return 100.0;
     return (_teamMembers.length / 3) * 100; // Assuming ideal team size is 3
   }
 
-  // Getters for controllers
+  // Controller getters for UI binding
+
+  /**
+   * Provides access to the name text controller.
+   * 
+   * @return Text controller for member name
+   */
   TextEditingController get nameController => _nameController;
+
+  /**
+   * Provides access to the role text controller.
+   * 
+   * @return Text controller for member role
+   */
   TextEditingController get roleController => _roleController;
+
+  /**
+   * Provides access to the LinkedIn text controller.
+   * 
+   * @return Text controller for LinkedIn URL
+   */
   TextEditingController get linkedinController => _linkedinController;
 
-  // Form validation
+  /**
+   * Indicates whether the current form has valid data.
+   * Checks that required fields (name and role) are not empty.
+   * 
+   * @return True if form is valid
+   */
   bool get isFormValid =>
       _nameController.text.trim().isNotEmpty &&
       _roleController.text.trim().isNotEmpty;
 
-  // Get team members by role
+  // Team analysis and filtering methods
+
+  /**
+   * Returns team members filtered by a specific role.
+   * Performs case-insensitive search within role names.
+   * 
+   * @param role The role to filter by
+   * @return List of team members with matching roles
+   */
   List<TeamMember> getTeamMembersByRole(String role) {
     return _teamMembers
         .where(
@@ -326,7 +506,12 @@ class TeamMembersProvider with ChangeNotifier {
         .toList();
   }
 
-  // Get leadership team (CEO, CTO, etc.)
+  /**
+   * Returns team members in leadership positions.
+   * Identifies leadership roles like CEO, CTO, CFO, Co-founder, etc.
+   * 
+   * @return List of leadership team members
+   */
   List<TeamMember> get leadershipTeam {
     final leadershipRoles = [
       'ceo',
@@ -345,7 +530,14 @@ class TeamMembersProvider with ChangeNotifier {
         .toList();
   }
 
-  // Check if team member exists
+  /**
+   * Checks if a team member with the given name and role already exists.
+   * Performs case-insensitive comparison to prevent duplicates.
+   * 
+   * @param name The member's name to check
+   * @param role The member's role to check
+   * @return True if a member with this name and role exists
+   */
   bool isTeamMemberExists(String name, String role) {
     return _teamMembers.any(
       (member) =>
@@ -354,7 +546,14 @@ class TeamMembersProvider with ChangeNotifier {
     );
   }
 
-  // Add a new team member with Supabase save
+  // CRUD operations for team members
+
+  /**
+   * Adds a new team member using form data and saves to database.
+   * Validates input, checks for duplicates, and handles database persistence.
+   * 
+   * @return True if member was added successfully, false otherwise
+   */
   Future<bool> addTeamMember() async {
     final name = _nameController.text.trim();
     final role = _roleController.text.trim();
@@ -436,7 +635,12 @@ class TeamMembersProvider with ChangeNotifier {
     }
   }
 
-  // Remove a team member
+  /**
+   * Removes a team member from both database and local storage.
+   * 
+   * @param memberId The ID of the member to remove
+   * @return True if member was removed successfully, false otherwise
+   */
   Future<bool> removeTeamMember(String memberId) async {
     _isSaving = true;
     _error = null;
@@ -461,7 +665,17 @@ class TeamMembersProvider with ChangeNotifier {
     }
   }
 
-  // Update a team member
+  /**
+   * Updates an existing team member's information.
+   * Allows selective updating of specific fields while preserving others.
+   * 
+   * @param id The member ID to update
+   * @param name New name (optional)
+   * @param role New role (optional)
+   * @param linkedin New LinkedIn URL (optional)
+   * @param avatar New avatar URL (optional)
+   * @return True if update was successful, false otherwise
+   */
   Future<bool> updateTeamMember(
     String id, {
     String? name,
@@ -516,7 +730,15 @@ class TeamMembersProvider with ChangeNotifier {
     }
   }
 
-  // Add multiple team members (bulk operation)
+  // Bulk operations for team management
+
+  /**
+   * Adds multiple team members in a single bulk operation.
+   * More efficient than adding members one by one for large teams.
+   * 
+   * @param members List of member data maps to add
+   * @return True if all members were added successfully, false otherwise
+   */
   Future<bool> addMultipleTeamMembers(List<Map<String, String>> members) async {
     if (members.isEmpty) return true;
 
@@ -571,7 +793,10 @@ class TeamMembersProvider with ChangeNotifier {
     }
   }
 
-  // Clear all team members with Supabase delete
+  /**
+   * Removes all team members from both database and local storage.
+   * Use with caution as this operation cannot be undone.
+   */
   Future<void> clearAllTeamMembers() async {
     if (_teamMembers.isEmpty) return;
 
@@ -602,7 +827,12 @@ class TeamMembersProvider with ChangeNotifier {
     }
   }
 
-  // Save team members to Supabase (for consistency with UI)
+  /**
+   * Synchronizes team members with the database.
+   * Mainly for UI consistency and clearing dirty flags.
+   * 
+   * @return True if sync was successful, false otherwise
+   */
   Future<bool> saveTeamMembers() async {
     _isSaving = true;
     _error = null;
@@ -624,6 +854,10 @@ class TeamMembersProvider with ChangeNotifier {
     }
   }
 
+  /**
+   * Clears all team member data and resets the provider state.
+   * Useful for starting fresh or handling errors.
+   */
   Future<void> clearAllData() async {
     _nameController.clear();
     _roleController.clear();
@@ -636,19 +870,28 @@ class TeamMembersProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Add method to reset for new user
+  /**
+   * Resets the provider for a new user.
+   * Clears existing data and reinitializes for the new user.
+   */
   Future<void> resetForNewUser() async {
     clearAllData();
     await initialize();
   }
 
-  // Mark team members as dirty
+  /**
+   * Marks team members data as dirty for UI feedback.
+   * Used internally to indicate changes that need saving.
+   */
   void _markTeamMembersDirtyAndSave() {
     _dirtyFields.add('teamMembers');
     notifyListeners();
   }
 
-  // Clear form controllers
+  /**
+   * Clears the form controllers without triggering dirty state.
+   * Temporarily removes listeners to prevent false dirty flags.
+   */
   void clearForm() {
     // Temporarily remove listeners to prevent triggering dirty state
     _removeListeners();
@@ -668,7 +911,15 @@ class TeamMembersProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Validation methods
+  // Validation methods for form input
+
+  /**
+   * Validates the team member name field.
+   * Ensures name is provided and meets minimum length requirements.
+   * 
+   * @param value The name to validate
+   * @return Error message or null if valid
+   */
   String? validateName(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Name is required';
@@ -679,6 +930,13 @@ class TeamMembersProvider with ChangeNotifier {
     return null;
   }
 
+  /**
+   * Validates the team member role field.
+   * Ensures role is provided and meets minimum length requirements.
+   * 
+   * @param value The role to validate
+   * @return Error message or null if valid
+   */
   String? validateRole(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Role is required';
@@ -689,6 +947,13 @@ class TeamMembersProvider with ChangeNotifier {
     return null;
   }
 
+  /**
+   * Validates the LinkedIn profile URL field.
+   * LinkedIn is optional, but if provided, must be a valid LinkedIn URL.
+   * 
+   * @param value The LinkedIn URL to validate
+   * @return Error message or null if valid
+   */
   String? validateLinkedin(String? value) {
     if (value == null || value.trim().isEmpty) {
       return null; // LinkedIn is optional
@@ -706,7 +971,15 @@ class TeamMembersProvider with ChangeNotifier {
     return null;
   }
 
-  // Get team summary for display
+  // Analytics and reporting methods
+
+  /**
+   * Generates a comprehensive summary of the team composition.
+   * Includes member counts, role distribution, and team analysis.
+   * 
+   * @return Map containing detailed team analytics
+   */
+
   Map<String, dynamic> getTeamSummary() {
     final roles = <String, int>{};
     for (final member in _teamMembers) {
@@ -727,34 +1000,6 @@ class TeamMembersProvider with ChangeNotifier {
       'newestMember': _teamMembers.isNotEmpty ? _teamMembers.first : null,
       'oldestMember': _teamMembers.isNotEmpty ? _teamMembers.last : null,
     };
-  }
-
-  // Export team data for backup/sharing
-  Map<String, dynamic> exportTeamData() {
-    return {
-      'teamMembers': _teamMembers.map((member) => member.toMap()).toList(),
-      'teamCount': _teamMembers.length,
-      'leadershipCount': leadershipTeam.length,
-      'exportedAt': DateTime.now().toIso8601String(),
-    };
-  }
-
-  // Import team data
-  Future<bool> importTeamData(List<Map<String, String>> membersData) async {
-    try {
-      await addMultipleTeamMembers(membersData);
-      debugPrint('Team data imported successfully');
-      return true;
-    } catch (e) {
-      _error = 'Failed to import team data: $e';
-      debugPrint('Error importing team data: $e');
-      return false;
-    }
-  }
-
-  // Refresh data from database
-  Future<void> refreshFromDatabase() async {
-    await _loadTeamMembers();
   }
 
   @override

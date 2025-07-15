@@ -3,6 +3,27 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
 
+/**
+ * startup_profile_overview_provider.dart
+ * 
+ * Implements a state management provider for startup profile overview information,
+ * handling basic company details like name, tagline, industry and region.
+ * 
+ * Features:
+ * - Core startup profile data management
+ * - Auto-saving with debouncing
+ * - Form validation
+ * - Profile completion tracking
+ * - Dirty field tracking for UI updates
+ * - Authentication state integration
+ * - User-specific data isolation
+ * - Database persistence with Supabase
+ */
+
+/**
+ * StartupProfileOverviewProvider - Change notifier provider for managing
+ * startup profile overview data with Supabase integration.
+ */
 class StartupProfileOverviewProvider with ChangeNotifier {
   // Controllers for profile data
   final TextEditingController _companyNameController = TextEditingController();
@@ -28,6 +49,10 @@ class StartupProfileOverviewProvider with ChangeNotifier {
   // Supabase client
   final SupabaseClient _supabase = Supabase.instance.client;
 
+  /**
+   * Constructor that sets up authentication listener and
+   * initializes data when authenticated.
+   */
   StartupProfileOverviewProvider() {
     // Initialize automatically when provider is created and user is authenticated
     _setupAuthListener();
@@ -35,6 +60,10 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     _initializeWhenReady();
   }
 
+  /**
+   * Sets up an authentication state listener to handle user changes.
+   * Ensures data is isolated between different users.
+   */
   void _setupAuthListener() {
     _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
       final AuthChangeEvent event = data.event;
@@ -61,7 +90,10 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     });
   }
 
-  // Check if user is authenticated and initialize
+  /**
+   * Checks for authenticated user and initializes data if found.
+   * Otherwise sets up listeners for future authentication events.
+   */
   void _initializeWhenReady() {
     // Check if there's an authenticated user
     final currentUser = _supabase.auth.currentUser;
@@ -85,7 +117,10 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     _addListeners();
   }
 
-  // Reset provider state on logout
+  /**
+   * Resets the provider state when user signs out or changes.
+   * Clears all data and cancels pending operations.
+   */
   void _resetProviderState() {
     _isInitialized = false;
     _currentUserId = null;
@@ -101,6 +136,9 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     _addListeners();
   }
 
+  /**
+   * Sets up listeners for text field changes.
+   */
   void _addListeners() {
     _companyNameController.addListener(() => _onFieldChanged('companyName'));
     _taglineController.addListener(() => _onFieldChanged('tagline'));
@@ -108,6 +146,9 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     _regionController.addListener(() => _onFieldChanged('region'));
   }
 
+  /**
+   * Removes listeners for text field changes.
+   */
   void _removeListeners() {
     _companyNameController.removeListener(() => _onFieldChanged('companyName'));
     _taglineController.removeListener(() => _onFieldChanged('tagline'));
@@ -115,7 +156,9 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     _regionController.removeListener(() => _onFieldChanged('region'));
   }
 
-  // Add this method to clear all data
+  /**
+   * Clears all profile data and resets the provider state.
+   */
   Future<void> clearAllData() async {
     _removeListeners();
 
@@ -132,12 +175,20 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     _addListeners();
   }
 
-  // Add method to reset for new user
+  /**
+   * Resets the provider for a new user.
+   * Clears state and reinitializes.
+   */
   Future<void> resetForNewUser() async {
     clearAllData();
     await initialize();
   }
 
+  /**
+   * Handles field changes by marking fields as dirty and scheduling auto-save.
+   * 
+   * @param fieldName The field that changed
+   */
   void _onFieldChanged(String fieldName) {
     // Don't mark as dirty during initialization
     if (_isInitializing) return;
@@ -154,22 +205,54 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     });
   }
 
-  // Getters for states
+  /**
+   * Indicates whether data is currently loading.
+   * 
+   * @return Loading state
+   */
   bool get isLoading => _isLoading;
+
+  /**
+   * Indicates whether a save operation is in progress.
+   * 
+   * @return Saving state
+   */
   bool get isSaving => _isSaving;
+
+  /**
+   * Provides the latest error message if any.
+   * 
+   * @return Error message or null
+   */
   String? get error => _error;
 
-  // Check if specific field has unsaved changes
+  /**
+   * Checks if a specific field has unsaved changes.
+   * 
+   * @param field The field name to check
+   * @return True if the field has unsaved changes
+   */
   bool hasUnsavedChanges(String field) => _dirtyFields.contains(field);
+
+  /**
+   * Indicates whether any fields have unsaved changes.
+   * 
+   * @return True if there are any unsaved changes
+   */
   bool get hasAnyUnsavedChanges => _dirtyFields.isNotEmpty;
 
-  // Clear error method
+  /**
+   * Clears the current error state.
+   */
   void clearError() {
     _error = null;
     notifyListeners();
   }
 
-  // Initialize and load data from Supabase
+  /**
+   * Initializes the provider with user data.
+   * Loads profile data from database if exists.
+   */
   Future<void> initialize() async {
     final User? currentUser = _supabase.auth.currentUser;
     if (currentUser == null) {
@@ -177,7 +260,7 @@ class StartupProfileOverviewProvider with ChangeNotifier {
       return;
     }
 
-    // 🔥 CRITICAL: Check if we need to reset for different user
+    // Check if we need to reset for different user
     if (_currentUserId != null && _currentUserId != currentUser.id) {
       debugPrint('🔄 User changed during initialization, resetting state');
       _resetProviderState();
@@ -210,6 +293,10 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     }
   }
 
+  /**
+   * Loads startup profile data from the database.
+   * Temporarily removes listeners to prevent auto-save during loading.
+   */
   Future<void> _loadProfileData() async {
     try {
       _removeListeners();
@@ -217,7 +304,7 @@ class StartupProfileOverviewProvider with ChangeNotifier {
       final User? currentUser = _supabase.auth.currentUser;
       if (currentUser == null) return;
 
-      // 🔥 ADDITIONAL SAFETY: Verify user consistency
+      // Verify user consistency
       if (_currentUserId != null && _currentUserId != currentUser.id) {
         debugPrint('⚠️ User mismatch detected in _loadProfileData, resetting');
         _resetProviderState();
@@ -252,23 +339,72 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     }
   }
 
-  // Getters for controllers
+  /**
+   * Provides access to the company name text controller.
+   * 
+   * @return Text controller for company name
+   */
   TextEditingController get companyNameController => _companyNameController;
+
+  /**
+   * Provides access to the tagline text controller.
+   * 
+   * @return Text controller for tagline
+   */
   TextEditingController get taglineController => _taglineController;
+
+  /**
+   * Provides access to the industry text controller.
+   * 
+   * @return Text controller for industry
+   */
   TextEditingController get industryController => _industryController;
+
+  /**
+   * Provides access to the region text controller.
+   * 
+   * @return Text controller for region
+   */
   TextEditingController get regionController => _regionController;
 
-  // Getters for values
+  /**
+   * Returns the company name text.
+   * 
+   * @return Company name or null if empty
+   */
   String? get companyName =>
       _companyNameController.text.isEmpty ? null : _companyNameController.text;
+
+  /**
+   * Returns the tagline text.
+   * 
+   * @return Tagline or null if empty
+   */
   String? get tagline =>
       _taglineController.text.isEmpty ? null : _taglineController.text;
+
+  /**
+   * Returns the industry text.
+   * 
+   * @return Industry or null if empty
+   */
   String? get industry =>
       _industryController.text.isEmpty ? null : _industryController.text;
+
+  /**
+   * Returns the region text.
+   * 
+   * @return Region or null if empty
+   */
   String? get region =>
       _regionController.text.isEmpty ? null : _regionController.text;
 
-  // Check if profile is complete
+  /**
+   * Determines if the profile is complete.
+   * All required fields must have content.
+   * 
+   * @return True if profile is complete
+   */
   bool get isProfileComplete {
     return companyName != null &&
         tagline != null &&
@@ -276,7 +412,11 @@ class StartupProfileOverviewProvider with ChangeNotifier {
         region != null;
   }
 
-  // Get completion percentage
+  /**
+   * Calculates the profile completion percentage.
+   * 
+   * @return Percentage (0-100) of completion
+   */
   double get completionPercentage {
     int completedFields = 0;
     if (companyName != null) completedFields++;
@@ -286,7 +426,13 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     return (completedFields / 4) * 100;
   }
 
-  // Save specific field to Supabase
+  /**
+   * Saves a specific field to the database.
+   * Only saves if the field has been marked as dirty.
+   * 
+   * @param fieldName The field to save
+   * @return True if save was successful, false otherwise
+   */
   Future<bool> saveField(String fieldName) async {
     if (!_dirtyFields.contains(fieldName)) return true;
 
@@ -323,7 +469,7 @@ class StartupProfileOverviewProvider with ChangeNotifier {
 
       updateData['updated_at'] = DateTime.now().toIso8601String();
 
-      // FIXED: Check if record exists first
+      // Check if record exists first
       final existingRecord =
           await _supabase
               .from('startup_profiles')
@@ -358,6 +504,11 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     }
   }
 
+  /**
+   * Saves all dirty fields to the database in a single operation.
+   * 
+   * @return True if save was successful, false otherwise
+   */
   Future<bool> saveAllFields() async {
     if (_dirtyFields.isEmpty) return true;
 
@@ -389,7 +540,7 @@ class StartupProfileOverviewProvider with ChangeNotifier {
 
       updateData['updated_at'] = DateTime.now().toIso8601String();
 
-      // FIXED: Check if record exists first
+      // Check if record exists first
       final existingRecord =
           await _supabase
               .from('startup_profiles')
@@ -424,7 +575,12 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     }
   }
 
-  // Validation methods
+  /**
+   * Validates the company name field.
+   * 
+   * @param value The company name to validate
+   * @return Error message or null if valid
+   */
   String? validateCompanyName(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Company name is required';
@@ -435,6 +591,12 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     return null;
   }
 
+  /**
+   * Validates the tagline field.
+   * 
+   * @param value The tagline to validate
+   * @return Error message or null if valid
+   */
   String? validateTagline(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Tagline is required';
@@ -445,6 +607,12 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     return null;
   }
 
+  /**
+   * Validates the industry field.
+   * 
+   * @param value The industry to validate
+   * @return Error message or null if valid
+   */
   String? validateIndustry(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Industry is required';
@@ -452,6 +620,12 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     return null;
   }
 
+  /**
+   * Validates the region field.
+   * 
+   * @param value The region to validate
+   * @return Error message or null if valid
+   */
   String? validateRegion(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Region is required';
@@ -459,7 +633,11 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     return null;
   }
 
-  // Get profile data as map
+  /**
+   * Returns the profile data as a map for export or display.
+   * 
+   * @return Map containing all profile fields
+   */
   Map<String, String> getProfileData() {
     return {
       'companyName': _companyNameController.text.trim(),
@@ -469,7 +647,14 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     };
   }
 
-  // Method to update profile data programmatically
+  /**
+   * Updates profile data programmatically with new values.
+   * 
+   * @param companyName Optional new company name
+   * @param tagline Optional new tagline
+   * @param industry Optional new industry
+   * @param region Optional new region
+   */
   void updateProfileData({
     String? companyName,
     String? tagline,
@@ -487,7 +672,11 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Get profile status summary
+  /**
+   * Returns a summary of the profile status.
+   * 
+   * @return Map with completion status and data
+   */
   Map<String, dynamic> getProfileStatus() {
     return {
       'completionPercentage': completionPercentage,
@@ -497,18 +686,29 @@ class StartupProfileOverviewProvider with ChangeNotifier {
     };
   }
 
+  /**
+   * Clears all profile data.
+   * Shorthand for clearAllData().
+   */
   Future<void> clearProfileData() async {
     await clearAllData();
   }
 
+  /**
+   * Refreshes profile data from the database.
+   * Useful for manual refresh operations.
+   */
   Future<void> refreshFromDatabase() async {
     _isInitialized = false;
     await initialize();
   }
 
+  /**
+   * Cleans up resources when the provider is disposed.
+   */
   @override
   void dispose() {
-    _authSubscription?.cancel(); // 🔥 Cancel auth listener
+    _authSubscription?.cancel(); // Cancel auth listener
     _saveTimer?.cancel();
     _removeListeners();
     _companyNameController.dispose();

@@ -5,54 +5,87 @@ import 'dart:io';
 import 'dart:async';
 import '../../services/storage_service.dart';
 
+/**
+ * startup_profile_provider.dart
+ * 
+ * Implements a comprehensive state management provider for startup profile data,
+ * handling idea descriptions, funding information, profile images, and pitch deck files.
+ * 
+ * Features:
+ * - Complete startup profile data management (idea, funding, images, pitch decks)
+ * - Auto-saving with debouncing to reduce database calls
+ * - Advanced file handling for pitch deck uploads with thumbnails
+ * - Profile image management with cloud storage integration
+ * - Form validation for all profile fields
+ * - Profile completion tracking and progress calculation
+ * - Dirty field tracking for real-time UI feedback
+ * - Authentication state integration with user isolation
+ * - Pitch deck submission workflow with status tracking
+ * - Database persistence with Supabase integration
+ * - Error handling and loading state management
+ */
+
+/**
+ * StartupProfileProvider - Advanced change notifier provider for managing
+ * comprehensive startup profile data with cloud storage and file management.
+ */
 class StartupProfileProvider with ChangeNotifier {
-  // Text controllers
+  // Text controllers for profile data input
   final TextEditingController _ideaDescriptionController =
       TextEditingController();
   final TextEditingController _fundingGoalController = TextEditingController();
 
-  // Profile image
+  // Profile image management
   File? _profileImage;
   String? _profileImageUrl; // URL from Supabase storage
 
-  // Pitch deck files
+  // Pitch deck file management with thumbnails
   List<File> _pitchDeckFiles = [];
   List<Widget> _pitchDeckThumbnails = [];
   bool _isPitchDeckSubmitted = false;
   DateTime? _pitchDeckSubmissionDate;
   String? _pitchDeckId; // Reference to pitch_deck record
 
-  // Auto-save timer
+  // Auto-save timer for debouncing user input
   Timer? _saveTimer;
 
-  // Funding information
+  // Funding information storage
   int? _fundingGoalAmount;
   String? _selectedFundingPhase;
 
-  // Loading and error states
+  // Loading and error states for UI feedback
   bool _isLoading = false;
   bool _isSaving = false;
   String? _error;
 
-  // Dirty tracking for unsaved changes
+  // Dirty tracking for unsaved changes indicator
   final Set<String> _dirtyFields = <String>{};
 
-  // Flag to prevent infinite loops during initialization
+  // Initialization flags to prevent infinite loops
   bool _isInitializing = false;
   bool _isInitialized = false;
 
+  // User authentication tracking
   String? _currentUserId;
   StreamSubscription<AuthState>? _authSubscription;
 
-  // Supabase client
+  // Supabase client for database operations
   final SupabaseClient _supabase = Supabase.instance.client;
 
+  /**
+   * Constructor that automatically sets up authentication listener
+   * and initializes data when a user is authenticated.
+   */
   StartupProfileProvider() {
     // Initialize automatically when provider is created and user is authenticated
     _setupAuthListener();
     _initializeWhenReady();
   }
 
+  /**
+   * Sets up an authentication state listener to handle user sign-in/sign-out events.
+   * Ensures data isolation between different users and resets state appropriately.
+   */
   void _setupAuthListener() {
     _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
       final AuthChangeEvent event = data.event;
@@ -79,7 +112,10 @@ class StartupProfileProvider with ChangeNotifier {
     });
   }
 
-  // Check if user is authenticated and initialize
+  /**
+   * Checks for an authenticated user and initializes immediately if found.
+   * Otherwise sets up listeners for future authentication events.
+   */
   void _initializeWhenReady() {
     // Check if there's an authenticated user
     final currentUser = _supabase.auth.currentUser;
@@ -103,12 +139,27 @@ class StartupProfileProvider with ChangeNotifier {
     _addListeners();
   }
 
+  /**
+   * Sets new pitch deck files and their corresponding thumbnail widgets.
+   * Used when user selects files for upload.
+   * 
+   * @param files List of selected files
+   * @param thumbnails List of thumbnail widgets for the files
+   */
   void setPitchDeckFiles(List<File> files, List<Widget> thumbnails) {
     _pitchDeckFiles = files;
     _pitchDeckThumbnails = thumbnails;
     notifyListeners();
   }
 
+  /**
+   * Builds a visual card widget for displaying file information.
+   * Shows file type icon, name, and provides removal functionality.
+   * 
+   * @param context The build context
+   * @param file The file to create a card for
+   * @return Widget representing the file card
+   */
   Widget buildFileCard(BuildContext context, File file) {
     final extension = file.path.split('.').last.toLowerCase();
     final fileName = file.path.split('/').last;
@@ -173,6 +224,13 @@ class StartupProfileProvider with ChangeNotifier {
     );
   }
 
+  /**
+   * Returns the appropriate icon for a file based on its extension.
+   * Supports PDF, video files, and generic file types.
+   * 
+   * @param extension The file extension to get an icon for
+   * @return Icon widget representing the file type
+   */
   Icon _getFileIcon(String extension) {
     switch (extension.toLowerCase()) {
       case 'pdf':
@@ -192,7 +250,10 @@ class StartupProfileProvider with ChangeNotifier {
     }
   }
 
-  // Reset provider state on logout
+  /**
+   * Resets the provider state when a user signs out or changes.
+   * Clears all data, cancels timers, and removes listeners.
+   */
   void _resetProviderState() {
     _isInitialized = false;
     _currentUserId = null;
@@ -217,7 +278,10 @@ class StartupProfileProvider with ChangeNotifier {
     _addListeners();
   }
 
-  // Clear all data
+  /**
+   * Clears all profile data and resets the provider state.
+   * Useful for starting fresh or handling errors.
+   */
   Future<void> clearAllData() async {
     _removeListeners();
 
@@ -240,12 +304,19 @@ class StartupProfileProvider with ChangeNotifier {
     _addListeners();
   }
 
-  // Reset for new user
+  /**
+   * Resets the provider for a new user.
+   * Clears existing data and reinitializes for the new user.
+   */
   Future<void> resetForNewUser() async {
     clearAllData();
     await initialize();
   }
 
+  /**
+   * Adds text field listeners to track changes for auto-saving.
+   * Each listener triggers the field change handler with debouncing.
+   */
   void _addListeners() {
     _ideaDescriptionController.addListener(
       () => _onFieldChanged('ideaDescription'),
@@ -253,6 +324,10 @@ class StartupProfileProvider with ChangeNotifier {
     _fundingGoalController.addListener(() => _onFieldChanged('fundingGoal'));
   }
 
+  /**
+   * Removes text field listeners to prevent memory leaks.
+   * Called during cleanup and state resets.
+   */
   void _removeListeners() {
     _ideaDescriptionController.removeListener(
       () => _onFieldChanged('ideaDescription'),
@@ -260,6 +335,12 @@ class StartupProfileProvider with ChangeNotifier {
     _fundingGoalController.removeListener(() => _onFieldChanged('fundingGoal'));
   }
 
+  /**
+   * Handles field changes by marking fields as dirty and scheduling auto-save.
+   * Implements debouncing to reduce frequent database calls.
+   * 
+   * @param fieldName The name of the field that changed
+   */
   void _onFieldChanged(String fieldName) {
     if (_isInitializing) return;
 
@@ -274,43 +355,149 @@ class StartupProfileProvider with ChangeNotifier {
     });
   }
 
-  // Getters
+  // Getters for accessing profile data
+
+  /**
+   * Returns the idea description text.
+   * 
+   * @return Idea description or null if empty
+   */
   String? get ideaDescription =>
       _ideaDescriptionController.text.isEmpty
           ? null
           : _ideaDescriptionController.text;
+
+  /**
+   * Returns the funding goal amount.
+   * 
+   * @return Funding goal amount or null if not set
+   */
   int? get fundingGoalAmount => _fundingGoalAmount;
+
+  /**
+   * Returns the selected funding phase.
+   * 
+   * @return Selected funding phase or null if not set
+   */
   String? get selectedFundingPhase => _selectedFundingPhase;
+
+  /**
+   * Returns the local profile image file.
+   * 
+   * @return Profile image file or null if not set
+   */
   File? get profileImage => _profileImage;
+
+  /**
+   * Returns the profile image URL from cloud storage.
+   * 
+   * @return Profile image URL or null if not set
+   */
   String? get profileImageUrl => _profileImageUrl;
+
+  /**
+   * Returns an unmodifiable list of pitch deck files.
+   * 
+   * @return List of pitch deck files
+   */
   List<File> get pitchDeckFiles => List.unmodifiable(_pitchDeckFiles);
+
+  /**
+   * Indicates whether the pitch deck has been submitted.
+   * 
+   * @return True if pitch deck is submitted
+   */
   bool get isPitchDeckSubmitted => _isPitchDeckSubmitted;
+
+  /**
+   * Returns the pitch deck submission date.
+   * 
+   * @return Submission date or null if not submitted
+   */
   DateTime? get pitchDeckSubmissionDate => _pitchDeckSubmissionDate;
+
+  /**
+   * Returns an unmodifiable list of pitch deck thumbnails.
+   * 
+   * @return List of thumbnail widgets
+   */
   List<Widget> get pitchDeckThumbnails =>
       List.unmodifiable(_pitchDeckThumbnails);
 
-  // Controllers getters
+  // Controller getters for UI binding
+
+  /**
+   * Provides access to the idea description text controller.
+   * 
+   * @return Text controller for idea description
+   */
   TextEditingController get ideaDescriptionController =>
       _ideaDescriptionController;
+
+  /**
+   * Provides access to the funding goal text controller.
+   * 
+   * @return Text controller for funding goal
+   */
   TextEditingController get fundingGoalController => _fundingGoalController;
 
-  // State getters
+  // State getters for UI feedback
+
+  /**
+   * Indicates whether data is currently loading.
+   * 
+   * @return Loading state
+   */
   bool get isLoading => _isLoading;
+
+  /**
+   * Indicates whether a save operation is in progress.
+   * 
+   * @return Saving state
+   */
   bool get isSaving => _isSaving;
+
+  /**
+   * Provides the latest error message if any.
+   * 
+   * @return Error message or null
+   */
   String? get error => _error;
+
+  /**
+   * Indicates whether the provider has been initialized.
+   * 
+   * @return Initialization state
+   */
   bool get isInitialized => _isInitialized;
 
-  // Check if specific field has unsaved changes
+  /**
+   * Checks if a specific field has unsaved changes.
+   * 
+   * @param field The field name to check
+   * @return True if the field has unsaved changes
+   */
   bool hasUnsavedChanges(String field) => _dirtyFields.contains(field);
+
+  /**
+   * Indicates whether any fields have unsaved changes.
+   * 
+   * @return True if there are any unsaved changes
+   */
   bool get hasAnyUnsavedChanges => _dirtyFields.isNotEmpty;
 
-  // Clear error method
+  /**
+   * Clears the current error state.
+   */
   void clearError() {
     _error = null;
     notifyListeners();
   }
 
-  // Initialize and load data from Supabase
+  /**
+   * Initializes the provider with user data from the database.
+   * Loads existing profile data if available and sets up the provider state.
+   */
   Future<void> initialize() async {
     final User? currentUser = _supabase.auth.currentUser;
     if (currentUser == null) {
@@ -351,6 +538,11 @@ class StartupProfileProvider with ChangeNotifier {
     }
   }
 
+  /**
+   * Loads startup profile data from the database.
+   * Temporarily removes listeners to prevent auto-save during loading.
+   * Loads both basic profile data and pitch deck information.
+   */
   Future<void> _loadProfileData() async {
     try {
       _removeListeners();
@@ -407,6 +599,12 @@ class StartupProfileProvider with ChangeNotifier {
     }
   }
 
+  /**
+   * Loads pitch deck data from the database for the specified user.
+   * Retrieves file information and generates thumbnails for stored files.
+   * 
+   * @param userId The user ID to load pitch deck data for
+   */
   Future<void> _loadPitchDeckData(String userId) async {
     try {
       debugPrint('🔄 Loading pitch deck data for user: $userId');
@@ -460,6 +658,13 @@ class StartupProfileProvider with ChangeNotifier {
     }
   }
 
+  /**
+   * Generates thumbnail widgets for files that are already stored in cloud storage.
+   * Creates visual representations of stored files for UI display.
+   * 
+   * @param fileUrls List of file URLs from cloud storage
+   * @param fileNames List of original file names
+   */
   Future<void> _generateThumbnailsForStoredFiles(
     List<String> fileUrls,
     List<String>? fileNames,
@@ -498,6 +703,15 @@ class StartupProfileProvider with ChangeNotifier {
     }
   }
 
+  /**
+   * Builds a visual card widget for stored files in cloud storage.
+   * Shows file information with a green border to indicate it's stored.
+   * 
+   * @param fileUrl URL of the stored file
+   * @param fileName Original filename
+   * @param extension File extension for icon selection
+   * @return Widget representing the stored file card
+   */
   Widget _buildStoredFileCard(
     String fileUrl,
     String fileName,
@@ -544,7 +758,7 @@ class StartupProfileProvider with ChangeNotifier {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.2),
+                color: Colors.green.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
@@ -562,6 +776,13 @@ class StartupProfileProvider with ChangeNotifier {
     );
   }
 
+  /**
+   * Extracts a display-friendly filename from stored file names.
+   * Removes user IDs and timestamps for cleaner UI presentation.
+   * 
+   * @param fileName The full filename from storage
+   * @return Cleaned filename for display
+   */
   String _getDisplayFileName(String fileName) {
     // Remove user ID and timestamp from filename for display
     if (fileName.contains('_')) {
@@ -589,7 +810,11 @@ class StartupProfileProvider with ChangeNotifier {
     return fileName;
   }
 
-  // Method to get startup profile data
+  /**
+   * Retrieves the complete startup profile data from the database.
+   * 
+   * @return Map containing all profile data or null if user not authenticated
+   */
   Future<Map<String, dynamic>?> getStartupProfile() async {
     final User? currentUser = _supabase.auth.currentUser;
     if (currentUser == null) return null;
@@ -606,7 +831,13 @@ class StartupProfileProvider with ChangeNotifier {
     }
   }
 
-  // Save specific field to Supabase
+  /**
+   * Saves a specific field to the database with appropriate handling.
+   * Implements field-specific logic for different data types.
+   * 
+   * @param fieldName The name of the field to save
+   * @return True if save was successful, false otherwise
+   */
   Future<bool> saveField(String fieldName) async {
     if (_isInitializing) return true;
 
@@ -665,7 +896,12 @@ class StartupProfileProvider with ChangeNotifier {
     }
   }
 
-  // Save idea description
+  /**
+   * Saves the idea description to the database.
+   * Creates a new record if none exists, updates existing otherwise.
+   * 
+   * @param userId The user ID to save data for
+   */
   Future<void> _saveIdeaDescription(String userId) async {
     final existingRecord =
         await _supabase
@@ -691,7 +927,12 @@ class StartupProfileProvider with ChangeNotifier {
     }
   }
 
-  // Save funding goal (from text controller)
+  /**
+   * Saves the funding goal amount to the database.
+   * Handles both new record creation and existing record updates.
+   * 
+   * @param userId The user ID to save data for
+   */
   Future<void> _saveFundingGoalAmount(String userId) async {
     final existingRecord =
         await _supabase
@@ -717,6 +958,12 @@ class StartupProfileProvider with ChangeNotifier {
     }
   }
 
+  /**
+   * Saves the selected funding phase to the database.
+   * Includes debug logging for troubleshooting phase selection issues.
+   * 
+   * @param userId The user ID to save data for
+   */
   Future<void> _saveFundingPhase(String userId) async {
     debugPrint(
       '🔍 Attempting to save funding phase: "$_selectedFundingPhase"',
@@ -752,6 +999,12 @@ class StartupProfileProvider with ChangeNotifier {
     }
   }
 
+  /**
+   * Saves the profile image to cloud storage and updates the database.
+   * Uploads the image file first, then saves the URL to the profile.
+   * 
+   * @param userId The user ID to save data for
+   */
   Future<void> _saveProfileImage(String userId) async {
     final User? currentUser = _supabase.auth.currentUser;
     if (currentUser == null) {
@@ -797,8 +1050,12 @@ class StartupProfileProvider with ChangeNotifier {
     }
   }
 
-  // Save pitch deck files and submission status
-  // Save pitch deck files and submission status
+  /**
+   * Uploads pitch deck files to cloud storage and creates database records.
+   * Only called during pitch deck submission, not during file selection.
+   * 
+   * @param userId The user ID to save files for
+   */
   Future<void> _savePitchDeckFiles(String userId) async {
     if (_pitchDeckFiles.isEmpty) return;
 
@@ -849,7 +1106,12 @@ class StartupProfileProvider with ChangeNotifier {
     }
   }
 
-  // Save pitch deck submission status
+  /**
+   * Saves the pitch deck submission status to the database.
+   * Updates the submission flag and timestamp when pitch deck is submitted.
+   * 
+   * @param userId The user ID to save data for
+   */
   Future<void> _savePitchDeckSubmission(String userId) async {
     if (_pitchDeckId == null) return;
 
@@ -864,12 +1126,25 @@ class StartupProfileProvider with ChangeNotifier {
         .eq('id', _pitchDeckId!); // Filter by pitch deck ID
   }
 
-  // Public methods for updating data
+  // Public methods for updating profile data programmatically
+
+  /**
+   * Updates the idea description field programmatically.
+   * Triggers the change handler for auto-saving.
+   * 
+   * @param value The new idea description value
+   */
   void updateIdeaDescription(String value) {
     _ideaDescriptionController.text = value;
     _onFieldChanged('ideaDescription');
   }
 
+  /**
+   * Updates the funding goal amount programmatically.
+   * Converts the amount to string and triggers auto-saving.
+   * 
+   * @param amount The new funding goal amount
+   */
   void updateFundingGoalAmount(int? amount) {
     _fundingGoalAmount = amount;
     _fundingGoalController.text = amount?.toString() ?? '';
@@ -882,6 +1157,12 @@ class StartupProfileProvider with ChangeNotifier {
     });
   }
 
+  /**
+   * Updates the selected funding phase programmatically.
+   * Triggers auto-saving with debouncing.
+   * 
+   * @param phase The new funding phase selection
+   */
   void updateSelectedFundingPhase(String? phase) {
     _selectedFundingPhase = phase;
     _dirtyFields.add('selectedFundingPhase');
@@ -893,6 +1174,12 @@ class StartupProfileProvider with ChangeNotifier {
     });
   }
 
+  /**
+   * Updates the profile image and immediately saves it.
+   * Profile images are saved immediately rather than with debouncing.
+   * 
+   * @param image The new profile image file
+   */
   void updateProfileImage(File? image) {
     _profileImage = image;
     _dirtyFields.add('profileImage');
@@ -902,7 +1189,15 @@ class StartupProfileProvider with ChangeNotifier {
     saveField('profileImage');
   }
 
-  // Validation methods
+  // Validation methods for form input
+
+  /**
+   * Validates the idea description field input.
+   * Checks for minimum length and content requirements.
+   * 
+   * @param value The idea description to validate
+   * @return Error message or null if valid
+   */
   String? validateIdeaDescription(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Please describe your startup idea';
@@ -913,6 +1208,13 @@ class StartupProfileProvider with ChangeNotifier {
     return null;
   }
 
+  /**
+   * Validates the funding goal field input.
+   * Ensures numeric format and reasonable minimum values.
+   * 
+   * @param value The funding goal string to validate
+   * @return Error message or null if valid
+   */
   String? validateFundingGoal(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Please enter your funding goal';
@@ -930,6 +1232,13 @@ class StartupProfileProvider with ChangeNotifier {
     return null;
   }
 
+  /**
+   * Validates the funding phase selection.
+   * Ensures the selection is from the approved list of funding stages.
+   * 
+   * @param value The funding phase to validate
+   * @return Error message or null if valid
+   */
   String? validateFundingPhase(String? value) {
     final validStages = [
       'Idea',
@@ -960,34 +1269,71 @@ class StartupProfileProvider with ChangeNotifier {
     return null;
   }
 
+  // Computed properties for UI state
+
+  /**
+   * Indicates whether there are any pitch deck files (local or stored).
+   * 
+   * @return True if there are pitch deck files available
+   */
   bool get hasPitchDeckFiles {
     return _pitchDeckFiles.isNotEmpty || _pitchDeckThumbnails.isNotEmpty;
   }
 
+  /**
+   * Returns the total count of pitch deck files including stored files.
+   * 
+   * @return Total number of pitch deck files
+   */
   int get totalPitchDeckFilesCount {
     return _pitchDeckFiles.length + _pitchDeckThumbnails.length;
   }
 
+  /**
+   * Indicates whether there are local pitch deck files ready for upload.
+   * 
+   * @return True if there are local files staged for upload
+   */
   bool get hasLocalPitchDeckFiles {
     return _pitchDeckFiles.isNotEmpty;
   }
 
+  /**
+   * Indicates whether there are stored pitch deck files in cloud storage.
+   * 
+   * @return True if there are files already stored in the cloud
+   */
   bool get hasStoredPitchDeckFiles {
     return _pitchDeckThumbnails.isNotEmpty && _pitchDeckId != null;
   }
 
+  /**
+   * Indicates whether a profile image is available (local or stored).
+   * 
+   * @return True if there is a profile image
+   */
   bool get hasProfileImage {
     return _profileImage != null ||
         (_profileImageUrl != null && _profileImageUrl!.isNotEmpty);
   }
 
-  // Profile completion status
+  /**
+   * Determines if the profile is complete with all required fields.
+   * 
+   * @return True if all required fields are filled
+   */
   bool get isProfileComplete {
     return ideaDescription != null &&
         _fundingGoalAmount != null &&
         _selectedFundingPhase != null;
   }
 
+  /**
+   * Calculates the profile completion percentage.
+   * Based on four main fields: idea, funding goal, funding phase, and profile image.
+   * 
+   * @return Completion percentage (0-100)
+   */
   double get completionPercentage {
     int completedFields = 0;
     if (ideaDescription != null) completedFields++;
@@ -997,7 +1343,14 @@ class StartupProfileProvider with ChangeNotifier {
     return (completedFields / 4) * 100;
   }
 
-  // Pitch deck methods
+  // Pitch deck management methods
+
+  /**
+   * Adds new pitch deck files to the local collection.
+   * Files are staged for upload but not immediately uploaded.
+   * 
+   * @param files List of files to add to the pitch deck
+   */
   void addPitchDeckFiles(List<File> files) {
     _pitchDeckFiles.addAll(files);
     _dirtyFields.add('pitchDeckFiles');
@@ -1005,6 +1358,12 @@ class StartupProfileProvider with ChangeNotifier {
     saveField('pitchDeckFiles');
   }
 
+  /**
+   * Removes a pitch deck file from the local collection.
+   * Removes both the file and its corresponding thumbnail.
+   * 
+   * @param index The index of the file to remove
+   */
   Future<void> removePitchDeckFile(int index) async {
     if (index < _pitchDeckFiles.length) {
       _pitchDeckFiles.removeAt(index);
@@ -1017,10 +1376,20 @@ class StartupProfileProvider with ChangeNotifier {
     }
   }
 
+  /**
+   * Determines if the pitch deck can be submitted.
+   * Requires local files and that the pitch deck hasn't been submitted yet.
+   * 
+   * @return True if pitch deck can be submitted
+   */
   bool get canSubmitPitchDeck {
     return _pitchDeckFiles.isNotEmpty && !_isPitchDeckSubmitted;
   }
 
+  /**
+   * Refreshes all profile data from the database.
+   * Useful for manual refresh operations or after external changes.
+   */
   Future<void> refreshData() async {
     if (!_isInitialized) {
       await initialize();
@@ -1029,12 +1398,19 @@ class StartupProfileProvider with ChangeNotifier {
     }
   }
 
-  // 9. NEW: Method to clear only local files (not stored files)
+  /**
+   * Clears only local pitch deck files, keeping stored files intact.
+   * Used when user wants to reset their file selection.
+   */
   void clearLocalPitchDeckFiles() {
     _pitchDeckFiles.clear();
     notifyListeners();
   }
 
+  /**
+   * Submits the pitch deck by uploading files and updating submission status.
+   * This is when files are actually uploaded to cloud storage.
+   */
   Future<void> submitPitchDeck() async {
     try {
       final currentUser = _supabase.auth.currentUser;
@@ -1061,6 +1437,14 @@ class StartupProfileProvider with ChangeNotifier {
     }
   }
 
+  // Data export and summary methods
+
+  /**
+   * Returns the complete profile data as a map.
+   * Useful for exporting or displaying profile information.
+   * 
+   * @return Map containing all profile data
+   */
   Map<String, dynamic> getProfileData() {
     return {
       'ideaDescription': ideaDescription,
@@ -1073,6 +1457,12 @@ class StartupProfileProvider with ChangeNotifier {
     };
   }
 
+  /**
+   * Returns a list of current validation errors for all fields.
+   * Useful for displaying comprehensive error summaries.
+   * 
+   * @return List of validation error messages
+   */
   List<String> getValidationErrors() {
     List<String> errors = [];
 
@@ -1088,6 +1478,10 @@ class StartupProfileProvider with ChangeNotifier {
     return errors;
   }
 
+  /**
+   * Cleans up resources when the provider is disposed.
+   * Cancels timers, removes listeners, and disposes controllers.
+   */
   @override
   void dispose() {
     _authSubscription?.cancel(); // 🔥 Cancel auth listener
