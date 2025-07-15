@@ -1,4 +1,3 @@
-// lib/Startup/Startup_Dashboard/Business_Model_Canvas/business_model_canvas.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../Providers/business_model_canvas_provider.dart';
@@ -12,6 +11,27 @@ import 'package:venturelink/Startup/Startup_Dashboard/Business_Model_Canvas/key_
 import 'package:venturelink/Startup/Startup_Dashboard/Business_Model_Canvas/revenue_streams_page.dart';
 import 'package:venturelink/Startup/Startup_Dashboard/Business_Model_Canvas/value_propositions_page.dart';
 
+/**
+ * Implements the main Business Model Canvas interface for startup strategy planning.
+ * Provides a comprehensive overview and navigation system for all nine BMC sections.
+ * 
+ * Features:
+ * - Interactive grid layout displaying all 9 BMC sections
+ * - Real-time progress tracking and completion percentage calculation
+ * - Smooth animations and transitions for enhanced user experience
+ * - Visual indicators for completed sections and unsaved changes
+ * - Bulk operations for saving all changes and clearing data
+ * - Error handling with retry mechanisms
+ * - Responsive design with hover effects and visual feedback
+ * - Integration with BusinessModelCanvasProvider for state management
+ * - Navigation to individual section pages for detailed editing
+ * - Auto-save status indicators and loading states
+ */
+
+/**
+ * BusinessModelCanvas - Main widget for the Business Model Canvas dashboard.
+ * Provides overview and navigation to all nine BMC sections with progress tracking.
+ */
 class BusinessModelCanvas extends StatefulWidget {
   const BusinessModelCanvas({super.key});
 
@@ -19,13 +39,22 @@ class BusinessModelCanvas extends StatefulWidget {
   State<BusinessModelCanvas> createState() => _BusinessModelCanvasState();
 }
 
+/**
+ * _BusinessModelCanvasState - State management for the BMC main interface.
+ * Handles animations, navigation, and user interactions with the canvas sections.
+ */
 class _BusinessModelCanvasState extends State<BusinessModelCanvas>
     with TickerProviderStateMixin {
+  // Animation controllers for smooth UI transitions
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
+  /**
+   * Initializes the widget state and sets up animations.
+   * Creates fade and slide animations for enhanced user experience.
+   */
   @override
   void initState() {
     super.initState();
@@ -53,6 +82,9 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
     _slideController.forward();
   }
 
+  /**
+   * Cleans up animation controllers when the widget is disposed.
+   */
   @override
   void dispose() {
     _fadeController.dispose();
@@ -60,6 +92,10 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
     super.dispose();
   }
 
+  /**
+   * Builds the main Business Model Canvas interface.
+   * Uses Consumer pattern to listen to provider state changes.
+   */
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -163,6 +199,12 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
     );
   }
 
+  /**
+   * Builds the application bar with navigation and save status indicator.
+   * Shows loading spinner when save operations are in progress.
+   * 
+   * @return PreferredSizeWidget for the app bar
+   */
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       backgroundColor: Colors.grey[900],
@@ -204,6 +246,13 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
     );
   }
 
+  /**
+   * Builds the header section with BMC introduction and branding.
+   * Features gradient background and descriptive content.
+   * 
+   * @param provider The BusinessModelCanvasProvider instance
+   * @return Widget containing the header section
+   */
   Widget _buildHeader(BusinessModelCanvasProvider provider) {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -251,6 +300,13 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
     );
   }
 
+  /**
+   * Builds the progress tracking section showing completion status.
+   * Displays completion percentage, completed sections count, and unsaved changes indicator.
+   * 
+   * @param provider The BusinessModelCanvasProvider instance
+   * @return Widget containing the progress section
+   */
   Widget _buildProgressSection(BusinessModelCanvasProvider provider) {
     final completedSections = provider.completedSectionsCount;
 
@@ -309,6 +365,13 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
     );
   }
 
+  /**
+   * Builds the main BMC sections grid displaying all nine canvas sections.
+   * Creates a responsive grid with section cards for each BMC component.
+   * 
+   * @param provider The BusinessModelCanvasProvider instance
+   * @return Widget containing the BMC sections grid
+   */
   Widget _buildBMCSections(BusinessModelCanvasProvider provider) {
     final sections = _getBMCSections(provider);
 
@@ -355,6 +418,18 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
     );
   }
 
+  /**
+   * Builds an individual section card for the BMC grid.
+   * Each card represents one of the nine BMC sections with visual indicators.
+   * 
+   * @param title The section title
+   * @param description Brief description of the section
+   * @param icon Icon representing the section
+   * @param isComplete Whether the section is completed
+   * @param onTap Callback when the card is tapped
+   * @param hasUnsavedChanges Whether the section has unsaved changes
+   * @return Widget representing a section card
+   */
   Widget _buildSectionCard({
     required String title,
     required String description,
@@ -447,6 +522,13 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
     );
   }
 
+  /**
+   * Builds the action buttons section for save, clear, and refresh operations.
+   * Provides bulk actions for managing all BMC data at once.
+   * 
+   * @param provider The BusinessModelCanvasProvider instance
+   * @return Widget containing action buttons
+   */
   Widget _buildActionButtons(BusinessModelCanvasProvider provider) {
     return Column(
       children: [
@@ -604,6 +686,13 @@ class _BusinessModelCanvasState extends State<BusinessModelCanvas>
     );
   }
 
+  /**
+   * Returns the configuration data for all nine BMC sections.
+   * Each section includes title, description, icon, page navigation, and completion status.
+   * 
+   * @param provider The BusinessModelCanvasProvider instance
+   * @return List of maps containing section configuration data
+   */
   List<Map<String, dynamic>> _getBMCSections(
     BusinessModelCanvasProvider provider,
   ) {

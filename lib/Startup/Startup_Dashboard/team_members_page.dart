@@ -3,6 +3,30 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../Providers/team_members_provider.dart';
 
+/**
+ * Implements a comprehensive team management interface for startup team building and coordination.
+ * Provides complete functionality for adding, managing, and organizing team members with role-based categorization.
+ * 
+ * Features:
+ * - Complete team member management with real-time CRUD operations
+ * - Interactive form validation with LinkedIn profile integration
+ * - Dynamic team statistics and leadership tracking
+ * - Grid-based team member visualization with avatars and role indicators
+ * - Professional team member cards with leadership badges and social links
+ * - Comprehensive error handling with user-friendly feedback notifications
+ * - Auto-save functionality with unsaved changes tracking
+ * - Responsive design with animated transitions and orange theme (#FFa500)
+ * - Bulk operations for clearing and refreshing team data
+ * - Advanced confirmation dialogs for destructive operations
+ * - Team composition analytics with member count and leadership metrics
+ * - Professional styling with gradient backgrounds and shadow effects
+ * - Integration with TeamMembersProvider for centralized state management
+ */
+
+/**
+ * TeamMembersPage - Main team management widget for comprehensive startup team coordination.
+ * Integrates all team management functionality into a unified interface with real-time updates.
+ */
 class TeamMembersPage extends StatefulWidget {
   const TeamMembersPage({super.key});
 
@@ -10,30 +34,49 @@ class TeamMembersPage extends StatefulWidget {
   State<TeamMembersPage> createState() => _TeamMembersPageState();
 }
 
+/**
+ * _TeamMembersPageState - State management for the comprehensive team members interface.
+ * Manages form validation, animations, team operations, and provider integration for team coordination.
+ */
 class _TeamMembersPageState extends State<TeamMembersPage>
     with TickerProviderStateMixin {
+  /**
+   * Global form key for coordinating validation across all team member input fields.
+   */
   final _formKey = GlobalKey<FormState>();
+
+  /**
+   * Animation controllers for smooth page transitions and visual feedback.
+   */
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
+  /**
+   * Initializes the team members page state with animation controllers and configurations.
+   * Sets up fade and slide animations for enhanced user experience.
+   */
   @override
   void initState() {
     super.initState();
+    // Initialize fade animation controller for opacity transitions
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
+    // Initialize slide animation controller for position transitions
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
 
+    // Configure fade animation from transparent to opaque
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
 
+    // Configure slide animation from bottom to center with elastic effect
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
@@ -41,10 +84,14 @@ class _TeamMembersPageState extends State<TeamMembersPage>
       CurvedAnimation(parent: _slideController, curve: Curves.elasticOut),
     );
 
+    // Start animations immediately on page load
     _fadeController.forward();
     _slideController.forward();
   }
 
+  /**
+   * Disposes animation controllers to prevent memory leaks.
+   */
   @override
   void dispose() {
     _fadeController.dispose();
@@ -52,6 +99,12 @@ class _TeamMembersPageState extends State<TeamMembersPage>
     super.dispose();
   }
 
+  /**
+   * Builds the main team members page interface with provider integration.
+   * Uses Consumer pattern to listen to TeamMembersProvider changes and update UI accordingly.
+   * 
+   * @return Widget containing the complete team management interface
+   */
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -59,6 +112,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
       appBar: _buildAppBar(),
       body: Consumer<TeamMembersProvider>(
         builder: (context, provider, child) {
+          // Show loading state while provider is initializing
           if (provider.isLoading) {
             return const Center(
               child: Column(
@@ -75,6 +129,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
             );
           }
 
+          // Show error state with retry and navigation options
           if (provider.error != null) {
             return Center(
               child: Column(
@@ -129,6 +184,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
             );
           }
 
+          // Main content with animated transitions
           return FadeTransition(
             opacity: _fadeAnimation,
             child: SlideTransition(
@@ -157,6 +213,12 @@ class _TeamMembersPageState extends State<TeamMembersPage>
     );
   }
 
+  /**
+   * Builds the application bar with navigation and saving indicator.
+   * Shows a loading spinner when save operations are in progress.
+   * 
+   * @return PreferredSizeWidget containing the app bar with orange theme
+   */
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       backgroundColor: Colors.grey[900],
@@ -176,6 +238,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
       actions: [
         Consumer<TeamMembersProvider>(
           builder: (context, provider, child) {
+            // Show saving indicator when save operation is active
             if (provider.isSaving) {
               return const Padding(
                 padding: EdgeInsets.all(16.0),
@@ -198,6 +261,13 @@ class _TeamMembersPageState extends State<TeamMembersPage>
     );
   }
 
+  /**
+   * Builds the header section with gradient background and team branding.
+   * Displays dynamic messaging based on team composition and member count.
+   * 
+   * @param provider The TeamMembersProvider instance for state access
+   * @return Widget containing the styled header with team information
+   */
   Widget _buildHeader(TeamMembersProvider provider) {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -251,6 +321,13 @@ class _TeamMembersPageState extends State<TeamMembersPage>
     );
   }
 
+  /**
+   * Builds the progress tracking section with team statistics and composition analytics.
+   * Displays total member count, leadership count, and unsaved changes indicators.
+   * 
+   * @param provider The TeamMembersProvider instance for progress calculation
+   * @return Widget containing team statistics and progress visualization
+   */
   Widget _buildProgressSection(TeamMembersProvider provider) {
     final teamCount = provider.teamMembersCount;
     final leadershipCount = provider.leadershipTeam.length;
@@ -287,6 +364,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
             ],
           ),
           const SizedBox(height: 16),
+          // Team statistics cards
           Row(
             children: [
               Expanded(
@@ -308,6 +386,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
               ),
             ],
           ),
+          // Unsaved changes indicator
           if (provider.hasAnyUnsavedChanges) ...[
             const SizedBox(height: 12),
             Row(
@@ -326,6 +405,16 @@ class _TeamMembersPageState extends State<TeamMembersPage>
     );
   }
 
+  /**
+   * Builds individual team statistic cards with icons and color coding.
+   * Displays specific metrics like member count and leadership roles.
+   * 
+   * @param title The statistic title to display
+   * @param value The numeric value for the statistic
+   * @param icon The icon representing the statistic
+   * @param color The theme color for the statistic card
+   * @return Widget containing the styled team statistic card
+   */
   Widget _buildTeamStatCard(
     String title,
     String value,
@@ -362,6 +451,13 @@ class _TeamMembersPageState extends State<TeamMembersPage>
     );
   }
 
+  /**
+   * Builds the add member section with comprehensive form fields and validation.
+   * Includes name, role, and LinkedIn profile inputs with real-time validation feedback.
+   * 
+   * @param provider The TeamMembersProvider instance for form management
+   * @return Widget containing the complete add member form interface
+   */
   Widget _buildAddMemberSection(TeamMembersProvider provider) {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -403,6 +499,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
             key: _formKey,
             child: Column(
               children: [
+                // Name and role input fields in responsive row layout
                 Row(
                   children: [
                     Expanded(
@@ -427,6 +524,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
                   ],
                 ),
                 const SizedBox(height: 16),
+                // LinkedIn profile input field (optional)
                 _buildInputField(
                   controller: provider.linkedinController,
                   label: 'LinkedIn Profile (Optional)',
@@ -435,6 +533,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
                   validator: provider.validateLinkedin,
                 ),
                 const SizedBox(height: 24),
+                // Add member button with dynamic state
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -487,6 +586,17 @@ class _TeamMembersPageState extends State<TeamMembersPage>
     );
   }
 
+  /**
+   * Builds reusable input fields with consistent styling and validation support.
+   * Provides professional input styling with orange theme integration.
+   * 
+   * @param controller The TextEditingController for the input field
+   * @param label The label text for the field
+   * @param hint The placeholder text for user guidance
+   * @param icon The leading icon for visual identification
+   * @param validator The validation function for input validation
+   * @return Widget containing the styled input field
+   */
   Widget _buildInputField({
     required TextEditingController controller,
     required String label,
@@ -542,12 +652,20 @@ class _TeamMembersPageState extends State<TeamMembersPage>
             ),
           ),
           validator: validator,
-          onChanged: (_) => setState(() {}),
+          onChanged:
+              (_) => setState(() {}), // Trigger rebuild for validation updates
         ),
       ],
     );
   }
 
+  /**
+   * Builds the team members display section with grid layout and empty state handling.
+   * Shows either a grid of team member cards or an empty state message.
+   * 
+   * @param provider The TeamMembersProvider instance for team data access
+   * @return Widget containing the team members visualization section
+   */
   Widget _buildTeamMembersSection(TeamMembersProvider provider) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -569,6 +687,12 @@ class _TeamMembersPageState extends State<TeamMembersPage>
     );
   }
 
+  /**
+   * Builds the empty state display when no team members are present.
+   * Provides user guidance for adding their first team member.
+   * 
+   * @return Widget containing the styled empty state message
+   */
   Widget _buildEmptyState() {
     return Container(
       width: double.infinity,
@@ -600,6 +724,13 @@ class _TeamMembersPageState extends State<TeamMembersPage>
     );
   }
 
+  /**
+   * Builds the responsive grid layout for displaying team member cards.
+   * Uses GridView with fixed cross-axis count for optimal card display.
+   * 
+   * @param provider The TeamMembersProvider instance for team data
+   * @return Widget containing the team members grid layout
+   */
   Widget _buildTeamMembersGrid(TeamMembersProvider provider) {
     return GridView.builder(
       shrinkWrap: true,
@@ -618,6 +749,14 @@ class _TeamMembersPageState extends State<TeamMembersPage>
     );
   }
 
+  /**
+   * Builds individual team member cards with avatars, roles, and action buttons.
+   * Includes leadership badges, LinkedIn indicators, and removal functionality.
+   * 
+   * @param member The TeamMember instance to display
+   * @param provider The TeamMembersProvider instance for operations
+   * @return Widget containing the styled team member card
+   */
   Widget _buildTeamMemberCard(TeamMember member, TeamMembersProvider provider) {
     final isLeadership = provider.leadershipTeam.any(
       (leader) => leader.id == member.id,
@@ -649,6 +788,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              // Member avatar with initial or profile image
               CircleAvatar(
                 radius: 24,
                 backgroundColor: const Color(0xFFffa500).withValues(alpha: 0.2),
@@ -668,6 +808,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
                         )
                         : null,
               ),
+              // Action buttons row (leadership badge and remove button)
               Row(
                 children: [
                   if (isLeadership)
@@ -704,6 +845,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
             ],
           ),
           const SizedBox(height: 12),
+          // Member name with leadership styling
           Text(
             member.name,
             style: TextStyle(
@@ -715,6 +857,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
+          // Member role/position
           Text(
             member.role,
             style: TextStyle(
@@ -726,6 +869,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
             overflow: TextOverflow.ellipsis,
           ),
           const Spacer(),
+          // LinkedIn indicator badge
           if (member.linkedin.isNotEmpty)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -754,9 +898,17 @@ class _TeamMembersPageState extends State<TeamMembersPage>
     );
   }
 
+  /**
+   * Builds the action buttons section for save, clear, and refresh operations.
+   * Dynamically shows appropriate buttons based on team data availability.
+   * 
+   * @param provider The TeamMembersProvider instance for action handling
+   * @return Widget containing the action buttons with loading states
+   */
   Widget _buildActionButtons(TeamMembersProvider provider) {
     return Column(
       children: [
+        // Save team button - shown when team members exist
         if (provider.hasTeamMembers)
           SizedBox(
             width: double.infinity,
@@ -820,6 +972,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
         const SizedBox(height: 16),
         Row(
           children: [
+            // Clear All button - only shown when team members exist
             if (provider.hasTeamMembers) ...[
               Expanded(
                 child: OutlinedButton(
@@ -852,6 +1005,7 @@ class _TeamMembersPageState extends State<TeamMembersPage>
               ),
               const SizedBox(width: 16),
             ],
+            // Refresh button - always available for data synchronization
             Expanded(
               child: OutlinedButton(
                 onPressed: () async {
@@ -884,6 +1038,13 @@ class _TeamMembersPageState extends State<TeamMembersPage>
     );
   }
 
+  /**
+   * Handles adding a new team member with comprehensive validation and user feedback.
+   * Validates both form fields and provider state before adding the team member.
+   * Provides success notifications and error handling with form clearing on success.
+   * 
+   * @param provider The TeamMembersProvider instance for team operations
+   */
   void _addTeamMember(TeamMembersProvider provider) async {
     if (_formKey.currentState!.validate() && provider.isFormValid) {
       final success = await provider.addTeamMember();
@@ -908,6 +1069,13 @@ class _TeamMembersPageState extends State<TeamMembersPage>
     }
   }
 
+  /**
+   * Shows confirmation dialog for removing individual team members.
+   * Provides clear confirmation with member name and handles removal operation.
+   * 
+   * @param member The TeamMember instance to be removed
+   * @param provider The TeamMembersProvider instance for removal operations
+   */
   void _showRemoveDialog(TeamMember member, TeamMembersProvider provider) {
     showDialog(
       context: context,
@@ -952,6 +1120,12 @@ class _TeamMembersPageState extends State<TeamMembersPage>
     );
   }
 
+  /**
+   * Shows confirmation dialog for clearing all team members.
+   * Provides clear warning about data loss and action consequences.
+   * 
+   * @return Future bool? user's confirmation choice (true = confirm, false = cancel)
+   */
   Future<bool?> _showClearAllDialog() {
     return showDialog<bool>(
       context: context,

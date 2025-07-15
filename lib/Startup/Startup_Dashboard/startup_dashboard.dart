@@ -7,6 +7,30 @@ import '../Providers/business_model_canvas_provider.dart';
 import '../Providers/team_members_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/**
+ * Implements a comprehensive startup dashboard for complete entrepreneurial journey management.
+ * Provides centralized view of all startup components including profile, funding, team, and business model.
+ * 
+ * Features:
+ * - Centralized dashboard overview with animated transitions
+ * - Real-time profile overview with completion tracking
+ * - Interactive company profile management with photo support
+ * - Team members display with LinkedIn integration
+ * - Pitch deck files visualization and management
+ * - Business Model Canvas progress tracking
+ * - Key metrics display for funding and growth stages
+ * - Professional gradient styling with orange theme (#FFa500)
+ * - Responsive layout with smooth animations
+ * - Error handling and user feedback mechanisms
+ * - Navigation integration with all startup modules
+ * - Dynamic data loading from multiple provider sources
+ * - Status indicators for profile completion and data availability
+ */
+
+/**
+ * StartupDashboard - Main dashboard widget for startup management ecosystem.
+ * Integrates all startup components into a unified management interface.
+ */
 class StartupDashboard extends StatefulWidget {
   const StartupDashboard({super.key});
 
@@ -14,30 +38,44 @@ class StartupDashboard extends StatefulWidget {
   State<StartupDashboard> createState() => _StartupDashboardState();
 }
 
+/**
+ * _StartupDashboardState - State management for the comprehensive startup dashboard.
+ * Manages animations, provider integrations, and component interactions across the startup ecosystem.
+ */
 class _StartupDashboardState extends State<StartupDashboard>
     with TickerProviderStateMixin {
-  // Animation controllers
+  /**
+   * Animation controllers for smooth dashboard transitions and visual feedback.
+   */
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
+  /**
+   * Initializes the dashboard state with animation controllers and configurations.
+   * Sets up fade and slide animations for enhanced user experience.
+   */
   @override
   void initState() {
     super.initState();
+    // Initialize fade animation controller for opacity transitions
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
+    // Initialize slide animation controller for position transitions
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
 
+    // Configure fade animation from transparent to opaque
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
 
+    // Configure slide animation from bottom to center with elastic effect
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.2),
       end: Offset.zero,
@@ -45,10 +83,14 @@ class _StartupDashboardState extends State<StartupDashboard>
       CurvedAnimation(parent: _slideController, curve: Curves.elasticOut),
     );
 
+    // Start animations immediately on dashboard load
     _fadeController.forward();
     _slideController.forward();
   }
 
+  /**
+   * Disposes animation controllers to prevent memory leaks.
+   */
   @override
   void dispose() {
     _fadeController.dispose();
@@ -56,6 +98,12 @@ class _StartupDashboardState extends State<StartupDashboard>
     super.dispose();
   }
 
+  /**
+   * Builds the elegant app bar with branding and navigation.
+   * Features gradient styling, rocket icon, and profile navigation button.
+   * 
+   * @return PreferredSizeWidget containing the styled app bar with navigation
+   */
   PreferredSizeWidget _buildElegantAppBar() {
     return AppBar(
       backgroundColor: Colors.grey[900],
@@ -75,7 +123,7 @@ class _StartupDashboardState extends State<StartupDashboard>
                     colors: [
                       Color(0xFFffa500),
                       Color(0xFFff8c00),
-                    ], // Added gradient variation
+                    ], // Gradient variation for visual appeal
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -124,7 +172,7 @@ class _StartupDashboardState extends State<StartupDashboard>
               colors: [
                 Color(0xFFffa500),
                 Color(0xFFff8c00),
-              ], // Added gradient variation
+              ], // Matching gradient for consistency
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -144,7 +192,7 @@ class _StartupDashboardState extends State<StartupDashboard>
               size: 20,
             ),
             onPressed: () async {
-              // Navigate to StartupProfilePage
+              // Navigate to StartupProfilePage for detailed management
               await Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -173,6 +221,12 @@ class _StartupDashboardState extends State<StartupDashboard>
     );
   }
 
+  /**
+   * Builds the default profile icon for users without uploaded photos.
+   * Features gradient background with person icon and status indicators.
+   * 
+   * @return Widget containing the styled default profile icon
+   */
   Widget _buildDefaultProfileIcon() {
     return Container(
       width: 100,
@@ -187,7 +241,7 @@ class _StartupDashboardState extends State<StartupDashboard>
       ),
       child: Stack(
         children: [
-          // Background pattern
+          // Background pattern with subtle orange overlay
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -203,7 +257,7 @@ class _StartupDashboardState extends State<StartupDashboard>
               ),
             ),
           ),
-          // Main icon
+          // Main person icon with status text
           Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -230,6 +284,13 @@ class _StartupDashboardState extends State<StartupDashboard>
     );
   }
 
+  /**
+   * Builds the comprehensive profile overview card with company information.
+   * Integrates data from both profile overview and startup profile providers.
+   * Displays company details, profile photo, and team member preview.
+   * 
+   * @return Widget containing the complete profile overview section
+   */
   Widget _buildProfileOverviewCard() {
     return Consumer<StartupProfileOverviewProvider>(
       builder: (context, profileProvider, child) {
@@ -258,7 +319,7 @@ class _StartupDashboardState extends State<StartupDashboard>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
+              // Header section with company branding
               Row(
                 children: [
                   Container(
@@ -288,7 +349,7 @@ class _StartupDashboardState extends State<StartupDashboard>
               ),
               const SizedBox(height: 24),
 
-              // Profile Picture Section
+              // Profile picture section with status indicators
               Center(
                 child: Consumer<StartupProfileProvider>(
                   builder: (context, startupProvider, child) {
@@ -329,7 +390,7 @@ class _StartupDashboardState extends State<StartupDashboard>
                           ),
                         ),
 
-                        // Status indicator
+                        // Profile completion status indicator
                         if (startupProvider.hasProfileImage)
                           Positioned(
                             bottom: 0,
@@ -359,10 +420,10 @@ class _StartupDashboardState extends State<StartupDashboard>
               ),
               const SizedBox(height: 24),
 
-              // Profile Information Grid with null checks
+              // Profile information grid with comprehensive company data
               Column(
                 children: [
-                  // First row: Company and Region
+                  // First row: Company name and region
                   Row(
                     children: [
                       Expanded(
@@ -389,7 +450,7 @@ class _StartupDashboardState extends State<StartupDashboard>
                     ],
                   ),
                   const SizedBox(height: 12),
-                  // NEW: Idea Description (full width)
+                  // Idea description section (full width with expanded text support)
                   Consumer<StartupProfileProvider>(
                     builder: (context, startupProvider, child) {
                       return _buildProfileInfoItem(
@@ -404,7 +465,7 @@ class _StartupDashboardState extends State<StartupDashboard>
                   ),
 
                   const SizedBox(height: 12),
-                  // Second row: Industry (full width)
+                  // Industry section (full width)
                   _buildProfileInfoItem(
                     'Industry',
                     profileProvider.industry?.isNotEmpty == true
@@ -414,7 +475,7 @@ class _StartupDashboardState extends State<StartupDashboard>
                     const Color(0xFF4CAF50),
                   ),
                   const SizedBox(height: 12),
-                  // Third row: Tagline (full width)
+                  // Company tagline section (full width)
                   _buildProfileInfoItem(
                     'Tagline',
                     profileProvider.tagline?.isNotEmpty == true
@@ -434,6 +495,12 @@ class _StartupDashboardState extends State<StartupDashboard>
     );
   }
 
+  /**
+   * Builds the team members card with LinkedIn integration and role display.
+   * Shows team member avatars, names, roles, and LinkedIn connectivity status.
+   * 
+   * @return Widget containing the team members preview section
+   */
   Widget _buildTeamMembersCard() {
     return Consumer<TeamMembersProvider>(
       builder: (context, teamProvider, child) {
@@ -450,7 +517,7 @@ class _StartupDashboardState extends State<StartupDashboard>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
+              // Header with team icon and count
               Row(
                 children: [
                   Icon(Icons.group, color: Color(0xFF4CAF50), size: 16),
@@ -468,7 +535,7 @@ class _StartupDashboardState extends State<StartupDashboard>
               const SizedBox(height: 20),
 
               if (teamProvider.hasTeamMembers) ...[
-                // Team members preview (horizontal scroll)
+                // Team members horizontal scroll with roles and LinkedIn integration
                 SizedBox(
                   height: 90, // Increased height to accommodate role text
                   child: ListView.builder(
@@ -519,14 +586,14 @@ class _StartupDashboardState extends State<StartupDashboard>
                                           radius: 20,
                                           backgroundColor: Colors.grey[700],
                                           child: Icon(
-                                            // CHANGED: Use default profile icon
+                                            // Default profile icon for team members
                                             Icons.person,
                                             color: Colors.grey[400],
                                             size: 24,
                                           ),
                                         ),
                                       ),
-                                      // LinkedIn indicator
+                                      // LinkedIn connectivity indicator
                                       if (member.linkedin.isNotEmpty)
                                         Positioned(
                                           bottom: 0,
@@ -548,7 +615,7 @@ class _StartupDashboardState extends State<StartupDashboard>
                                   ),
                                 ),
                                 const SizedBox(height: 6),
-                                // Name
+                                // Member name with LinkedIn status styling
                                 Text(
                                   member.name,
                                   style: TextStyle(
@@ -565,8 +632,8 @@ class _StartupDashboardState extends State<StartupDashboard>
                                 ),
                                 const SizedBox(
                                   height: 2,
-                                ), // ADDED: Space between name and role
-                                // Position/Role - ADDED
+                                ), // Space between name and role
+                                // Position/Role display
                                 Text(
                                   member.role,
                                   style: TextStyle(
@@ -587,7 +654,7 @@ class _StartupDashboardState extends State<StartupDashboard>
                   ),
                 ),
               ] else ...[
-                // No team members message
+                // Empty state for team members
                 Text(
                   'No team members added yet',
                   style: TextStyle(fontSize: 11, color: Colors.grey[500]),
@@ -600,12 +667,18 @@ class _StartupDashboardState extends State<StartupDashboard>
     );
   }
 
+  /**
+   * Builds the pitch deck files card with upload status and file management.
+   * Displays uploaded files, submission status, and file count indicators.
+   * 
+   * @return Widget containing the pitch deck files management section
+   */
   Widget _buildPitchDeckFilesCard() {
     return Consumer<StartupProfileProvider>(
       builder: (context, provider, child) {
         return Container(
           margin: const EdgeInsets.only(bottom: 32),
-          padding: const EdgeInsets.all(16), // REDUCED from 24 to 16
+          padding: const EdgeInsets.all(16), // Optimized padding
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [Colors.grey[900]!, Colors.grey[850]!],
@@ -633,9 +706,9 @@ class _StartupDashboardState extends State<StartupDashboard>
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min, // ADDED this line
+            mainAxisSize: MainAxisSize.min, // Optimize for content size
             children: [
-              // Header with status
+              // Header with upload status and file count
               Row(
                 children: [
                   Container(
@@ -683,7 +756,7 @@ class _StartupDashboardState extends State<StartupDashboard>
                     ),
                   ),
 
-                  // File count badge
+                  // File count badge with dynamic styling
                   if (provider.hasPitchDeckFiles)
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -709,16 +782,16 @@ class _StartupDashboardState extends State<StartupDashboard>
                 ],
               ),
 
-              const SizedBox(height: 16), // REDUCED from 20 to 16
-              // Files display or empty state
+              const SizedBox(height: 16), // Optimized spacing
+              // Files display section or empty state
               if (provider.hasPitchDeckFiles) ...[
-                // Files preview with constrained height
+                // Files preview with constrained height for optimization
                 SizedBox(
-                  height: 200, // REDUCED from 160 to 140
+                  height: 200, // Optimized height for file previews
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.only(
-                      bottom: 4, // REDUCED from 8 to 4
+                      bottom: 4, // Reduced padding
                     ),
                     itemCount: provider.pitchDeckThumbnails.length,
                     itemBuilder: (context, index) {
@@ -730,11 +803,11 @@ class _StartupDashboardState extends State<StartupDashboard>
                   ),
                 ),
 
-                const SizedBox(height: 12), // REDUCED from 20 to 12
-                // Submission status
+                const SizedBox(height: 12), // Optimized spacing
+                // Submission status with dynamic feedback
                 if (provider.isPitchDeckSubmitted) ...[
                   Container(
-                    padding: const EdgeInsets.all(10), // REDUCED from 12 to 10
+                    padding: const EdgeInsets.all(10), // Optimized padding
                     decoration: BoxDecoration(
                       color: Colors.green.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
@@ -777,9 +850,9 @@ class _StartupDashboardState extends State<StartupDashboard>
                     ),
                   ),
                 ] else ...[
-                  // Upload more files option
+                  // Upload guidance for pending submissions
                   Container(
-                    padding: const EdgeInsets.all(10), // REDUCED from 12 to 10
+                    padding: const EdgeInsets.all(10), // Optimized padding
                     decoration: BoxDecoration(
                       color: Colors.blue.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
@@ -809,10 +882,10 @@ class _StartupDashboardState extends State<StartupDashboard>
                   ),
                 ],
               ] else ...[
-                // Empty state
+                // Empty state with upload guidance
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(20), // REDUCED from 24 to 20
+                  padding: const EdgeInsets.all(20), // Optimized padding
                   decoration: BoxDecoration(
                     color: Colors.grey[800]!.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(12),
@@ -821,14 +894,14 @@ class _StartupDashboardState extends State<StartupDashboard>
                     ),
                   ),
                   child: Column(
-                    mainAxisSize: MainAxisSize.min, // ADDED this line
+                    mainAxisSize: MainAxisSize.min, // Optimize for content
                     children: [
                       Icon(
                         Icons.upload_file,
-                        size: 40, // REDUCED from 48 to 40
+                        size: 40, // Optimized icon size
                         color: Colors.grey[500],
                       ),
-                      const SizedBox(height: 8), // REDUCED from 12 to 8
+                      const SizedBox(height: 8), // Optimized spacing
                       Text(
                         'No pitch deck files uploaded yet',
                         style: TextStyle(
@@ -837,7 +910,7 @@ class _StartupDashboardState extends State<StartupDashboard>
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(height: 6), // REDUCED from 8 to 6
+                      const SizedBox(height: 6), // Optimized spacing
                       Text(
                         'Upload your pitch deck to showcase your startup',
                         style: TextStyle(color: Colors.grey[500], fontSize: 12),
@@ -854,6 +927,16 @@ class _StartupDashboardState extends State<StartupDashboard>
     );
   }
 
+  /**
+   * Builds individual profile information items with dynamic styling.
+   * Supports both single-line and multi-line content based on information type.
+   * 
+   * @param title The display title for the information field
+   * @param value The value content to display
+   * @param icon The leading icon for visual identification
+   * @param color The theme color for the field styling
+   * @return Widget containing the styled profile information item
+   */
   Widget _buildProfileInfoItem(
     String title,
     String value,
@@ -910,10 +993,17 @@ class _StartupDashboardState extends State<StartupDashboard>
     );
   }
 
+  /**
+   * Builds the dashboard profile image with priority handling for different image sources.
+   * Handles local files, network URLs, and fallback to default icon with loading states.
+   * 
+   * @param provider The StartupProfileProvider instance for image data access
+   * @return Widget containing the profile image or default placeholder
+   */
   Widget _buildDashboardProfileImage(StartupProfileProvider provider) {
     // Priority: Local file > Network URL > Placeholder
     if (provider.profileImage != null) {
-      // Show local file (newly picked)
+      // Show local file (newly picked image)
       return Image.file(
         provider.profileImage!,
         fit: BoxFit.cover,
@@ -950,12 +1040,18 @@ class _StartupDashboardState extends State<StartupDashboard>
         },
       );
     } else {
-      // Show placeholder
+      // Show placeholder when no image is available
       return _buildDefaultProfileIcon();
     }
   }
 
-  // Helper method for pitch deck status
+  /**
+   * Builds the pitch deck status indicator with dynamic styling based on upload state.
+   * Shows different status messages and colors for various submission states.
+   * 
+   * @param provider The StartupProfileProvider instance for pitch deck status
+   * @return Widget containing the status indicator with appropriate styling
+   */
   Widget _buildPitchDeckStatus(StartupProfileProvider provider) {
     if (!provider.hasPitchDeckFiles) {
       return Row(
@@ -1005,10 +1101,27 @@ class _StartupDashboardState extends State<StartupDashboard>
     }
   }
 
+  /**
+   * Formats date for display in submission status.
+   * 
+   * @param date The DateTime to format
+   * @return String formatted date in DD/MM/YYYY format
+   */
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
   }
 
+  /**
+   * Builds metric cards for key startup performance indicators.
+   * Features gradient styling, icons, and optional subtitle information.
+   * 
+   * @param title The metric title
+   * @param value The metric value to display
+   * @param icon The icon representing the metric
+   * @param color The theme color for the metric card
+   * @param subtitle Optional subtitle for additional context
+   * @return Widget containing the styled metric card
+   */
   Widget _buildMetricCard({
     required String title,
     required String value,
@@ -1106,6 +1219,12 @@ class _StartupDashboardState extends State<StartupDashboard>
     );
   }
 
+  /**
+   * Builds the welcome section with gradient styling and motivational messaging.
+   * Provides introduction and overview of dashboard functionality.
+   * 
+   * @return Widget containing the welcome section with branding
+   */
   Widget _buildWelcomeSection() {
     return Container(
       margin: const EdgeInsets.only(bottom: 32),
@@ -1155,7 +1274,12 @@ class _StartupDashboardState extends State<StartupDashboard>
     );
   }
 
-  // Business Model Canvas Card Widget
+  /**
+   * Builds the Business Model Canvas card with completion tracking and section previews.
+   * Shows progress, completed sections, and provides navigation to canvas management.
+   * 
+   * @return Widget containing the Business Model Canvas overview section
+   */
   Widget _buildBusinessModelCanvasCard() {
     return Consumer<BusinessModelCanvasProvider>(
       builder: (context, provider, child) {
@@ -1214,7 +1338,7 @@ class _StartupDashboardState extends State<StartupDashboard>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
+              // Header with completion status
               Row(
                 children: [
                   Container(
@@ -1240,7 +1364,7 @@ class _StartupDashboardState extends State<StartupDashboard>
                       ),
                     ),
                   ),
-                  // Completion status badge
+                  // Completion status badge with dynamic styling
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
@@ -1295,7 +1419,7 @@ class _StartupDashboardState extends State<StartupDashboard>
               ),
               const SizedBox(height: 20),
 
-              // Progress section
+              // Progress section with completed sections count
               Row(
                 children: [
                   Container(
@@ -1444,7 +1568,14 @@ class _StartupDashboardState extends State<StartupDashboard>
     );
   }
 
-  // Helper method for completed section chips
+  /**
+   * Builds completed section chips for Business Model Canvas progress display.
+   * Shows individual section completion with icons and confirmation indicators.
+   * 
+   * @param title The section title to display
+   * @param icon The icon representing the section
+   * @return Widget containing the styled completion chip
+   */
   Widget _buildCompletedSectionChip(String title, IconData icon) {
     return Container(
       margin: const EdgeInsets.only(right: 8),
@@ -1474,6 +1605,12 @@ class _StartupDashboardState extends State<StartupDashboard>
     );
   }
 
+  /**
+   * Launches LinkedIn URL with proper validation and error handling.
+   * Handles URL formatting, validation, and provides user feedback on errors.
+   * 
+   * @param url The LinkedIn URL to launch
+   */
   Future<void> _launchLinkedIn(String url) async {
     try {
       // Clean and validate URL
@@ -1495,7 +1632,7 @@ class _StartupDashboardState extends State<StartupDashboard>
         return;
       }
 
-      // Check if URL can be launched
+      // Launch URL in external application
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {
       debugPrint('Error launching LinkedIn: $e');
@@ -1503,6 +1640,12 @@ class _StartupDashboardState extends State<StartupDashboard>
     }
   }
 
+  /**
+   * Shows error messages to user with styled SnackBar notifications.
+   * Provides consistent error feedback with appropriate styling and duration.
+   * 
+   * @param message The error message to display
+   */
   void _showErrorSnackBar(String message) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1530,6 +1673,12 @@ class _StartupDashboardState extends State<StartupDashboard>
     }
   }
 
+  /**
+   * Builds the main dashboard widget with all sections and animations.
+   * Integrates all startup components into a cohesive dashboard experience.
+   * 
+   * @return Widget containing the complete startup dashboard interface
+   */
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1547,12 +1696,12 @@ class _StartupDashboardState extends State<StartupDashboard>
                 _buildWelcomeSection(),
                 _buildProfileOverviewCard(),
 
-                // NEW: Pitch Deck Files Card - Added here
+                // Pitch Deck Files Card integration
                 _buildPitchDeckFilesCard(),
 
                 _buildBusinessModelCanvasCard(),
 
-                // Metrics Cards - Using StartupProfileProvider for funding data
+                // Key Metrics section with funding data integration
                 const Text(
                   'Key Metrics',
                   style: TextStyle(
@@ -1564,7 +1713,7 @@ class _StartupDashboardState extends State<StartupDashboard>
                 ),
                 const SizedBox(height: 20),
 
-                // First row of metrics
+                // Funding metrics from StartupProfileProvider
                 Consumer<StartupProfileProvider>(
                   builder: (context, startupProvider, child) {
                     return Row(
@@ -1573,7 +1722,7 @@ class _StartupDashboardState extends State<StartupDashboard>
                           title: 'Funding Goal',
                           value:
                               startupProvider.fundingGoalAmount != null
-                                  ? '\$${(startupProvider.fundingGoalAmount! / 1000).toStringAsFixed(0)}K'
+                                  ? '\${(startupProvider.fundingGoalAmount! / 1000).toStringAsFixed(0)}K'
                                   : 'N/A',
                           icon: Icons.monetization_on_outlined,
                           color: const Color(0xFFffa500),

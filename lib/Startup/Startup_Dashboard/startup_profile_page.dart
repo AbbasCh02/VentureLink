@@ -12,7 +12,35 @@ import 'pitch_deck.dart';
 import '../../auth/unified_authentication_provider.dart';
 import '../../services/storage_service.dart';
 
+/**
+ * Implements a comprehensive startup profile management interface for complete entrepreneurial data collection.
+ * Provides centralized hub for managing all aspects of a startup profile from idea to funding.
+ * 
+ * Features:
+ * - Complete startup profile management with animated scrollable interface
+ * - Interactive profile image selection with validation and auto-save functionality
+ * - Comprehensive idea description form with multi-line text support
+ * - Seamless navigation to specialized profile sections (overview, pitch deck, business canvas, team)
+ * - Integrated funding information collection with real-time validation
+ * - Professional authentication management with secure logout functionality
+ * - Dynamic form validation with detailed error feedback and user guidance
+ * - Responsive design with gradient styling and orange theme (#FFa500)
+ * - Advanced error handling with user-friendly notification system
+ * - Auto-save capabilities for profile image uploads
+ * - Data persistence and callback integration for parent components
+ * - Storage service integration for file validation and management
+ * - Logger integration for debugging and monitoring profile operations
+ */
+
+/**
+ * StartupProfilePage - Main profile management widget for comprehensive startup data collection.
+ * Integrates all startup profile components into a unified management interface with navigation.
+ */
 class StartupProfilePage extends StatefulWidget {
+  /**
+   * Optional callback function to handle data saving operations.
+   * Called with funding goal amount and selected funding phase when profile is saved.
+   */
   final Function(int?, String?)? onDataSaved;
 
   const StartupProfilePage({super.key, this.onDataSaved});
@@ -21,33 +49,54 @@ class StartupProfilePage extends StatefulWidget {
   State<StartupProfilePage> createState() => _StartupProfilePageState();
 }
 
+/**
+ * _StartupProfilePageState - State management for the comprehensive startup profile interface.
+ * Manages form validation, animations, image selection, navigation, and authentication operations.
+ */
 class _StartupProfilePageState extends State<StartupProfilePage>
     with TickerProviderStateMixin {
+  /**
+   * Global form key for coordinating validation across all profile form fields.
+   */
   final _formKey = GlobalKey<FormState>();
 
+  /**
+   * Animation controllers for smooth page transitions and visual feedback.
+   */
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
+  /**
+   * Logger instance for debugging and monitoring profile operations.
+   */
   final logger = Logger();
 
+  /**
+   * Initializes the profile page state with animation controllers and configurations.
+   * Sets up fade and slide animations for enhanced user experience.
+   */
   @override
   void initState() {
     super.initState();
+    // Initialize fade animation controller for opacity transitions
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
+    // Initialize slide animation controller for position transitions
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
 
+    // Configure fade animation from transparent to opaque
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
 
+    // Configure slide animation from bottom to center with elastic effect
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
@@ -55,10 +104,14 @@ class _StartupProfilePageState extends State<StartupProfilePage>
       CurvedAnimation(parent: _slideController, curve: Curves.elasticOut),
     );
 
+    // Start animations immediately on page load
     _fadeController.forward();
     _slideController.forward();
   }
 
+  /**
+   * Disposes animation controllers to prevent memory leaks.
+   */
   @override
   void dispose() {
     _fadeController.dispose();
@@ -66,6 +119,11 @@ class _StartupProfilePageState extends State<StartupProfilePage>
     super.dispose();
   }
 
+  /**
+   * Handles profile image selection with validation and auto-save functionality.
+   * Integrates with ImagePicker for gallery access and StorageService for validation.
+   * Provides comprehensive error handling and user feedback through SnackBar notifications.
+   */
   Future<void> _pickImage() async {
     final provider = Provider.of<StartupProfileProvider>(
       context,
@@ -73,6 +131,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
     );
 
     try {
+      // Launch image picker with optimized settings for profile photos
       final pickedFile = await ImagePicker().pickImage(
         source: ImageSource.gallery,
         maxWidth: 1024,
@@ -83,7 +142,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
       if (pickedFile != null) {
         final File imageFile = File(pickedFile.path);
 
-        // Validate the file first
+        // Validate the selected image file before processing
         try {
           StorageService.validateAvatarFile(imageFile);
         } catch (e) {
@@ -98,7 +157,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
           return;
         }
 
-        // Set the profile image - this will trigger auto-save
+        // Set the profile image - triggers auto-save functionality
         provider.updateProfileImage(imageFile);
 
         if (mounted) {
@@ -122,13 +181,18 @@ class _StartupProfilePageState extends State<StartupProfilePage>
     }
   }
 
+  /**
+   * Handles profile saving with comprehensive validation and user feedback.
+   * Validates both form fields and provider state before saving profile data.
+   * Provides detailed error messages and success notifications to guide users.
+   */
   void _saveProfile() {
     final provider = Provider.of<StartupProfileProvider>(
       context,
       listen: false,
     );
 
-    // Use both form validation and provider validation
+    // Perform dual validation: form validation and provider validation
     bool isFormValid = _formKey.currentState!.validate();
     bool isProviderValid = provider.isProfileComplete;
 
@@ -136,7 +200,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
       final profileData = provider.getProfileData();
       logger.i('Profile Data: $profileData');
 
-      // Call the callback if provided
+      // Execute callback if provided for parent component integration
       if (widget.onDataSaved != null) {
         widget.onDataSaved!(
           provider.fundingGoalAmount,
@@ -144,7 +208,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
         );
       }
 
-      // Show success message
+      // Display success notification with professional styling
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(
@@ -160,7 +224,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
         ),
       );
 
-      // Wait a moment for the snackbar to show, then return the data
+      // Navigate back with profile data after showing success message
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) {
           Navigator.pop(context, {
@@ -170,7 +234,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
         }
       });
     } else {
-      // Show specific validation errors
+      // Handle validation errors with detailed feedback
       final validationErrors = provider.getValidationErrors();
       String errorMessage = 'Please fix the following issues:';
 
@@ -197,6 +261,14 @@ class _StartupProfilePageState extends State<StartupProfilePage>
     }
   }
 
+  /**
+   * Builds reusable section cards with consistent styling and orange theme branding.
+   * Provides structured layout for different profile sections with gradient backgrounds.
+   * 
+   * @param title The section title to display
+   * @param child The widget content for the section
+   * @return Widget containing the styled section card
+   */
   Widget _buildSectionCard({required String title, required Widget child}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
@@ -254,6 +326,16 @@ class _StartupProfilePageState extends State<StartupProfilePage>
     );
   }
 
+  /**
+   * Builds styled action buttons with gradient backgrounds and interactive effects.
+   * Provides consistent button styling across the profile interface.
+   * 
+   * @param text The button text to display
+   * @param onPressed The callback function when button is pressed
+   * @param icon Optional icon to display alongside text
+   * @param isFullWidth Whether button should span full width
+   * @return Widget containing the styled button with gradient and shadow effects
+   */
   Widget _buildStyledButton({
     required String text,
     required VoidCallback onPressed,
@@ -310,6 +392,17 @@ class _StartupProfilePageState extends State<StartupProfilePage>
     );
   }
 
+  /**
+   * Builds styled text form fields with consistent appearance and validation support.
+   * Provides professional input styling with orange theme integration.
+   * 
+   * @param controller The TextEditingController for the field
+   * @param labelText The label text for the field
+   * @param validator The validation function for input validation
+   * @param maxLines Maximum number of lines for text input
+   * @param keyboardType The keyboard type for input optimization
+   * @return Widget containing the styled text form field
+   */
   Widget _buildStyledTextFormField({
     required TextEditingController controller,
     required String labelText,
@@ -365,8 +458,16 @@ class _StartupProfilePageState extends State<StartupProfilePage>
     );
   }
 
-  // Add this method to your _StartupProfilePageState class in startup_profile_page.dart
-
+  /**
+   * Builds logout button with red gradient styling for destructive actions.
+   * Provides distinct visual styling to indicate logout functionality.
+   * 
+   * @param text The button text to display
+   * @param onPressed The callback function when button is pressed
+   * @param icon Optional icon to display alongside text
+   * @param isFullWidth Whether button should span full width
+   * @return Widget containing the styled logout button with red gradient
+   */
   Widget _buildLogoutButton({
     required String text,
     required VoidCallback onPressed,
@@ -423,10 +524,13 @@ class _StartupProfilePageState extends State<StartupProfilePage>
     );
   }
 
-  // Add this method to your _StartupProfilePageState class in startup_profile_page.dart
-
+  /**
+   * Handles logout process with confirmation dialog and navigation management.
+   * Integrates with UnifiedAuthProvider for secure authentication management.
+   * Clears navigation stack and redirects to welcome page after successful logout.
+   */
   Future<void> _handleLogout() async {
-    // Show confirmation dialog
+    // Display confirmation dialog with professional styling
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
@@ -461,19 +565,19 @@ class _StartupProfilePageState extends State<StartupProfilePage>
 
     if (confirmed != true || !mounted) return;
     try {
-      // Get auth provider and sign out
+      // Execute logout through authentication provider
       final authProvider = context.read<UnifiedAuthProvider>();
       await authProvider.signOut();
 
-      // Navigate to the welcome page and clear all routes
+      // Navigate to welcome page and clear entire navigation stack
       if (mounted) {
         Navigator.of(context).pushNamedAndRemoveUntil(
           '/welcome',
-          (route) => false, // This clears the entire navigation stack
+          (route) => false, // Clears the entire navigation stack
         );
       }
     } catch (e) {
-      // Show error if still mounted
+      // Display error notification if logout fails
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -485,6 +589,12 @@ class _StartupProfilePageState extends State<StartupProfilePage>
     }
   }
 
+  /**
+   * Builds the main profile page interface with all sections and navigation.
+   * Integrates Consumer pattern for real-time provider updates and animated scrolling.
+   * 
+   * @return Widget containing the complete startup profile management interface
+   */
   @override
   Widget build(BuildContext context) {
     return Consumer<StartupProfileProvider>(
@@ -493,6 +603,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
           backgroundColor: const Color(0xFF0a0a0a),
           body: CustomScrollView(
             slivers: [
+              // Expandable app bar with gradient background
               SliverAppBar(
                 expandedHeight: 120,
                 floating: false,
@@ -529,6 +640,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
                         key: _formKey,
                         child: Column(
                           children: [
+                            // Profile Image Selection Section
                             Container(
                               margin: const EdgeInsets.only(bottom: 32),
                               child: Center(
@@ -567,7 +679,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
                               ),
                             ),
 
-                            // Idea Description
+                            // Idea Description Section
                             _buildSectionCard(
                               title: 'Idea Description',
                               child: _buildStyledTextFormField(
@@ -578,7 +690,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
                               ),
                             ),
 
-                            // Profile Overview
+                            // Profile Overview Navigation Section
                             _buildSectionCard(
                               title: 'Profile Overview',
                               child: _buildStyledButton(
@@ -596,13 +708,13 @@ class _StartupProfilePageState extends State<StartupProfilePage>
                               ),
                             ),
 
-                            // Pitch Deck - Now using the separate widget consistently
+                            // Pitch Deck Management Section
                             _buildSectionCard(
                               title: 'Pitch Deck',
                               child: PitchDeck(),
                             ),
 
-                            // Business Canvas
+                            // Business Canvas Navigation Section
                             _buildSectionCard(
                               title: 'Business Canvas',
                               child: _buildStyledButton(
@@ -620,7 +732,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
                               ),
                             ),
 
-                            // Team Members
+                            // Team Members Navigation Section
                             _buildSectionCard(
                               title: 'Team Members',
                               child: _buildStyledButton(
@@ -638,7 +750,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
                               ),
                             ),
 
-                            // Funding Section - Now using simplified widget
+                            // Funding Information Section with integrated widget
                             _buildSectionCard(
                               title: 'Funding Information',
                               child: const Funding(),
@@ -646,7 +758,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
 
                             const SizedBox(height: 32),
 
-                            // Save Button
+                            // Save Profile Action Button
                             _buildStyledButton(
                               text: 'Save Profile',
                               icon: Icons.save_outlined,
@@ -656,7 +768,7 @@ class _StartupProfilePageState extends State<StartupProfilePage>
 
                             const SizedBox(height: 24),
 
-                            // Logout Button
+                            // Logout Action Button
                             _buildLogoutButton(
                               text: 'Logout',
                               icon: Icons.logout,
@@ -678,10 +790,17 @@ class _StartupProfilePageState extends State<StartupProfilePage>
   }
 }
 
+/**
+ * Builds profile image content with priority handling for different image sources.
+ * Handles local files, network URLs, and fallback to default placeholder with loading states.
+ * 
+ * @param provider The StartupProfileProvider instance for image data access
+ * @return Widget containing the profile image or default placeholder
+ */
 Widget _buildProfileImageContent(StartupProfileProvider provider) {
-  // Priority: Local file > Network URL > Placeholder
+  // Priority handling: Local file > Network URL > Placeholder
   if (provider.profileImage != null) {
-    // Show local file (newly picked)
+    // Display local file (newly selected image)
     return Image.file(
       provider.profileImage!,
       fit: BoxFit.cover,
@@ -690,7 +809,7 @@ Widget _buildProfileImageContent(StartupProfileProvider provider) {
     );
   } else if (provider.profileImageUrl != null &&
       provider.profileImageUrl!.isNotEmpty) {
-    // Show network image (loaded from database)
+    // Display network image (loaded from database)
     return Image.network(
       provider.profileImageUrl!,
       fit: BoxFit.cover,
@@ -714,11 +833,17 @@ Widget _buildProfileImageContent(StartupProfileProvider provider) {
       },
     );
   } else {
-    // Show placeholder
+    // Display placeholder when no image is available
     return _buildProfileImagePlaceholder();
   }
 }
 
+/**
+ * Builds the default profile image placeholder with gradient background and upload icon.
+ * Provides visual cue for users to upload their profile photo.
+ * 
+ * @return Widget containing the styled profile image placeholder
+ */
 Widget _buildProfileImagePlaceholder() {
   return Container(
     width: 140,

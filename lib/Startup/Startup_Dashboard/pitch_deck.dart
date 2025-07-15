@@ -1,4 +1,3 @@
-// lib/Startup/Startup_Dashboard/enhanced_pitch_deck.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -9,12 +8,42 @@ import 'package:video_thumbnail/video_thumbnail.dart';
 import '../Providers/startup_profile_provider.dart';
 import '../../services/storage_service.dart';
 
+/**
+ * 
+ * Implements a comprehensive pitch deck management widget for startup presentations.
+ * Provides advanced file handling, thumbnail generation, and submission workflow.
+ * 
+ * Features:
+ * - Multi-file upload with drag-and-drop support for pitch deck materials
+ * - Advanced file validation and type checking (PDF, video formats)
+ * - Real-time thumbnail generation for PDFs and video files
+ * - Staged upload workflow (select files → process → submit)
+ * - Individual file management with deletion capabilities
+ * - Cloud storage integration with progress tracking
+ * - Submission status tracking and date logging
+ * - Professional UI with loading states and error handling
+ * - File size validation and format verification
+ * - Enhanced user feedback with snackbars and dialogs
+ * - Responsive grid layout for file display
+ * - Integration with StartupProfileProvider for state management
+ */
+
+/**
+ * PitchDeck - Advanced widget component for managing startup pitch deck files.
+ * Handles complete file upload, processing, and submission workflow with validation.
+ */
 class PitchDeck extends StatelessWidget {
+  // Logger for debugging and error tracking
   final Logger logger = Logger();
 
   PitchDeck({super.key});
 
-  /// Upload pitch deck files with enhanced error handling and validation
+  /**
+   * Initiates the pitch deck file upload process with validation.
+   * Handles file selection, validation, and initial processing before staging.
+   * 
+   * @param context The build context for navigation and dialogs
+   */
   Future<void> _uploadPitchDeckFiles(BuildContext context) async {
     if (!context.mounted) return;
 
@@ -75,7 +104,14 @@ class PitchDeck extends StatelessWidget {
     }
   }
 
-  /// Process files and generate thumbnails before upload
+  /**
+   * Processes selected files and generates thumbnails before staging for upload.
+   * Handles PDF preview generation and video thumbnail creation.
+   * 
+   * @param context The build context for navigation and dialogs
+   * @param validFiles List of validated files to process
+   * @param provider The StartupProfileProvider for state management
+   */
   Future<void> _processAndUploadFiles(
     BuildContext context,
     List<File> validFiles,
@@ -160,7 +196,12 @@ class PitchDeck extends StatelessWidget {
     }
   }
 
-  /// Submit pitch deck files
+  /**
+   * Submits staged pitch deck files to cloud storage and marks as submitted.
+   * Handles the final upload and submission workflow with status tracking.
+   * 
+   * @param context The build context for navigation and dialogs
+   */
   Future<void> _submitPitchDeckFiles(BuildContext context) async {
     if (!context.mounted) return;
 
@@ -213,7 +254,13 @@ class PitchDeck extends StatelessWidget {
     }
   }
 
-  /// Delete individual file
+  /**
+   * Deletes an individual file from the staged pitch deck collection.
+   * Shows confirmation dialog before removing the file.
+   * 
+   * @param context The build context for dialogs and navigation
+   * @param file The specific file to delete
+   */
   Future<void> _deleteIndividualFile(BuildContext context, File file) async {
     if (!context.mounted) return;
 
@@ -262,7 +309,14 @@ class PitchDeck extends StatelessWidget {
     }
   }
 
-  /// Show confirmation dialog
+  /**
+   * Shows a confirmation dialog for destructive actions.
+   * 
+   * @param context The build context for dialog display
+   * @param title The dialog title
+   * @param message The confirmation message
+   * @return Future bool? indicating user's choice
+   */
   Future<bool?> _showConfirmationDialog(
     BuildContext context,
     String title,
@@ -295,7 +349,16 @@ class PitchDeck extends StatelessWidget {
     );
   }
 
-  /// Build file card widget for thumbnails with delete button
+  /**
+   * Builds a visual file card widget with thumbnail and file information.
+   * Supports PDF preview, video thumbnails, and generic file icons.
+   * 
+   * @param context The build context for navigation
+   * @param file The file to create a card for
+   * @param controller Optional PDF controller for PDF preview
+   * @param thumbnailPath Optional path to video thumbnail
+   * @return Widget representing the file card with delete functionality
+   */
   Widget _buildFileCard(
     BuildContext context,
     File file, {
@@ -411,7 +474,15 @@ class PitchDeck extends StatelessWidget {
     );
   }
 
-  /// Build thumbnail content based on file type
+  /**
+   * Builds thumbnail content based on file type and available preview data.
+   * Handles PDF previews, video thumbnails, and generic file icons.
+   * 
+   * @param extension The file extension for type determination
+   * @param controller Optional PDF controller for PDF preview
+   * @param thumbnailPath Optional path to generated video thumbnail
+   * @return Widget containing the appropriate thumbnail content
+   */
   Widget _buildThumbnailContent(
     String extension,
     PdfController? controller,
@@ -447,7 +518,12 @@ class PitchDeck extends StatelessWidget {
     }
   }
 
-  /// Get appropriate icon for file type
+  /**
+   * Returns the appropriate icon for a given file extension.
+   * 
+   * @param extension The file extension to get an icon for
+   * @return IconData representing the file type
+   */
   IconData _getFileIcon(String extension) {
     switch (extension.toLowerCase()) {
       case 'pdf':
@@ -463,8 +539,17 @@ class PitchDeck extends StatelessWidget {
     }
   }
 
-  /// Build styled button
-  /// Build styled button
+  /**
+   * Builds a styled button with gradient background and hover effects.
+   * Supports different states including submitted status with visual indicators.
+   * 
+   * @param text The button text to display
+   * @param icon The icon to show alongside text
+   * @param onPressed Callback function when button is pressed
+   * @param isFullWidth Whether button should take full width
+   * @param isSubmitted Whether to show submitted state styling
+   * @return Widget containing the styled button
+   */
   Widget _buildStyledButton({
     required String text,
     required IconData icon,
@@ -535,7 +620,12 @@ class PitchDeck extends StatelessWidget {
     );
   }
 
-  /// Show loading dialog
+  /**
+   * Shows a loading dialog with progress indicator and message.
+   * 
+   * @param context The build context for dialog display
+   * @param message The loading message to show
+   */
   void _showLoadingDialog(BuildContext context, String message) {
     showDialog(
       context: context,
@@ -555,7 +645,13 @@ class PitchDeck extends StatelessWidget {
     );
   }
 
-  /// Show error dialog
+  /**
+   * Shows an error dialog with detailed error information.
+   * 
+   * @param context The build context for dialog display
+   * @param title The error dialog title
+   * @param errors List of error messages to display
+   */
   void _showErrorDialog(
     BuildContext context,
     String title,
@@ -598,7 +694,12 @@ class PitchDeck extends StatelessWidget {
     );
   }
 
-  /// Show success snackbar
+  /**
+   * Shows a success snackbar with positive feedback message.
+   * 
+   * @param context The build context for snackbar display
+   * @param message The success message to show
+   */
   void _showSuccessSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -611,7 +712,12 @@ class PitchDeck extends StatelessWidget {
     );
   }
 
-  /// Show error snackbar
+  /**
+   * Shows an error snackbar with failure feedback message.
+   * 
+   * @param context The build context for snackbar display
+   * @param message The error message to show
+   */
   void _showErrorSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -624,7 +730,12 @@ class PitchDeck extends StatelessWidget {
     );
   }
 
-  /// Show warning snackbar
+  /**
+   * Shows a warning snackbar with cautionary feedback message.
+   * 
+   * @param context The build context for snackbar display
+   * @param message The warning message to show
+   */
   void _showWarningSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -637,6 +748,13 @@ class PitchDeck extends StatelessWidget {
     );
   }
 
+  /**
+   * Builds the main PitchDeck widget interface.
+   * Uses Consumer pattern to listen to StartupProfileProvider changes and update UI accordingly.
+   * 
+   * @param context The build context for widget rendering
+   * @return Widget containing the complete pitch deck management interface
+   */
   @override
   Widget build(BuildContext context) {
     return Consumer<StartupProfileProvider>(
@@ -871,6 +989,12 @@ class PitchDeck extends StatelessWidget {
     );
   }
 
+  /**
+  * widget for  building "Add More Files" card
+  * This card allows users to add more files to their pitch deck
+  * It opens the file picker when tapped, allowing multiple file selection
+  * and handles file validation before processing.
+  */
   Widget _buildAddMoreFilesCard(BuildContext context) {
     return GestureDetector(
       onTap: () => _uploadPitchDeckFiles(context),

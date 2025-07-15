@@ -2,6 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../Providers/business_model_canvas_provider.dart';
 
+/**
+ * Implements the Channels section of the Business Model Canvas interface.
+ * Provides a dedicated editing experience for defining communication and distribution channels.
+ * 
+ * Features:
+ * - Full-screen text editing with multi-line support
+ * - Real-time synchronization with BusinessModelCanvasProvider
+ * - Smart hint system that shows/hides based on focus and content
+ * - Visual indicators for unsaved changes and save states
+ * - Error handling with dismissible error banners
+ * - Auto-save prevention during provider updates
+ * - Focus management for optimal user experience
+ * - Responsive UI with loading states and feedback
+ * - Comprehensive form validation and data persistence
+ * - Context-sensitive hints and examples for user guidance
+ */
+
+/**
+ * ChannelsPage - Dedicated interface for editing BMC Channels section.
+ * Handles the "How do you reach and deliver value to customers?" question.
+ */
 class ChannelsPage extends StatefulWidget {
   const ChannelsPage({super.key});
 
@@ -9,12 +30,27 @@ class ChannelsPage extends StatefulWidget {
   State<ChannelsPage> createState() => _ChannelsPageState();
 }
 
+/**
+ * _ChannelsPageState - State management for the Channels editing interface.
+ * Manages text input, focus states, provider synchronization, and user interactions.
+ */
 class _ChannelsPageState extends State<ChannelsPage> {
+  // Text input controller for the channels content
   final TextEditingController _controller = TextEditingController();
+
+  // Field identifier for provider communication
   final String _fieldName = 'channels';
+
+  // Focus management for the text field
   final FocusNode _focusNode = FocusNode();
+
+  // Focus state tracking for UI updates
   bool _isFocused = false;
 
+  /**
+   * Initializes the widget state and sets up necessary listeners.
+   * Synchronizes with provider data and establishes text/focus change handlers.
+   */
   @override
   void initState() {
     super.initState();
@@ -34,7 +70,12 @@ class _ChannelsPageState extends State<ChannelsPage> {
     });
   }
 
-  // Helper method to sync controller with provider
+  /**
+   * Synchronizes the text controller with the provider's current value.
+   * Prevents infinite loops by temporarily removing the text change listener.
+   * 
+   * @param provider The BusinessModelCanvasProvider instance
+   */
   void _syncControllerWithProvider(BusinessModelCanvasProvider provider) {
     if (_controller.text != provider.channels) {
       _controller.removeListener(_onTextChanged);
@@ -43,6 +84,10 @@ class _ChannelsPageState extends State<ChannelsPage> {
     }
   }
 
+  /**
+   * Handles dependency changes, particularly provider updates.
+   * Syncs controller when provider changes (like after hot restart) while respecting user input.
+   */
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -56,6 +101,10 @@ class _ChannelsPageState extends State<ChannelsPage> {
     }
   }
 
+  /**
+   * Handles text changes from user input.
+   * Updates the provider and triggers UI rebuilds for hint text display.
+   */
   void _onTextChanged() {
     final provider = context.read<BusinessModelCanvasProvider>();
 
@@ -67,6 +116,10 @@ class _ChannelsPageState extends State<ChannelsPage> {
     }
   }
 
+  /**
+   * Cleans up resources when the widget is disposed.
+   * Removes listeners and disposes controllers to prevent memory leaks.
+   */
   @override
   void dispose() {
     _controller.removeListener(_onTextChanged);
@@ -75,6 +128,10 @@ class _ChannelsPageState extends State<ChannelsPage> {
     super.dispose();
   }
 
+  /**
+   * Saves the current channels data to the database.
+   * Provides user feedback through snackbars for success/failure states.
+   */
   Future<void> _saveData() async {
     final provider = context.read<BusinessModelCanvasProvider>();
     final success = await provider.saveField(_fieldName);
@@ -100,6 +157,10 @@ class _ChannelsPageState extends State<ChannelsPage> {
     }
   }
 
+  /**
+   * Builds the main Channels page interface.
+   * Uses Consumer pattern to listen to provider changes and update UI accordingly.
+   */
   @override
   Widget build(BuildContext context) {
     return Consumer<BusinessModelCanvasProvider>(
@@ -109,203 +170,245 @@ class _ChannelsPageState extends State<ChannelsPage> {
 
         return Scaffold(
           backgroundColor: const Color(0xFF0d0d0d),
-          appBar: AppBar(
-            title: Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Channels',
-                    style: TextStyle(
-                      color: Color(0xFFffa500),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: const Color(0xFF1a1a1a),
-            elevation: 2,
-          ),
+          appBar: _buildAppBar(),
           body: Column(
             children: [
-              // Error banner
-              if (provider.error != null)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  color: Colors.red.withValues(alpha: 0.1),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.error_outline, color: Colors.red),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          provider.error!,
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () {
-                          provider.clearError();
-                        },
-                        icon: const Icon(Icons.close, color: Colors.red),
-                      ),
-                    ],
-                  ),
-                ),
-
-              // Header with description
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF2a2a2a),
-                  border: Border(
-                    bottom: BorderSide(color: Color(0xFFffa500), width: 2),
-                  ),
-                ),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Channels',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFffa500),
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'How do you reach and deliver value to your customer segments? Include both communication and distribution channels.',
-                      style: TextStyle(fontSize: 14, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Text input area
-              Expanded(
-                child: Container(
-                  margin: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1a1a1a),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color:
-                          hasUnsavedChanges
-                              ? Colors.orange.withValues(alpha: 0.5)
-                              : const Color(0xFFffa500).withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: TextField(
-                    controller: _controller,
-                    cursorColor: const Color(0xFFffa500),
-                    focusNode: _focusNode,
-                    enabled: !provider.isSaving,
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      contentPadding: const EdgeInsets.all(20),
-                      // Show label when focused or has content
-                      labelText:
-                          (_isFocused || _controller.text.isNotEmpty)
-                              ? 'Enter Channels Information'
-                              : null,
-                      labelStyle: TextStyle(
-                        color:
-                            provider.isSaving ? Colors.grey[600] : Colors.grey,
-                      ),
-                      floatingLabelStyle: const TextStyle(
-                        color: Color(0xFFffa500),
-                      ),
-                      // Show hints when empty and not focused
-                      hintText:
-                          showHints
-                              ? 'Examples:\n• Online platforms (website, mobile app)\n• Physical stores or locations\n• Sales team or partners\n• Social media channels\n• Email marketing\n• Third-party distributors\n• Direct sales\n• Retail partnerships'
-                              : null,
-                      hintStyle: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 14,
-                      ),
-                    ),
-                    maxLines: null,
-                    minLines: 12,
-                    style: TextStyle(
-                      color:
-                          provider.isSaving ? Colors.grey[600] : Colors.white,
-                      fontSize: 16,
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-              ),
-
-              // Bottom action bar - Only save button
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(color: Colors.black),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed:
-                        hasUnsavedChanges && !provider.isSaving
-                            ? _saveData
-                            : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          hasUnsavedChanges && !provider.isSaving
-                              ? const Color(0xFFffa500)
-                              : Colors.grey[600],
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child:
-                        provider.isSaving
-                            ? const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: 8),
-                                Text('Saving...'),
-                              ],
-                            )
-                            : Text(
-                              hasUnsavedChanges
-                                  ? 'Save Changes'
-                                  : 'No Changes to Save',
-                              style: TextStyle(
-                                color:
-                                    hasUnsavedChanges && !provider.isSaving
-                                        ? Colors.black
-                                        : Colors.grey[400],
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                  ),
-                ),
-              ),
+              _buildErrorBanner(provider),
+              _buildHeader(),
+              _buildTextInputArea(provider, hasUnsavedChanges, showHints),
+              _buildActionBar(provider, hasUnsavedChanges),
             ],
           ),
         );
       },
+    );
+  }
+
+  /**
+   * Builds the application bar with title and branding.
+   * 
+   * @return PreferredSizeWidget for the app bar
+   */
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      title: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'Channels',
+              style: TextStyle(
+                color: Color(0xFFffa500),
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
+        ],
+      ),
+      backgroundColor: const Color(0xFF1a1a1a),
+      elevation: 2,
+    );
+  }
+
+  /**
+   * Builds the error banner that appears when there are provider errors.
+   * Shows dismissible error messages with clear visual indicators.
+   * 
+   * @param provider The BusinessModelCanvasProvider instance
+   * @return Widget containing the error banner or empty container
+   */
+  Widget _buildErrorBanner(BusinessModelCanvasProvider provider) {
+    if (provider.error == null) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      color: Colors.red.withValues(alpha: 0.1),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, color: Colors.red),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              provider.error!,
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+          IconButton(
+            onPressed: () {
+              provider.clearError();
+            },
+            icon: const Icon(Icons.close, color: Colors.red),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /**
+   * Builds the header section with title and description.
+   * Provides context and guidance for the Channels section.
+   * 
+   * @return Widget containing the header with title and description
+   */
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        color: Color(0xFF2a2a2a),
+        border: Border(bottom: BorderSide(color: Color(0xFFffa500), width: 2)),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Channels',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFFffa500),
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'How do you reach and deliver value to your customer segments? Include both communication and distribution channels.',
+            style: TextStyle(fontSize: 14, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /**
+   * Builds the main text input area for channels content.
+   * Features adaptive hints, focus management, and visual state indicators.
+   * 
+   * @param provider The BusinessModelCanvasProvider instance
+   * @param hasUnsavedChanges Whether there are unsaved changes
+   * @param showHints Whether to display example hints
+   * @return Widget containing the text input area
+   */
+  Widget _buildTextInputArea(
+    BusinessModelCanvasProvider provider,
+    bool hasUnsavedChanges,
+    bool showHints,
+  ) {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1a1a1a),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color:
+                hasUnsavedChanges
+                    ? Colors.orange.withValues(alpha: 0.5)
+                    : const Color(0xFFffa500).withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: TextField(
+          controller: _controller,
+          cursorColor: const Color(0xFFffa500),
+          focusNode: _focusNode,
+          enabled: !provider.isSaving,
+          decoration: InputDecoration(
+            border: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            contentPadding: const EdgeInsets.all(20),
+            // Show label when focused or has content
+            labelText:
+                (_isFocused || _controller.text.isNotEmpty)
+                    ? 'Enter Channels Information'
+                    : null,
+            labelStyle: TextStyle(
+              color: provider.isSaving ? Colors.grey[600] : Colors.grey,
+            ),
+            floatingLabelStyle: const TextStyle(color: Color(0xFFffa500)),
+            // Show hints when empty and not focused
+            hintText:
+                showHints
+                    ? 'Examples:\n• Online platforms (website, mobile app)\n• Physical stores or locations\n• Sales team or partners\n• Social media channels\n• Email marketing\n• Third-party distributors\n• Direct sales\n• Retail partnerships'
+                    : null,
+            hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+          ),
+          maxLines: null,
+          minLines: 12,
+          style: TextStyle(
+            color: provider.isSaving ? Colors.grey[600] : Colors.white,
+            fontSize: 16,
+            height: 1.5,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /**
+   * Builds the bottom action bar with save functionality.
+   * Displays save button with appropriate states and loading indicators.
+   * 
+   * @param provider The BusinessModelCanvasProvider instance
+   * @param hasUnsavedChanges Whether there are unsaved changes
+   * @return Widget containing the action bar
+   */
+  Widget _buildActionBar(
+    BusinessModelCanvasProvider provider,
+    bool hasUnsavedChanges,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(color: Colors.black),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: hasUnsavedChanges && !provider.isSaving ? _saveData : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor:
+                hasUnsavedChanges && !provider.isSaving
+                    ? const Color(0xFFffa500)
+                    : Colors.grey[600],
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child:
+              provider.isSaving
+                  ? const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Text('Saving...'),
+                    ],
+                  )
+                  : Text(
+                    hasUnsavedChanges ? 'Save Changes' : 'No Changes to Save',
+                    style: TextStyle(
+                      color:
+                          hasUnsavedChanges && !provider.isSaving
+                              ? Colors.black
+                              : Colors.grey[400],
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+        ),
+      ),
     );
   }
 }

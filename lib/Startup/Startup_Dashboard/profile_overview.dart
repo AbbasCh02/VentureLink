@@ -1,8 +1,29 @@
-// lib/Startup/Startup_Dashboard/profile_overview.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../Providers/startup_profile_overview_provider.dart';
 
+/**
+ * Implements a comprehensive company profile overview management widget for startup profile completion.
+ * Provides interactive components for capturing essential company information and tracking completion progress.
+ * 
+ * Features:
+ * - Real-time profile completion tracking with visual progress indicators
+ * - Comprehensive company information form with validation
+ * - Seamless integration with StartupProfileOverviewProvider for state management
+ * - Auto-save functionality with unsaved changes detection
+ * - Form validation for all required company fields
+ * - Responsive UI with loading states and error handling
+ * - Professional styling with consistent orange theme (#FFa500)
+ * - Animated transitions and smooth user experience
+ * - Profile completion percentage calculation
+ * - Clear/refresh functionality for data management
+ * - Success and error feedback with SnackBar notifications
+ */
+
+/**
+ * ProfileOverview - Main widget component for startup company profile management.
+ * Handles company name, industry, tagline, and region information with completion tracking.
+ */
 class ProfileOverview extends StatefulWidget {
   const ProfileOverview({super.key});
 
@@ -10,30 +31,49 @@ class ProfileOverview extends StatefulWidget {
   State<ProfileOverview> createState() => _ProfileOverviewState();
 }
 
+/**
+ * _ProfileOverviewState - State management for the ProfileOverview widget component.
+ * Manages form interactions, animations, validation, and provider integration for company profile data.
+ */
 class _ProfileOverviewState extends State<ProfileOverview>
     with TickerProviderStateMixin {
+  /**
+   * Form key for validation management across all profile input fields.
+   */
   final _formKey = GlobalKey<FormState>();
+
+  /**
+   * Animation controllers for smooth UI transitions and visual feedback.
+   */
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
+  /**
+   * Initializes the widget state and sets up animation controllers.
+   * Configures fade and slide animations for enhanced user experience.
+   */
   @override
   void initState() {
     super.initState();
+    // Initialize fade animation controller for opacity transitions
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
+    // Initialize slide animation controller for position transitions
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
 
+    // Configure fade animation from transparent to opaque
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
 
+    // Configure slide animation from bottom to center with elastic effect
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
@@ -41,10 +81,14 @@ class _ProfileOverviewState extends State<ProfileOverview>
       CurvedAnimation(parent: _slideController, curve: Curves.elasticOut),
     );
 
+    // Start animations immediately on widget load
     _fadeController.forward();
     _slideController.forward();
   }
 
+  /**
+   * Disposes animation controllers to prevent memory leaks.
+   */
   @override
   void dispose() {
     _fadeController.dispose();
@@ -52,13 +96,20 @@ class _ProfileOverviewState extends State<ProfileOverview>
     super.dispose();
   }
 
+  /**
+   * Builds the main ProfileOverview widget interface.
+   * Uses Consumer pattern to listen to StartupProfileOverviewProvider changes and update UI accordingly.
+   * 
+   * @return Widget containing the complete company profile overview interface
+   */
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0a0a),
+      backgroundColor: const Color(0xFF0a0a0a), // Dark background
       appBar: _buildAppBar(),
       body: Consumer<StartupProfileOverviewProvider>(
         builder: (context, provider, child) {
+          // Show loading state while provider is initializing
           if (provider.isLoading) {
             return const Center(
               child: Column(
@@ -75,6 +126,7 @@ class _ProfileOverviewState extends State<ProfileOverview>
             );
           }
 
+          // Show error state with retry and navigation options
           if (provider.error != null) {
             return Center(
               child: Column(
@@ -129,6 +181,7 @@ class _ProfileOverviewState extends State<ProfileOverview>
             );
           }
 
+          // Main content with animated transitions
           return FadeTransition(
             opacity: _fadeAnimation,
             child: SlideTransition(
@@ -155,6 +208,12 @@ class _ProfileOverviewState extends State<ProfileOverview>
     );
   }
 
+  /**
+   * Builds the application bar with navigation and saving indicator.
+   * Shows a loading spinner when save operations are in progress.
+   * 
+   * @return PreferredSizeWidget containing the app bar with orange theme
+   */
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       backgroundColor: Colors.grey[900],
@@ -174,6 +233,7 @@ class _ProfileOverviewState extends State<ProfileOverview>
       actions: [
         Consumer<StartupProfileOverviewProvider>(
           builder: (context, provider, child) {
+            // Show saving indicator when save operation is active
             if (provider.isSaving) {
               return const Padding(
                 padding: EdgeInsets.all(16.0),
@@ -196,6 +256,13 @@ class _ProfileOverviewState extends State<ProfileOverview>
     );
   }
 
+  /**
+   * Builds the header section with gradient background and company branding.
+   * Displays dynamic messaging based on profile completion status.
+   * 
+   * @param provider The StartupProfileOverviewProvider instance for state access
+   * @return Widget containing the styled header with icon and description
+   */
   Widget _buildHeader(StartupProfileOverviewProvider provider) {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -249,6 +316,13 @@ class _ProfileOverviewState extends State<ProfileOverview>
     );
   }
 
+  /**
+   * Builds the progress tracking section with completion percentage and field count.
+   * Displays visual progress bar and unsaved changes indicator.
+   * 
+   * @param provider The StartupProfileOverviewProvider instance for progress calculation
+   * @return Widget containing progress visualization and completion status
+   */
   Widget _buildProgressSection(StartupProfileOverviewProvider provider) {
     final completionPercentage = _calculateCompletionPercentage(provider);
     final completedFields = _getCompletedFieldsCount(provider);
@@ -285,6 +359,7 @@ class _ProfileOverviewState extends State<ProfileOverview>
             ],
           ),
           const SizedBox(height: 16),
+          // Progress bar visualization
           LinearProgressIndicator(
             value: completionPercentage,
             backgroundColor: Colors.grey[800],
@@ -296,6 +371,7 @@ class _ProfileOverviewState extends State<ProfileOverview>
             '$completedFields of 4 fields completed',
             style: TextStyle(color: Colors.grey[400], fontSize: 14),
           ),
+          // Unsaved changes indicator
           if (provider.hasAnyUnsavedChanges) ...[
             const SizedBox(height: 12),
             Row(
@@ -314,6 +390,13 @@ class _ProfileOverviewState extends State<ProfileOverview>
     );
   }
 
+  /**
+   * Builds the main profile form section with all company information input fields.
+   * Includes company name, industry, tagline, and region with validation and unsaved changes tracking.
+   * 
+   * @param provider The StartupProfileOverviewProvider instance for form management
+   * @return Widget containing the complete form with styled input fields
+   */
   Widget _buildProfileFormSection(StartupProfileOverviewProvider provider) {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -355,7 +438,7 @@ class _ProfileOverviewState extends State<ProfileOverview>
             key: _formKey,
             child: Column(
               children: [
-                // Company Name field - full width
+                // Company Name field - required field with validation
                 _buildInputField(
                   controller: provider.companyNameController,
                   label: 'Company Name *',
@@ -365,7 +448,7 @@ class _ProfileOverviewState extends State<ProfileOverview>
                   hasUnsavedChanges: provider.hasUnsavedChanges('companyName'),
                 ),
                 const SizedBox(height: 16),
-                // Industry field - full width
+                // Industry field - required field with business category validation
                 _buildInputField(
                   controller: provider.industryController,
                   label: 'Industry *',
@@ -375,7 +458,7 @@ class _ProfileOverviewState extends State<ProfileOverview>
                   hasUnsavedChanges: provider.hasUnsavedChanges('industry'),
                 ),
                 const SizedBox(height: 16),
-                // Tagline field - full width
+                // Tagline field - required marketing message with character limits
                 _buildInputField(
                   controller: provider.taglineController,
                   label: 'Company Tagline *',
@@ -385,7 +468,7 @@ class _ProfileOverviewState extends State<ProfileOverview>
                   hasUnsavedChanges: provider.hasUnsavedChanges('tagline'),
                 ),
                 const SizedBox(height: 16),
-                // Region field - full width
+                // Region field - required market/geographic focus validation
                 _buildInputField(
                   controller: provider.regionController,
                   label: 'Region/Market *',
@@ -402,6 +485,18 @@ class _ProfileOverviewState extends State<ProfileOverview>
     );
   }
 
+  /**
+   * Builds a reusable input field with consistent styling and validation.
+   * Provides visual feedback for unsaved changes and form validation states.
+   * 
+   * @param controller The TextEditingController for the input field
+   * @param label The display label for the field
+   * @param hint The placeholder text for user guidance
+   * @param icon The leading icon for visual identification
+   * @param validator The validation function for input validation
+   * @param hasUnsavedChanges Boolean indicating if field has unsaved modifications
+   * @return Widget containing the styled text input field
+   */
   Widget _buildInputField({
     required TextEditingController controller,
     required String label,
@@ -423,6 +518,7 @@ class _ProfileOverviewState extends State<ProfileOverview>
                 color: Color(0xFFffa500),
               ),
             ),
+            // Unsaved changes badge
             if (hasUnsavedChanges) ...[
               const SizedBox(width: 8),
               Container(
@@ -483,15 +579,24 @@ class _ProfileOverviewState extends State<ProfileOverview>
             ),
           ),
           validator: validator,
-          onChanged: (_) => setState(() {}),
+          onChanged:
+              (_) => setState(() {}), // Trigger rebuild for validation updates
         ),
       ],
     );
   }
 
+  /**
+   * Builds the action buttons section for save, clear, and refresh operations.
+   * Dynamically shows appropriate buttons based on profile completion and unsaved changes status.
+   * 
+   * @param provider The StartupProfileOverviewProvider instance for action handling
+   * @return Widget containing the action buttons with loading states
+   */
   Widget _buildActionButtons(StartupProfileOverviewProvider provider) {
     return Column(
       children: [
+        // Save/Complete button - shown when changes exist or profile incomplete
         if (provider.hasAnyUnsavedChanges || !provider.isProfileComplete)
           SizedBox(
             width: double.infinity,
@@ -539,6 +644,7 @@ class _ProfileOverviewState extends State<ProfileOverview>
         const SizedBox(height: 16),
         Row(
           children: [
+            // Clear All button - only shown when profile is complete
             if (provider.isProfileComplete) ...[
               Expanded(
                 child: OutlinedButton(
@@ -571,6 +677,7 @@ class _ProfileOverviewState extends State<ProfileOverview>
               ),
               const SizedBox(width: 16),
             ],
+            // Refresh button - always available for data synchronization
             Expanded(
               child: OutlinedButton(
                 onPressed: () async {
@@ -603,6 +710,13 @@ class _ProfileOverviewState extends State<ProfileOverview>
     );
   }
 
+  /**
+   * Calculates the completion percentage based on filled required fields.
+   * Evaluates company name, tagline, industry, and region fields.
+   * 
+   * @param provider The StartupProfileOverviewProvider instance for data access
+   * @return Double value representing completion percentage (0.0 to 1.0)
+   */
   double _calculateCompletionPercentage(
     StartupProfileOverviewProvider provider,
   ) {
@@ -617,6 +731,12 @@ class _ProfileOverviewState extends State<ProfileOverview>
     return completedFields / totalFields;
   }
 
+  /**
+   * Gets the count of completed required fields for progress display.
+   * 
+   * @param provider The StartupProfileOverviewProvider instance for data access
+   * @return Integer count of completed fields
+   */
   int _getCompletedFieldsCount(StartupProfileOverviewProvider provider) {
     int count = 0;
     if (provider.companyName?.isNotEmpty == true) count++;
@@ -626,6 +746,12 @@ class _ProfileOverviewState extends State<ProfileOverview>
     return count;
   }
 
+  /**
+   * Handles the profile save operation with validation and user feedback.
+   * Validates form, saves data through provider, and provides success/error notifications.
+   * 
+   * @param provider The StartupProfileOverviewProvider instance for save operations
+   */
   void _saveProfile(StartupProfileOverviewProvider provider) async {
     if (_formKey.currentState!.validate()) {
       final success = await provider.saveAllFields();
@@ -638,7 +764,7 @@ class _ProfileOverviewState extends State<ProfileOverview>
             ),
           );
 
-          // Optionally return profile data to previous screen
+          // Return profile data to previous screen on successful save
           final profileData = provider.getProfileData();
           Navigator.pop(context, profileData);
         } else {
@@ -653,6 +779,12 @@ class _ProfileOverviewState extends State<ProfileOverview>
     }
   }
 
+  /**
+   * Shows a confirmation dialog for clearing all profile data.
+   * Provides clear warning about data loss and action consequences.
+   * 
+   * @return Future<bool?> user's confirmation choice (true = confirm, false = cancel)
+   */
   Future<bool?> _showClearDialog() {
     return showDialog<bool>(
       context: context,
