@@ -286,7 +286,7 @@ This project is private and proprietary. All rights reserved.
 
 ## 📞 Support
 
-For support, email [support@venturelink.com](mailto:support@venturelink.com) or join our Slack community.
+For support, email [abbas.j.cheaib4@gmail.com](mailto:abbas.j.cheaib4@gmail.com) or join our Slack community.
 
 ## 🙏 Acknowledgments
 
