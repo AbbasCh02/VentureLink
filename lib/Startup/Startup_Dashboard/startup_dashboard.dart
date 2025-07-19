@@ -1722,7 +1722,7 @@ class _StartupDashboardState extends State<StartupDashboard>
                           title: 'Funding Goal',
                           value:
                               startupProvider.fundingGoalAmount != null
-                                  ? '\${(startupProvider.fundingGoalAmount! / 1000).toStringAsFixed(0)}K'
+                                  ? '${(startupProvider.fundingGoalAmount! / 1000).toStringAsFixed(0)}K'
                                   : 'N/A',
                           icon: Icons.monetization_on_outlined,
                           color: const Color(0xFFffa500),

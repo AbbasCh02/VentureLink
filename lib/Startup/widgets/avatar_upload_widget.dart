@@ -6,9 +6,48 @@ import 'package:image_picker/image_picker.dart';
 import '../Providers/startup_profile_provider.dart';
 import '../../services/storage_service.dart';
 
+/**
+ * Implements a comprehensive avatar upload widget for profile image management.
+ * Provides complete functionality for uploading, editing, and managing user profile pictures.
+ * 
+ * Features:
+ * - Interactive circular avatar display with professional styling and orange theme (#FFa500)
+ * - Multiple image source options (camera and gallery) with modal bottom sheet selection
+ * - Real-time image validation using StorageService integration
+ * - Automatic upload functionality with progress indicators and loading states
+ * - Priority-based image display (local file > network URL > placeholder)
+ * - Professional edit button overlay with camera icon and shadow effects
+ * - Image removal functionality with confirmation dialogs
+ * - Comprehensive error handling with user-friendly feedback notifications
+ * - Customizable size and edit button visibility for different use cases
+ * - Auto-save integration with StartupProfileProvider for seamless data persistence
+ * - Professional gradient placeholder with person icon for empty states
+ * - Network image loading with progress indicators and error fallbacks
+ * - Responsive design with proportional sizing and shadow effects
+ * - Callback integration for parent component notifications on image changes
+ */
+
+/**
+ * AvatarUploadWidget - Reusable widget component for comprehensive profile image management.
+ * Integrates with StartupProfileProvider and StorageService for complete avatar functionality.
+ */
 class AvatarUploadWidget extends StatelessWidget {
+  /**
+   * The size of the avatar widget (width and height).
+   * Determines the overall dimensions of the circular avatar container.
+   */
   final double size;
+
+  /**
+   * Whether to show the edit button overlay for image modification.
+   * When true, displays a camera icon button for image selection/editing.
+   */
   final bool showEditButton;
+
+  /**
+   * Optional callback function triggered when the avatar image changes.
+   * Called after successful image upload, removal, or update operations.
+   */
   final VoidCallback? onImageChanged;
 
   const AvatarUploadWidget({
@@ -18,13 +57,19 @@ class AvatarUploadWidget extends StatelessWidget {
     this.onImageChanged,
   });
 
+  /**
+   * Builds the main avatar upload widget with provider integration.
+   * Uses Consumer pattern to listen to StartupProfileProvider changes and update UI accordingly.
+   * 
+   * @return Widget containing the complete avatar upload interface
+   */
   @override
   Widget build(BuildContext context) {
     return Consumer<StartupProfileProvider>(
       builder: (context, provider, child) {
         return Stack(
           children: [
-            // Avatar container
+            // Main avatar container with circular border and shadow effects
             Container(
               width: size,
               height: size,
@@ -42,7 +87,7 @@ class AvatarUploadWidget extends StatelessWidget {
               child: ClipOval(child: _buildAvatarContent(provider)),
             ),
 
-            // Edit button
+            // Edit button overlay positioned at bottom-right
             if (showEditButton)
               Positioned(
                 bottom: 0,
@@ -73,7 +118,7 @@ class AvatarUploadWidget extends StatelessWidget {
                 ),
               ),
 
-            // Loading indicator
+            // Loading indicator overlay during upload operations
             if (provider.isSaving)
               Positioned.fill(
                 child: Container(
@@ -95,10 +140,17 @@ class AvatarUploadWidget extends StatelessWidget {
     );
   }
 
-  /// Build avatar content (image or placeholder)
+  /**
+   * Builds avatar content with priority handling for different image sources.
+   * Implements priority system: local file > network URL > placeholder.
+   * Handles loading states and error fallbacks for network images.
+   * 
+   * @param provider The StartupProfileProvider instance for image data access
+   * @return Widget containing the appropriate avatar content
+   */
   Widget _buildAvatarContent(StartupProfileProvider provider) {
     if (provider.profileImage != null) {
-      // Show local file
+      // Display local file (newly selected image with highest priority)
       return Image.file(
         provider.profileImage!,
         fit: BoxFit.cover,
@@ -107,7 +159,7 @@ class AvatarUploadWidget extends StatelessWidget {
       );
     } else if (provider.profileImageUrl != null &&
         provider.profileImageUrl!.isNotEmpty) {
-      // Show network image
+      // Display network image (loaded from database with progress indicator)
       return Image.network(
         provider.profileImageUrl!,
         fit: BoxFit.cover,
@@ -129,12 +181,17 @@ class AvatarUploadWidget extends StatelessWidget {
         errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
       );
     } else {
-      // Show placeholder
+      // Display placeholder when no image is available
       return _buildPlaceholder();
     }
   }
 
-  /// Build placeholder avatar
+  /**
+   * Builds the default avatar placeholder with gradient background and person icon.
+   * Provides visual cue for users to upload their profile picture.
+   * 
+   * @return Widget containing the styled avatar placeholder
+   */
   Widget _buildPlaceholder() {
     return Container(
       width: size,
@@ -150,7 +207,14 @@ class AvatarUploadWidget extends StatelessWidget {
     );
   }
 
-  /// Show image picker dialog
+  /**
+   * Shows modal bottom sheet with image picker options.
+   * Provides camera, gallery, and remove options with professional styling.
+   * Dynamically shows remove option only when an image exists.
+   * 
+   * @param context The BuildContext for modal presentation
+   * @param provider The StartupProfileProvider instance for image operations
+   */
   void _showImagePickerDialog(
     BuildContext context,
     StartupProfileProvider provider,
@@ -168,7 +232,7 @@ class AvatarUploadWidget extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Header
+                  // Modal sheet header with drag indicator
                   Container(
                     width: 40,
                     height: 4,
@@ -189,11 +253,11 @@ class AvatarUploadWidget extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
 
-                  // Options
+                  // Image picker options in horizontal layout
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      // Camera option
+                      // Camera option for taking new photos
                       _buildPickerOption(
                         context: context,
                         icon: Icons.camera_alt,
@@ -208,7 +272,7 @@ class AvatarUploadWidget extends StatelessWidget {
                         },
                       ),
 
-                      // Gallery option
+                      // Gallery option for selecting existing photos
                       _buildPickerOption(
                         context: context,
                         icon: Icons.photo_library,
@@ -223,7 +287,7 @@ class AvatarUploadWidget extends StatelessWidget {
                         },
                       ),
 
-                      // Remove option (if image exists)
+                      // Remove option (conditionally shown when image exists)
                       if (provider.profileImage != null ||
                           (provider.profileImageUrl != null &&
                               provider.profileImageUrl!.isNotEmpty))
@@ -247,7 +311,17 @@ class AvatarUploadWidget extends StatelessWidget {
     );
   }
 
-  /// Build picker option widget
+  /**
+   * Builds individual picker option widgets with consistent styling.
+   * Creates circular buttons with icons and labels for different image operations.
+   * 
+   * @param context The BuildContext for widget building
+   * @param icon The icon to display for the option
+   * @param label The text label for the option
+   * @param onTap The callback function when option is tapped
+   * @param color Optional custom color (defaults to orange theme)
+   * @return Widget containing the styled picker option
+   */
   Widget _buildPickerOption({
     required BuildContext context,
     required IconData icon,
@@ -286,7 +360,15 @@ class AvatarUploadWidget extends StatelessWidget {
     );
   }
 
-  /// Pick image from camera or gallery
+  /**
+   * Handles image selection from camera or gallery with comprehensive validation.
+   * Validates file using StorageService, updates provider, and provides user feedback.
+   * Automatically triggers upload and calls optional callback on success.
+   * 
+   * @param context The BuildContext for error/success feedback
+   * @param provider The StartupProfileProvider instance for image operations
+   * @param source The ImageSource (camera or gallery) for image selection
+   */
   Future<void> _pickImage(
     BuildContext context,
     StartupProfileProvider provider,
@@ -304,7 +386,7 @@ class AvatarUploadWidget extends StatelessWidget {
       if (pickedFile != null && context.mounted) {
         final File imageFile = File(pickedFile.path);
 
-        // Validate file using storage service
+        // Validate file using storage service before processing
         try {
           StorageService.validateAvatarFile(imageFile);
         } catch (e) {
@@ -314,10 +396,10 @@ class AvatarUploadWidget extends StatelessWidget {
           return;
         }
 
-        // Set the image (this will trigger upload automatically)
+        // Set the image (triggers automatic upload via provider)
         provider.updateProfileImage(imageFile);
 
-        // Call callback if provided
+        // Execute callback if provided for parent component notification
         onImageChanged?.call();
 
         if (context.mounted) {
@@ -334,13 +416,20 @@ class AvatarUploadWidget extends StatelessWidget {
     }
   }
 
-  /// Remove current image
+  /**
+   * Handles removal of current profile image with confirmation dialog.
+   * Shows confirmation dialog, removes image via provider, and provides user feedback.
+   * Triggers database update and calls optional callback on successful removal.
+   * 
+   * @param context The BuildContext for dialog presentation and feedback
+   * @param provider The StartupProfileProvider instance for image operations
+   */
   Future<void> _removeImage(
     BuildContext context,
     StartupProfileProvider provider,
   ) async {
     try {
-      // Show confirmation dialog
+      // Show confirmation dialog before removal
       if (!context.mounted) return;
 
       final confirmed = await _showConfirmationDialog(
@@ -350,10 +439,10 @@ class AvatarUploadWidget extends StatelessWidget {
       );
 
       if (confirmed == true && context.mounted) {
-        // Remove the image (this will trigger database update)
+        // Remove the image (triggers database update via provider)
         provider.updateProfileImage(null);
 
-        // Call callback if provided
+        // Execute callback if provided for parent component notification
         onImageChanged?.call();
 
         if (context.mounted) {
@@ -370,7 +459,15 @@ class AvatarUploadWidget extends StatelessWidget {
     }
   }
 
-  /// Show confirmation dialog
+  /**
+   * Shows confirmation dialog for destructive operations.
+   * Provides clear warning with custom title and message for user confirmation.
+   * 
+   * @param context The BuildContext for dialog presentation
+   * @param title The dialog title text
+   * @param message The confirmation message text
+   * @return Future bool? user's confirmation choice (true = confirm, false = cancel)
+   */
   Future<bool?> _showConfirmationDialog(
     BuildContext context,
     String title,
@@ -403,7 +500,13 @@ class AvatarUploadWidget extends StatelessWidget {
     );
   }
 
-  /// Show success snackbar
+  /**
+   * Shows success notification with orange theme styling.
+   * Displays floating SnackBar with success message and professional appearance.
+   * 
+   * @param context The BuildContext for SnackBar presentation
+   * @param message The success message to display
+   */
   void _showSuccessSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -416,7 +519,13 @@ class AvatarUploadWidget extends StatelessWidget {
     );
   }
 
-  /// Show error snackbar
+  /**
+   * Shows error notification with red theme styling.
+   * Displays floating SnackBar with error message and appropriate warning appearance.
+   * 
+   * @param context The BuildContext for SnackBar presentation
+   * @param message The error message to display
+   */
   void _showErrorSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

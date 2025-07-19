@@ -1286,7 +1286,13 @@ class StartupProfileProvider with ChangeNotifier {
    * @return Total number of pitch deck files
    */
   int get totalPitchDeckFilesCount {
-    return _pitchDeckFiles.length + _pitchDeckThumbnails.length;
+    // Count local files + stored files (represented by thumbnails when no local files)
+    if (_pitchDeckFiles.isNotEmpty) {
+      return _pitchDeckFiles.length;
+    } else {
+      // When no local files, count the stored files via thumbnails
+      return _pitchDeckThumbnails.length;
+    }
   }
 
   /**
