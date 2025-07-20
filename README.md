@@ -298,6 +298,5 @@ For support, email [abbas.j.cheaib4@gmail.com](mailto:abbas.j.cheaib4@gmail.com)
 ---
 
 <div align="center">
-  <p>Made with ❤️ by the VentureLink Team</p>
-  <p>🚀 Connecting Innovation with Investment 🚀</p>
+  <p>🚀 Lets Connect Innovation with Investment 🚀</p>
 </div>
